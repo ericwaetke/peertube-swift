@@ -35,6 +35,9 @@ final class AppState: ObservableObject {
 	@Published var isLoading = false
 	@Published var error: Error?
 
+	/// Subscription service for managing local channel subscriptions
+	@Published var subscriptionService: SubscriptionService
+
 	// MARK: - Private Properties
 
 	private let userDefaults = UserDefaults.standard
@@ -44,8 +47,14 @@ final class AppState: ObservableObject {
 	// MARK: - Initialization
 
 	init() {
+		// Initialize subscription service
+		self.subscriptionService = SubscriptionService()
+
 		AppStateProvider.shared.setAppState(self)
 		loadSavedInstance()
+
+		// Set up subscription service reference
+		subscriptionService.setAppState(self)
 	}
 
 	// MARK: - Navigation
@@ -95,6 +104,9 @@ final class AppState: ObservableObject {
 		self.currentInstance = instance
 		self.services = PeerTubeServices(instanceURL: instance.url)
 		saveCurrentInstance()
+
+		// Update subscription service with new services
+		subscriptionService.setAppState(self)
 	}
 
 	func setInstanceURL(_ urlString: String) async throws {
@@ -125,6 +137,9 @@ final class AppState: ObservableObject {
 				self.services = services
 				self.isLoading = false
 				saveCurrentInstance()
+
+				// Update subscription service with new services
+				subscriptionService.setAppState(self)
 			}
 		} catch {
 			await MainActor.run {
