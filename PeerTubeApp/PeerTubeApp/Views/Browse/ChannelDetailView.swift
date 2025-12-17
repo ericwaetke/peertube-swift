@@ -161,12 +161,31 @@ struct ChannelDetailView: View {
 			// Actions
 			HStack(spacing: 12) {
 				Button(action: {
-					// TODO: Implement follow functionality
+					Task {
+						if appState.subscriptionService.isSubscribed(to: channelId) {
+							await appState.subscriptionService.unsubscribe(from: channelId)
+						} else if let channel = self.channel {
+							await appState.subscriptionService.subscribe(to: channel)
+						}
+					}
 				}) {
-					Text("Follow")
-						.frame(maxWidth: .infinity)
+					HStack {
+						if appState.subscriptionService.isLoading {
+							ProgressView()
+								.scaleEffect(0.8)
+						} else {
+							Image(
+								systemName: appState.subscriptionService.isSubscribed(to: channelId)
+									? "bell.fill" : "bell")
+						}
+						Text(
+							appState.subscriptionService.isSubscribed(to: channelId)
+								? "Unsubscribe" : "Subscribe")
+					}
+					.frame(maxWidth: .infinity)
 				}
 				.buttonStyle(.borderedProminent)
+				.disabled(appState.subscriptionService.isLoading)
 
 				Button(action: {
 					// TODO: Implement share functionality

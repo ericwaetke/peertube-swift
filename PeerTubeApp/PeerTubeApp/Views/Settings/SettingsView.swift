@@ -27,6 +27,9 @@ struct SettingsView: View {
 				// Playback settings
 				playbackSection
 
+				// Subscriptions
+				subscriptionsSection
+
 				// Data and storage
 				dataSection
 
@@ -167,6 +170,65 @@ struct SettingsView: View {
 			}
 		} header: {
 			Text("Video Playback")
+		}
+	}
+
+	// MARK: - Subscriptions Section
+
+	private var subscriptionsSection: some View {
+		Section {
+			// Manage subscriptions
+			Button(action: {
+				appState.navigateTo(.subscriptionManagement)
+			}) {
+				HStack {
+					Image(systemName: "bell")
+						.foregroundColor(.blue)
+						.frame(width: 24)
+
+					VStack(alignment: .leading, spacing: 2) {
+						Text("Manage Subscriptions")
+							.font(.body)
+							.foregroundColor(.primary)
+
+						Text(
+							"\(appState.subscriptionService.subscriptionCount) channels subscribed"
+						)
+						.font(.caption)
+						.foregroundColor(.secondary)
+					}
+
+					Spacer()
+
+					Image(systemName: "chevron.right")
+						.font(.caption)
+						.foregroundColor(.secondary)
+				}
+			}
+
+			// Subscription feed settings
+			HStack {
+				Image(systemName: "list.dash")
+					.foregroundColor(.blue)
+					.frame(width: 24)
+
+				VStack(alignment: .leading, spacing: 2) {
+					Text("Auto-refresh Feed")
+						.font(.body)
+
+					Text("Automatically check for new videos")
+						.font(.caption)
+						.foregroundColor(.secondary)
+				}
+
+				Spacer()
+
+				Toggle("", isOn: .constant(true))
+			}
+		} header: {
+			Text("Subscriptions")
+		} footer: {
+			Text("Manage your channel subscriptions and feed preferences.")
 		}
 	}
 
@@ -523,37 +585,6 @@ struct FeatureRow: View {
 
 			Spacer()
 		}
-	}
-}
-
-// MARK: - Placeholder Views
-
-struct VideoDetailView: View {
-	let videoId: String
-
-	var body: some View {
-		Text("Video Detail: \(videoId)")
-			.navigationTitle("Video")
-			.navigationBarTitleDisplayMode(.inline)
-	}
-}
-
-struct ChannelDetailView: View {
-	let channelId: String
-
-	var body: some View {
-		Text("Channel Detail: \(channelId)")
-			.navigationTitle("Channel")
-			.navigationBarTitleDisplayMode(.inline)
-	}
-}
-
-struct VideoPlayerContainerView: View {
-	let video: VideoDetails
-
-	var body: some View {
-		InlineVideoPlayerView(video: video)
-			.navigationBarHidden(true)
 	}
 }
 

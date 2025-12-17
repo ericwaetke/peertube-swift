@@ -22,6 +22,7 @@
 		B9A1B7312B5F8A9F00456789 /* SubscriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7272B5F8A9F00456789 /* SubscriptionsView.swift */; };
 		B9A1B7332B5F8A9F00456789 /* PeerTubeModels+URL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7342B5F8A9F00456789 /* PeerTubeModels+URL.swift */; };
 		B9A1B7362B5F8A9F00456789 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7372B5F8A9F00456789 /* SubscriptionService.swift */; };
+		B9A1B7392B5F8A9F00456789 /* SubscriptionManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B73A2B5F8A9F00456789 /* SubscriptionManagementView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		B9A1B7272B5F8A9F00456789 /* SubscriptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionsView.swift; sourceTree = "<group>"; };
 		B9A1B7342B5F8A9F00456789 /* PeerTubeModels+URL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PeerTubeModels+URL.swift"; sourceTree = "<group>"; };
 		B9A1B7372B5F8A9F00456789 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
+		B9A1B73A2B5F8A9F00456789 /* SubscriptionManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManagementView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,6 +137,7 @@
 			children = (
 				B9A1B7252B5F8A9F00456789 /* SettingsView.swift */,
 				B9A1B7262B5F8A9F00456789 /* AboutView.swift */,
+				B9A1B73A2B5F8A9F00456789 /* SubscriptionManagementView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -251,6 +254,7 @@
 				B9A1B7312B5F8A9F00456789 /* SubscriptionsView.swift in Sources */,
 				B9A1B7332B5F8A9F00456789 /* PeerTubeModels+URL.swift in Sources */,
 				B9A1B7362B5F8A9F00456789 /* SubscriptionService.swift in Sources */,
+				B9A1B7392B5F8A9F00456789 /* SubscriptionManagementView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
