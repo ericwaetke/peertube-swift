@@ -1,0 +1,5 @@
+[tools]
+uv = "latest"
+
+[tasks.beads]
+run = "uvx beads-mcp"
