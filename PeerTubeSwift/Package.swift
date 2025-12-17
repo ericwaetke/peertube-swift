@@ -22,11 +22,17 @@ let package = Package(
 	targets: [
 		.target(
 			name: "PeerTubeSwift",
-			dependencies: []
+			dependencies: [],
+			swiftSettings: [
+				.enableUpcomingFeature("StrictConcurrency")
+			]
 		),
 		.testTarget(
 			name: "PeerTubeSwiftTests",
-			dependencies: ["PeerTubeSwift"]
+			dependencies: ["PeerTubeSwift"],
+			swiftSettings: [
+				.enableUpcomingFeature("StrictConcurrency")
+			]
 		),
 	]
 )

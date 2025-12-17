@@ -8,7 +8,7 @@
 import Foundation
 
 /// Actor image (avatar or banner)
-public struct ActorImage: Codable, Hashable {
+public struct ActorImage: Codable, Hashable, Sendable {
 	/// Unique identifier for the image
 	public let id: Int?
 
@@ -62,7 +62,7 @@ public struct ActorImage: Codable, Hashable {
 }
 
 /// Base actor model for Account and VideoChannel
-public struct Actor: Codable, Hashable, Identifiable {
+public struct Actor: Codable, Hashable, Identifiable, Sendable {
 	/// Unique identifier
 	public let id: Int
 
@@ -161,7 +161,7 @@ extension Actor {
 }
 
 /// Lightweight summary of an Actor for list views and references
-public struct ActorSummary: Codable, Hashable, Identifiable {
+public struct ActorSummary: Codable, Hashable, Identifiable, Sendable {
 	/// Unique identifier
 	public let id: Int
 
