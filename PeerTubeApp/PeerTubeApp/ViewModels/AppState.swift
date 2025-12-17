@@ -44,6 +44,7 @@ final class AppState: ObservableObject {
 	// MARK: - Initialization
 
 	init() {
+		AppStateProvider.shared.setAppState(self)
 		loadSavedInstance()
 	}
 
@@ -92,7 +93,7 @@ final class AppState: ObservableObject {
 
 	func setInstance(_ instance: Instance) {
 		self.currentInstance = instance
-		self.services = PeerTubeServices(baseURL: instance.url)
+		self.services = PeerTubeServices(instanceURL: instance.url)
 		saveCurrentInstance()
 	}
 
@@ -105,8 +106,19 @@ final class AppState: ObservableObject {
 		error = nil
 
 		do {
-			let services = PeerTubeServices(baseURL: url)
-			let instance = try await services.instances.getInstanceInfo()
+			let services = PeerTubeServices(instanceURL: url)
+			let instanceInfo = try await services.instance.getBasicInfo()
+
+			// Create Instance object from basic info
+			let instance = Instance(
+				host: url.host ?? url.absoluteString,
+				name: instanceInfo.name,
+				shortDescription: instanceInfo.description,
+				version: instanceInfo.version,
+				signupAllowed: instanceInfo.isSignupAllowed,
+				totalUsers: instanceInfo.userCount,
+				totalVideos: instanceInfo.videoCount
+			)
 
 			await MainActor.run {
 				self.currentInstance = instance
@@ -141,7 +153,7 @@ final class AppState: ObservableObject {
 
 	private func saveCurrentInstance() {
 		if let instance = currentInstance {
-			userDefaults.set(instance.url.absoluteString, forKey: Self.currentInstanceKey)
+			userDefaults.set(instance.baseURL?.absoluteString, forKey: Self.currentInstanceKey)
 		}
 	}
 
@@ -191,6 +203,6 @@ extension AppState {
 
 	/// Convenience method to get the current instance URL
 	var instanceURL: String {
-		currentInstance?.url.absoluteString ?? ""
+		currentInstance?.baseURL?.absoluteString ?? ""
 	}
 }
