@@ -8,7 +8,7 @@
 import Foundation
 
 /// PeerTube instance information
-public struct Instance: Codable, Hashable, Identifiable {
+public struct Instance: Codable, Hashable, Identifiable, Sendable {
 	/// Unique identifier
 	public let id: UUID
 
@@ -131,7 +131,7 @@ public struct Instance: Codable, Hashable, Identifiable {
 }
 
 /// Instance configuration information
-public struct InstanceConfig: Codable, Hashable {
+public struct InstanceConfig: Codable, Hashable, Sendable {
 	/// Instance information
 	public let instance: InstanceInfo
 
@@ -213,7 +213,7 @@ public struct InstanceConfig: Codable, Hashable {
 }
 
 /// Basic instance information
-public struct InstanceInfo: Codable, Hashable {
+public struct InstanceInfo: Codable, Hashable, Sendable {
 	/// Instance name
 	public let name: String
 
@@ -281,7 +281,7 @@ public struct InstanceInfo: Codable, Hashable {
 
 // MARK: - Configuration Structs
 
-public struct InstancePluginConfig: Codable, Hashable {
+public struct InstancePluginConfig: Codable, Hashable, Sendable {
 	public let registered: [String]
 
 	public init(registered: [String] = []) {
@@ -289,7 +289,7 @@ public struct InstancePluginConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceThemeConfig: Codable, Hashable {
+public struct InstanceThemeConfig: Codable, Hashable, Sendable {
 	public let registered: [String]
 	public let `default`: String
 
@@ -299,7 +299,7 @@ public struct InstanceThemeConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceEmailConfig: Codable, Hashable {
+public struct InstanceEmailConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 
 	public init(enabled: Bool = false) {
@@ -307,7 +307,7 @@ public struct InstanceEmailConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceContactFormConfig: Codable, Hashable {
+public struct InstanceContactFormConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 
 	public init(enabled: Bool = false) {
@@ -315,7 +315,7 @@ public struct InstanceContactFormConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceVideoConfig: Codable, Hashable {
+public struct InstanceVideoConfig: Codable, Hashable, Sendable {
 	public let librarySize: Int?
 	public let file: InstanceVideoFileConfig?
 
@@ -325,7 +325,7 @@ public struct InstanceVideoConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceVideoFileConfig: Codable, Hashable {
+public struct InstanceVideoFileConfig: Codable, Hashable, Sendable {
 	public let size: InstanceFileSizeConfig?
 
 	public init(size: InstanceFileSizeConfig? = nil) {
@@ -333,7 +333,7 @@ public struct InstanceVideoFileConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceFileSizeConfig: Codable, Hashable {
+public struct InstanceFileSizeConfig: Codable, Hashable, Sendable {
 	public let max: Int?
 
 	public init(max: Int? = nil) {
@@ -341,7 +341,7 @@ public struct InstanceFileSizeConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceAvatarConfig: Codable, Hashable {
+public struct InstanceAvatarConfig: Codable, Hashable, Sendable {
 	public let file: InstanceAvatarFileConfig?
 
 	public init(file: InstanceAvatarFileConfig? = nil) {
@@ -349,7 +349,7 @@ public struct InstanceAvatarConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceAvatarFileConfig: Codable, Hashable {
+public struct InstanceAvatarFileConfig: Codable, Hashable, Sendable {
 	public let size: InstanceFileSizeConfig?
 
 	public init(size: InstanceFileSizeConfig? = nil) {
@@ -357,7 +357,7 @@ public struct InstanceAvatarFileConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceBannerConfig: Codable, Hashable {
+public struct InstanceBannerConfig: Codable, Hashable, Sendable {
 	public let file: InstanceBannerFileConfig?
 
 	public init(file: InstanceBannerFileConfig? = nil) {
@@ -365,7 +365,7 @@ public struct InstanceBannerConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceBannerFileConfig: Codable, Hashable {
+public struct InstanceBannerFileConfig: Codable, Hashable, Sendable {
 	public let size: InstanceFileSizeConfig?
 
 	public init(size: InstanceFileSizeConfig? = nil) {
@@ -373,7 +373,7 @@ public struct InstanceBannerFileConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceSignupConfig: Codable, Hashable {
+public struct InstanceSignupConfig: Codable, Hashable, Sendable {
 	public let allowed: Bool
 	public let allowedForCurrentIP: Bool?
 	public let requiresEmailVerification: Bool?
@@ -389,7 +389,7 @@ public struct InstanceSignupConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceTranscodingConfig: Codable, Hashable {
+public struct InstanceTranscodingConfig: Codable, Hashable, Sendable {
 	public let hls: InstanceTranscodingHLSConfig?
 	public let webtorrent: InstanceTranscodingWebTorrentConfig?
 	public let enabledResolutions: [Int]
@@ -405,7 +405,7 @@ public struct InstanceTranscodingConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceTranscodingHLSConfig: Codable, Hashable {
+public struct InstanceTranscodingHLSConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 
 	public init(enabled: Bool = false) {
@@ -413,7 +413,7 @@ public struct InstanceTranscodingHLSConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceTranscodingWebTorrentConfig: Codable, Hashable {
+public struct InstanceTranscodingWebTorrentConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 
 	public init(enabled: Bool = false) {
@@ -421,7 +421,7 @@ public struct InstanceTranscodingWebTorrentConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceImportConfig: Codable, Hashable {
+public struct InstanceImportConfig: Codable, Hashable, Sendable {
 	public let videos: InstanceImportVideosConfig?
 
 	public init(videos: InstanceImportVideosConfig? = nil) {
@@ -429,7 +429,7 @@ public struct InstanceImportConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceImportVideosConfig: Codable, Hashable {
+public struct InstanceImportVideosConfig: Codable, Hashable, Sendable {
 	public let http: InstanceImportHTTPConfig?
 	public let torrent: InstanceImportTorrentConfig?
 
@@ -442,7 +442,7 @@ public struct InstanceImportVideosConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceImportHTTPConfig: Codable, Hashable {
+public struct InstanceImportHTTPConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 
 	public init(enabled: Bool = false) {
@@ -450,7 +450,7 @@ public struct InstanceImportHTTPConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceImportTorrentConfig: Codable, Hashable {
+public struct InstanceImportTorrentConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 
 	public init(enabled: Bool = false) {
@@ -458,7 +458,7 @@ public struct InstanceImportTorrentConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceAutoBlacklistConfig: Codable, Hashable {
+public struct InstanceAutoBlacklistConfig: Codable, Hashable, Sendable {
 	public let videos: InstanceAutoBlacklistVideosConfig?
 
 	public init(videos: InstanceAutoBlacklistVideosConfig? = nil) {
@@ -466,7 +466,7 @@ public struct InstanceAutoBlacklistConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceAutoBlacklistVideosConfig: Codable, Hashable {
+public struct InstanceAutoBlacklistVideosConfig: Codable, Hashable, Sendable {
 	public let ofUsers: InstanceAutoBlacklistOfUsersConfig?
 
 	public init(ofUsers: InstanceAutoBlacklistOfUsersConfig? = nil) {
@@ -474,7 +474,7 @@ public struct InstanceAutoBlacklistVideosConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceAutoBlacklistOfUsersConfig: Codable, Hashable {
+public struct InstanceAutoBlacklistOfUsersConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 
 	public init(enabled: Bool = false) {
@@ -482,7 +482,7 @@ public struct InstanceAutoBlacklistOfUsersConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceFollowersConfig: Codable, Hashable {
+public struct InstanceFollowersConfig: Codable, Hashable, Sendable {
 	public let instance: InstanceFollowersInstanceConfig?
 
 	public init(instance: InstanceFollowersInstanceConfig? = nil) {
@@ -490,7 +490,7 @@ public struct InstanceFollowersConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceFollowersInstanceConfig: Codable, Hashable {
+public struct InstanceFollowersInstanceConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 	public let manualApproval: Bool?
 
@@ -500,7 +500,7 @@ public struct InstanceFollowersInstanceConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceFollowingsConfig: Codable, Hashable {
+public struct InstanceFollowingsConfig: Codable, Hashable, Sendable {
 	public let instance: InstanceFollowingsInstanceConfig?
 
 	public init(instance: InstanceFollowingsInstanceConfig? = nil) {
@@ -508,7 +508,7 @@ public struct InstanceFollowingsConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceFollowingsInstanceConfig: Codable, Hashable {
+public struct InstanceFollowingsInstanceConfig: Codable, Hashable, Sendable {
 	public let autoFollowBack: InstanceAutoFollowBackConfig?
 	public let autoFollowIndex: InstanceAutoFollowIndexConfig?
 
@@ -521,7 +521,7 @@ public struct InstanceFollowingsInstanceConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceAutoFollowBackConfig: Codable, Hashable {
+public struct InstanceAutoFollowBackConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 
 	public init(enabled: Bool = false) {
@@ -529,7 +529,7 @@ public struct InstanceAutoFollowBackConfig: Codable, Hashable {
 	}
 }
 
-public struct InstanceAutoFollowIndexConfig: Codable, Hashable {
+public struct InstanceAutoFollowIndexConfig: Codable, Hashable, Sendable {
 	public let enabled: Bool
 	public let indexUrl: String?
 
@@ -555,7 +555,7 @@ extension Instance {
 }
 
 /// Lightweight summary of an Instance for list views and references
-public struct InstanceSummary: Codable, Hashable, Identifiable {
+public struct InstanceSummary: Codable, Hashable, Identifiable, Sendable {
 	/// Unique identifier
 	public let id: UUID
 

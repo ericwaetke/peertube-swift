@@ -8,7 +8,7 @@
 import Foundation
 
 /// Account model representing a PeerTube user account
-public struct Account: Codable, Hashable, Identifiable {
+public struct Account: Codable, Hashable, Identifiable, Sendable {
 	/// Unique identifier
 	public let id: Int
 
@@ -144,7 +144,7 @@ extension Account {
 }
 
 /// Lightweight summary of an Account for list views and references
-public struct AccountSummary: Codable, Hashable, Identifiable {
+public struct AccountSummary: Codable, Hashable, Identifiable, Sendable {
 	/// Unique identifier
 	public let id: Int
 
