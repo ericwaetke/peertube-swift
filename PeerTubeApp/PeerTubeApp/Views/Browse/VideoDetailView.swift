@@ -172,7 +172,7 @@ struct VideoDetailView: View {
 				.font(.headline)
 
 			Button(action: {
-				navigateToChannel(video.channel.id)
+				navigateToChannel(video.channel.name)
 			}) {
 				HStack {
 					AsyncImage(url: video.channel.avatarURL) { image in
