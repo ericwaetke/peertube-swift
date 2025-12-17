@@ -203,6 +203,37 @@ struct VideoDetailView: View {
 
 					Spacer()
 
+					Button(action: {
+						Task {
+							if appState.subscriptionService.isSubscribed(to: video.channel.name) {
+								await appState.subscriptionService.unsubscribe(
+									from: video.channel.name)
+							} else {
+								await appState.subscriptionService.subscribe(to: video.channel)
+							}
+						}
+					}) {
+						HStack(spacing: 4) {
+							if appState.subscriptionService.isLoading {
+								ProgressView()
+									.scaleEffect(0.7)
+							} else {
+								Image(
+									systemName: appState.subscriptionService.isSubscribed(
+										to: video.channel.name)
+										? "bell.fill" : "bell")
+							}
+							Text(
+								appState.subscriptionService.isSubscribed(to: video.channel.name)
+									? "Subscribed" : "Subscribe"
+							)
+							.font(.caption)
+						}
+					}
+					.buttonStyle(.bordered)
+					.controlSize(.small)
+					.disabled(appState.subscriptionService.isLoading)
+
 					Image(systemName: "chevron.right")
 						.foregroundColor(.secondary)
 						.font(.caption)

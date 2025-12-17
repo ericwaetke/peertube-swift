@@ -19,6 +19,7 @@ enum NavigationDestination: Hashable {
 	case search
 	case settings
 	case about
+	case subscriptionManagement
 }
 
 // MARK: - App State
@@ -38,6 +39,23 @@ final class AppState: ObservableObject {
 	/// Subscription service for managing local channel subscriptions
 	@Published var subscriptionService: SubscriptionService
 
+	// MARK: - User Settings
+
+	/// Auto-play videos when opened
+	@Published var autoPlayVideos = true
+
+	/// Default video quality preference
+	@Published var defaultVideoQuality: VideoQuality = .auto
+
+	/// Use WiFi only for streaming
+	@Published var useWiFiOnly = false
+
+	/// Enable notifications for subscriptions
+	@Published var enableNotifications = true
+
+	/// Color scheme preference
+	@Published var colorScheme: ColorScheme?
+
 	// MARK: - Private Properties
 
 	private let userDefaults = UserDefaults.standard
@@ -51,6 +69,7 @@ final class AppState: ObservableObject {
 		self.subscriptionService = SubscriptionService()
 
 		AppStateProvider.shared.setAppState(self)
+		loadSettings()
 		loadSavedInstance()
 
 		// Set up subscription service reference
@@ -219,5 +238,93 @@ extension AppState {
 	/// Convenience method to get the current instance URL
 	var instanceURL: String {
 		currentInstance?.baseURL?.absoluteString ?? ""
+	}
+
+	// MARK: - Settings Management
+
+	/// Save user settings to UserDefaults
+	func saveSettings() {
+		userDefaults.set(autoPlayVideos, forKey: "autoPlayVideos")
+		userDefaults.set(defaultVideoQuality.rawValue, forKey: "defaultVideoQuality")
+		userDefaults.set(useWiFiOnly, forKey: "useWiFiOnly")
+		userDefaults.set(enableNotifications, forKey: "enableNotifications")
+		if let colorScheme = colorScheme {
+			userDefaults.set(colorScheme.rawValue, forKey: "colorScheme")
+		} else {
+			userDefaults.removeObject(forKey: "colorScheme")
+		}
+	}
+
+	/// Load user settings from UserDefaults
+	private func loadSettings() {
+		autoPlayVideos = userDefaults.bool(forKey: "autoPlayVideos")
+		if userDefaults.object(forKey: "autoPlayVideos") == nil {
+			autoPlayVideos = true  // Default value
+		}
+
+		if let qualityRaw = userDefaults.object(forKey: "defaultVideoQuality") as? String,
+			let quality = VideoQuality(rawValue: qualityRaw)
+		{
+			defaultVideoQuality = quality
+		}
+
+		useWiFiOnly = userDefaults.bool(forKey: "useWiFiOnly")
+		enableNotifications = userDefaults.bool(forKey: "enableNotifications")
+
+		if let schemeRaw = userDefaults.object(forKey: "colorScheme") as? String,
+			let scheme = ColorScheme(rawValue: schemeRaw)
+		{
+			colorScheme = scheme
+		}
+	}
+}
+
+// MARK: - Supporting Types
+
+/// Video quality preference options
+public enum VideoQuality: String, CaseIterable {
+	case auto = "auto"
+	case low = "240p"
+	case medium = "480p"
+	case high = "720p"
+	case veryHigh = "1080p"
+
+	var displayName: String {
+		switch self {
+		case .auto:
+			return "Auto (Recommended)"
+		case .low:
+			return "240p (Data Saver)"
+		case .medium:
+			return "480p"
+		case .high:
+			return "720p HD"
+		case .veryHigh:
+			return "1080p Full HD"
+		}
+	}
+}
+
+extension ColorScheme {
+	var rawValue: String {
+		switch self {
+		case .light:
+			return "light"
+		case .dark:
+			return "dark"
+		@unknown default:
+			return "light"
+		}
+	}
+
+	init?(rawValue: String) {
+		switch rawValue {
+		case "light":
+			self = .light
+		case "dark":
+			self = .dark
+		default:
+			return nil
+		}
 	}
 }
