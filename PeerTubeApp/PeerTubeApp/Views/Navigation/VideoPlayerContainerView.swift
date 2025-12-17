@@ -293,11 +293,8 @@ struct VideoPlayerContainerView: View {
 					throw PlayerError.servicesUnavailable
 				}
 
-				// Get video streaming URLs
-				let streamingData = try await services.videos.getVideoStreams(id: video.id)
-
-				// Select the best quality stream
-				guard let streamURL = selectBestStream(from: streamingData) else {
+				// Select the best quality stream from available files
+				guard let streamURL = selectBestStream(from: video) else {
 					throw PlayerError.noStreamAvailable
 				}
 
@@ -320,16 +317,21 @@ struct VideoPlayerContainerView: View {
 
 	// MARK: - Stream Selection
 
-	private func selectBestStream(from streams: VideoStreamingData) -> URL? {
-		// For now, just return the first available stream
-		// TODO: Implement quality-based selection based on user preference
-		if let hlsURL = streams.hlsPlaylistURL {
-			return hlsURL
+	private func selectBestStream(from video: VideoDetails) -> URL? {
+		// First try HLS streaming playlists (preferred for streaming)
+		if let hlsPlaylist = video.streamingPlaylists.first(where: { $0.type == 1 }) {
+			return URL(string: hlsPlaylist.playlistUrl)
 		}
 
-		// Fallback to direct video files
-		let sortedStreams = streams.files.sorted { $0.resolution.height > $1.resolution.height }
-		return sortedStreams.first?.fileURL
+		// Fallback to direct video files, select highest quality available
+		let sortedFiles = video.files.sorted { $0.resolution.id > $1.resolution.id }
+		if let bestFile = sortedFiles.first,
+			let downloadURL = bestFile.fileDownloadUrl
+		{
+			return URL(string: downloadURL)
+		}
+
+		return nil
 	}
 
 	// MARK: - Player Controls
@@ -443,13 +445,17 @@ enum PlayerError: LocalizedError {
 					followersCount: 100,
 					host: "example.com"
 				),
-				account: VideoAccount(
-					id: "account-id",
+				account: Account(
+					id: 1,
+					url: "https://example.com/accounts/sample-account",
 					name: "sample-account",
+					host: "example.com",
+					followingCount: 0,
+					followersCount: 0,
+					createdAt: Date(),
+					updatedAt: Date(),
 					displayName: "Sample Account",
-					description: nil,
-					avatarURL: nil,
-					host: "example.com"
+					description: nil
 				),
 				tags: ["sample", "video"],
 				support: nil,
