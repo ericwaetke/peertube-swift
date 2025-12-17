@@ -21,6 +21,7 @@
 		B9A1B7262B5F8A9F00456789 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7262B5F8A9F00456789 /* AboutView.swift */; };
 		B9A1B7312B5F8A9F00456789 /* SubscriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7272B5F8A9F00456789 /* SubscriptionsView.swift */; };
 		B9A1B7332B5F8A9F00456789 /* PeerTubeModels+URL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7342B5F8A9F00456789 /* PeerTubeModels+URL.swift */; };
+		B9A1B7362B5F8A9F00456789 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7372B5F8A9F00456789 /* SubscriptionService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		B9A1B7262B5F8A9F00456789 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B9A1B7272B5F8A9F00456789 /* SubscriptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionsView.swift; sourceTree = "<group>"; };
 		B9A1B7342B5F8A9F00456789 /* PeerTubeModels+URL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PeerTubeModels+URL.swift"; sourceTree = "<group>"; };
+		B9A1B7372B5F8A9F00456789 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +77,7 @@
 				B9A1B7282B5F8A9F00456789 /* ViewModels */,
 				B9A1B7292B5F8A9F00456789 /* Views */,
 				B9A1B7352B5F8A9F00456789 /* Extensions */,
+				B9A1B7382B5F8A9F00456789 /* Services */,
 				B9A1B7142B5F8A9E00456789 /* Assets.xcassets */,
 				B9A1B7162B5F8A9E00456789 /* Preview Content */,
 			);
@@ -150,6 +153,14 @@
 				B9A1B7342B5F8A9F00456789 /* PeerTubeModels+URL.swift */,
 			);
 			path = Extensions;
+			sourceTree = "<group>";
+		};
+		B9A1B7382B5F8A9F00456789 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B9A1B7372B5F8A9F00456789 /* SubscriptionService.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -239,6 +250,7 @@
 				B9A1B7262B5F8A9F00456789 /* AboutView.swift in Sources */,
 				B9A1B7312B5F8A9F00456789 /* SubscriptionsView.swift in Sources */,
 				B9A1B7332B5F8A9F00456789 /* PeerTubeModels+URL.swift in Sources */,
+				B9A1B7362B5F8A9F00456789 /* SubscriptionService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -27,6 +27,7 @@ import Foundation
 @_exported import class PeerTubeSwift.ChannelService
 @_exported import enum PeerTubeSwift.ChannelSort
 @_exported import struct PeerTubeSwift.ChannelStats
+@_exported import struct PeerTubeSwift.ChannelSubscription
 @_exported import class PeerTubeSwift.CoreDataStack
 @_exported import struct PeerTubeSwift.DependencyContainer
 // MARK: - Video Player Components
@@ -48,6 +49,9 @@ import Foundation
 @_exported import struct PeerTubeSwift.PlaybackSpeedOption
 @_exported import struct PeerTubeSwift.QuickSearchResults
 @_exported import enum PeerTubeSwift.SearchTarget
+@_exported import enum PeerTubeSwift.SubscriptionError
+// MARK: - Storage Types
+@_exported import class PeerTubeSwift.SubscriptionRepository
 // MARK: - Models
 @_exported import struct PeerTubeSwift.Video
 @_exported import struct PeerTubeSwift.VideoChannel
