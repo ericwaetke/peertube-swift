@@ -13,14 +13,17 @@ struct SubscriptionsView: View {
 	// MARK: - Properties
 
 	@EnvironmentObject private var appState: AppState
-	@StateObject private var viewModel = SubscriptionsViewModel()
+	@State private var feedVideos: [Video] = []
+	@State private var isLoadingFeed = false
 
 	// MARK: - Body
 
 	var body: some View {
 		NavigationView {
 			Group {
-				if viewModel.subscriptions.isEmpty && !viewModel.isLoading {
+				if appState.subscriptionService.subscriptions.isEmpty
+					&& !appState.subscriptionService.isLoading
+				{
 					emptyStateView
 				} else {
 					subscriptionsList
@@ -33,16 +36,18 @@ struct SubscriptionsView: View {
 					Menu {
 						Button("Refresh All") {
 							Task {
-								await viewModel.refreshAllSubscriptions(services: appState.services)
+								await appState.subscriptionService.refreshAllSubscriptions()
+							}
+						}
+
+						Button("Refresh Feed") {
+							Task {
+								await loadSubscriptionFeed()
 							}
 						}
 
 						Button("Manage Subscriptions") {
 							// Navigate to subscription management
-						}
-
-						Button("Import Subscriptions") {
-							// Show import options
 						}
 					} label: {
 						Image(systemName: "ellipsis.circle")
@@ -50,30 +55,30 @@ struct SubscriptionsView: View {
 				}
 			}
 			.refreshable {
-				await viewModel.loadSubscriptions(services: appState.services)
+				Task {
+					await appState.subscriptionService.refreshAllSubscriptions()
+					await loadSubscriptionFeed()
+				}
 			}
 		}
 		.task {
-			await viewModel.loadSubscriptions(services: appState.services)
+			await loadSubscriptionFeed()
 		}
 		.overlay {
-			if viewModel.isLoading && viewModel.subscriptions.isEmpty {
+			if appState.subscriptionService.isLoading
+				&& appState.subscriptionService.subscriptions.isEmpty
+			{
 				ProgressView("Loading subscriptions...")
 					.frame(maxWidth: .infinity, maxHeight: .infinity)
 					.background(Color(UIColor.systemBackground).opacity(0.8))
 			}
 		}
-		.alert("Error", isPresented: .constant(viewModel.error != nil)) {
+		.alert("Error", isPresented: .constant(appState.subscriptionService.error != nil)) {
 			Button("OK") {
-				viewModel.error = nil
-			}
-			Button("Retry") {
-				Task {
-					await viewModel.loadSubscriptions(services: appState.services)
-				}
+				appState.subscriptionService.clearError()
 			}
 		} message: {
-			if let error = viewModel.error {
+			if let error = appState.subscriptionService.error {
 				Text(error.localizedDescription)
 			}
 		}
@@ -147,7 +152,7 @@ struct SubscriptionsView: View {
 
 			ScrollView(.horizontal, showsIndicators: false) {
 				LazyHStack(spacing: 12) {
-					ForEach(viewModel.recentVideos.prefix(10)) { video in
+					ForEach(feedVideos.prefix(10)) { video in
 						SubscriptionVideoCardView(video: video)
 							.frame(width: 280)
 							.onTapGesture {
@@ -158,6 +163,14 @@ struct SubscriptionsView: View {
 				.padding(.horizontal, 1)
 			}
 		}
+
+		// MARK: - Methods
+
+		private func loadSubscriptionFeed() async {
+			isLoadingFeed = true
+			feedVideos = await appState.subscriptionService.getSubscriptionFeed()
+			isLoadingFeed = false
+		}
 	}
 
 	// MARK: - Subscriptions Section
@@ -165,7 +178,7 @@ struct SubscriptionsView: View {
 	private var subscriptionsSection: some View {
 		VStack(alignment: .leading, spacing: 12) {
 			HStack {
-				Text("Channels (\(viewModel.subscriptions.count))")
+				Text("Channels (\(appState.subscriptionService.subscriptions.count))")
 					.font(.title2)
 					.fontWeight(.semibold)
 
@@ -184,7 +197,7 @@ struct SubscriptionsView: View {
 					GridItem(.flexible()),
 				], spacing: 16
 			) {
-				ForEach(viewModel.subscriptions) { subscription in
+				ForEach(appState.subscriptionService.subscriptions) { subscription in
 					SubscriptionChannelCardView(subscription: subscription)
 						.onTapGesture {
 							appState.navigateTo(
@@ -193,183 +206,6 @@ struct SubscriptionsView: View {
 				}
 			}
 		}
-	}
-}
-
-// MARK: - Subscriptions View Model
-
-@MainActor
-final class SubscriptionsViewModel: ObservableObject {
-
-	// MARK: - Published Properties
-
-	@Published var subscriptions: [ChannelSubscription] = []
-	@Published var recentVideos: [Video] = []
-	@Published var isLoading = false
-	@Published var error: Error?
-
-	// MARK: - Methods
-
-	func loadSubscriptions(services: PeerTubeServices?) async {
-		guard let services = services else { return }
-
-		isLoading = true
-		error = nil
-
-		do {
-			// Load subscriptions from local storage
-			await loadLocalSubscriptions()
-
-			// Load recent videos from subscribed channels
-			await loadRecentVideosFromSubscriptions(services: services)
-
-		} catch {
-			self.error = error
-		}
-
-		isLoading = false
-	}
-
-	func refreshAllSubscriptions(services: PeerTubeServices?) async {
-		guard let services = services else { return }
-
-		isLoading = true
-		error = nil
-
-		do {
-			// Refresh channel information for all subscriptions
-			let updatedSubscriptions = await withTaskGroup(of: ChannelSubscription?.self) { group in
-				for subscription in subscriptions {
-					group.addTask {
-						do {
-							let channel = try await services.channels.getChannel(
-								handle: subscription.channel.name)
-							return ChannelSubscription(
-								id: subscription.id,
-								channel: channel,
-								subscribedAt: subscription.subscribedAt,
-								isNotificationEnabled: subscription.isNotificationEnabled
-							)
-						} catch {
-							return nil
-						}
-					}
-				}
-
-				var results: [ChannelSubscription] = []
-				for await subscription in group {
-					if let subscription = subscription {
-						results.append(subscription)
-					}
-				}
-				return results
-			}
-
-			self.subscriptions = updatedSubscriptions
-
-			// Save updated subscriptions
-			await saveLocalSubscriptions()
-
-			// Load fresh videos
-			await loadRecentVideosFromSubscriptions(services: services)
-
-		} catch {
-			self.error = error
-		}
-
-		isLoading = false
-	}
-
-	// MARK: - Private Methods
-
-	private func loadLocalSubscriptions() async {
-		// In a real implementation, this would load from CoreData or UserDefaults
-		// For now, we'll use mock data
-		subscriptions = mockSubscriptions()
-	}
-
-	private func saveLocalSubscriptions() async {
-		// In a real implementation, this would save to CoreData or UserDefaults
-	}
-
-	private func loadRecentVideosFromSubscriptions(services: PeerTubeServices) async {
-		// Get recent videos from all subscribed channels
-		let allVideos = await withTaskGroup(of: [Video].self) { group in
-			for subscription in subscriptions.prefix(5) {  // Limit to first 5 channels for performance
-				group.addTask {
-					do {
-						let videos = try await services.videos.getChannelVideos(
-							channelHandle: subscription.channel.name,
-							parameters: VideoListParameters(count: 3, sort: .publishedAt)
-						)
-						return videos.data
-					} catch {
-						return []
-					}
-				}
-			}
-
-			var allResults: [Video] = []
-			for await videos in group {
-				allResults.append(contentsOf: videos)
-			}
-			return allResults
-		}
-
-		// Sort by publication date and take most recent
-		recentVideos =
-			allVideos
-			.sorted { $0.publishedAt ?? $0.createdAt > $1.publishedAt ?? $1.createdAt }
-			.prefix(20)
-			.map { $0 }
-	}
-
-	// MARK: - Mock Data
-
-	private func mockSubscriptions() -> [ChannelSubscription] {
-		// Mock data for development
-		return [
-			ChannelSubscription(
-				id: UUID(),
-				channel: VideoChannel(
-					id: 1,
-					url: "https://framatube.org/video-channels/blender",
-					name: "blender",
-					host: "framatube.org",
-					createdAt: Date(),
-					updatedAt: Date(),
-					displayName: "Blender Foundation",
-					description: "Open source 3D creation suite",
-					ownerAccount: AccountSummary(
-						id: 1,
-						name: "blender",
-						host: "framatube.org",
-						displayName: "Blender"
-					)
-				),
-				subscribedAt: Date(),
-				isNotificationEnabled: true
-			)
-		]
-	}
-}
-
-// MARK: - Subscription Models
-
-struct ChannelSubscription: Identifiable, Codable {
-	let id: UUID
-	let channel: VideoChannel
-	let subscribedAt: Date
-	let isNotificationEnabled: Bool
-
-	init(
-		id: UUID = UUID(), channel: VideoChannel, subscribedAt: Date,
-		isNotificationEnabled: Bool = true
-	) {
-		self.id = id
-		self.channel = channel
-		self.subscribedAt = subscribedAt
-		self.isNotificationEnabled = isNotificationEnabled
 	}
 }
 
