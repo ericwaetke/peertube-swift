@@ -294,7 +294,7 @@ struct VideoPlayerContainerView: View {
 				}
 
 				// Get video streaming URLs
-				let streamingData = try await services.videoService.getVideoStreams(id: video.id)
+				let streamingData = try await services.videos.getVideoStreams(id: video.id)
 
 				// Select the best quality stream
 				guard let streamURL = selectBestStream(from: streamingData) else {

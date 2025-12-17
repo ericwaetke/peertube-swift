@@ -18,8 +18,9 @@
 		B9A1B71D2B5F8A9F00456789 /* ChannelDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7232B5F8A9F00456789 /* ChannelDetailView.swift */; };
 		B9A1B71E2B5F8A9F00456789 /* VideoPlayerContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7242B5F8A9F00456789 /* VideoPlayerContainerView.swift */; };
 		B9A1B71F2B5F8A9F00456789 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7252B5F8A9F00456789 /* SettingsView.swift */; };
-		B9A1B7302B5F8A9F00456789 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7262B5F8A9F00456789 /* AboutView.swift */; };
+		B9A1B7262B5F8A9F00456789 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7262B5F8A9F00456789 /* AboutView.swift */; };
 		B9A1B7312B5F8A9F00456789 /* SubscriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7272B5F8A9F00456789 /* SubscriptionsView.swift */; };
+		B9A1B7332B5F8A9F00456789 /* PeerTubeModels+URL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A1B7342B5F8A9F00456789 /* PeerTubeModels+URL.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		B9A1B7252B5F8A9F00456789 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B9A1B7262B5F8A9F00456789 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B9A1B7272B5F8A9F00456789 /* SubscriptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionsView.swift; sourceTree = "<group>"; };
+		B9A1B7342B5F8A9F00456789 /* PeerTubeModels+URL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PeerTubeModels+URL.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +74,7 @@
 				B9A1B7102B5F8A9C00456789 /* PeerTubeApp.swift */,
 				B9A1B7282B5F8A9F00456789 /* ViewModels */,
 				B9A1B7292B5F8A9F00456789 /* Views */,
+				B9A1B7352B5F8A9F00456789 /* Extensions */,
 				B9A1B7142B5F8A9E00456789 /* Assets.xcassets */,
 				B9A1B7162B5F8A9E00456789 /* Preview Content */,
 			);
@@ -139,6 +142,14 @@
 				B9A1B7272B5F8A9F00456789 /* SubscriptionsView.swift */,
 			);
 			path = Subscriptions;
+			sourceTree = "<group>";
+		};
+		B9A1B7352B5F8A9F00456789 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				B9A1B7342B5F8A9F00456789 /* PeerTubeModels+URL.swift */,
+			);
+			path = Extensions;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -225,8 +236,9 @@
 				B9A1B71D2B5F8A9F00456789 /* ChannelDetailView.swift in Sources */,
 				B9A1B71E2B5F8A9F00456789 /* VideoPlayerContainerView.swift in Sources */,
 				B9A1B71F2B5F8A9F00456789 /* SettingsView.swift in Sources */,
-				B9A1B7302B5F8A9F00456789 /* AboutView.swift in Sources */,
+				B9A1B7262B5F8A9F00456789 /* AboutView.swift in Sources */,
 				B9A1B7312B5F8A9F00456789 /* SubscriptionsView.swift in Sources */,
+				B9A1B7332B5F8A9F00456789 /* PeerTubeModels+URL.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -15,7 +15,7 @@ struct ChannelDetailView: View {
 	let channelId: String
 
 	@EnvironmentObject private var appState: AppState
-	@State private var channel: Channel?
+	@State private var channel: VideoChannel?
 	@State private var videos: [VideoSummary] = []
 	@State private var isLoading = true
 	@State private var error: Error?
@@ -76,7 +76,7 @@ struct ChannelDetailView: View {
 	}
 
 	@ViewBuilder
-	private func channelHeaderSection(_ channel: Channel) -> some View {
+	private func channelHeaderSection(_ channel: VideoChannel) -> some View {
 		VStack(spacing: 12) {
 			// Banner image
 			if let bannerURL = channel.bannerURL {
@@ -233,11 +233,9 @@ struct ChannelDetailView: View {
 		}
 
 		do {
-			async let channelDetails = services.channelService.getChannel(id: channelId)
-			async let channelVideos = services.videoService.getChannelVideos(
-				channelId: channelId,
-				start: 0,
-				count: 20
+			async let channelDetails = services.channels.getChannel(handle: channelId)
+			async let channelVideos = services.videos.getChannelVideos(
+				channelHandle: channelId
 			)
 
 			let (channel, videosResponse) = try await (channelDetails, channelVideos)

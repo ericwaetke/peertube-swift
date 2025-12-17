@@ -224,7 +224,7 @@ struct VideoDetailView: View {
 		}
 
 		do {
-			let videoDetails = try await services.videoService.getVideo(id: videoId)
+			let videoDetails = try await services.videos.getVideo(id: videoId)
 			await MainActor.run {
 				self.video = videoDetails
 				isLoading = false
