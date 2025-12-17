@@ -8,7 +8,7 @@
 import Foundation
 
 /// VideoChannel model representing a PeerTube video channel
-public struct VideoChannel: Codable, Hashable, Identifiable {
+public struct VideoChannel: Codable, Hashable, Identifiable, Sendable {
 	/// Unique identifier
 	public let id: Int
 
@@ -161,7 +161,7 @@ extension VideoChannel {
 }
 
 /// Lightweight summary of a VideoChannel for list views and references
-public struct VideoChannelSummary: Codable, Hashable, Identifiable {
+public struct VideoChannelSummary: Codable, Hashable, Identifiable, Sendable {
 	/// Unique identifier
 	public let id: Int
 

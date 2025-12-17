@@ -8,7 +8,7 @@
 import Foundation
 
 /// Extended video information with full details
-public struct VideoDetails: Codable, Hashable, Identifiable {
+public struct VideoDetails: Codable, Hashable, Identifiable, Sendable {
 	/// Unique numeric identifier
 	public let id: Int
 
@@ -283,7 +283,7 @@ public struct VideoDetails: Codable, Hashable, Identifiable {
 }
 
 /// Video file information for different qualities/formats
-public struct VideoFile: Codable, Hashable {
+public struct VideoFile: Codable, Hashable, Sendable {
 	/// File identifier
 	public let id: Int?
 
@@ -340,7 +340,7 @@ public struct VideoFile: Codable, Hashable {
 }
 
 /// Video resolution information
-public struct VideoResolution: Codable, Hashable {
+public struct VideoResolution: Codable, Hashable, Sendable {
 	/// Resolution identifier (height in pixels)
 	public let id: Int
 
@@ -354,7 +354,7 @@ public struct VideoResolution: Codable, Hashable {
 }
 
 /// Video streaming playlist (HLS, DASH, etc.)
-public struct VideoStreamingPlaylist: Codable, Hashable {
+public struct VideoStreamingPlaylist: Codable, Hashable, Sendable {
 	/// Playlist identifier
 	public let id: Int
 
@@ -391,7 +391,7 @@ public struct VideoStreamingPlaylist: Codable, Hashable {
 }
 
 /// Streaming playlist redundancy information
-public struct VideoStreamingPlaylistRedundancy: Codable, Hashable {
+public struct VideoStreamingPlaylistRedundancy: Codable, Hashable, Sendable {
 	/// Base URL for redundant files
 	public let baseUrl: String
 

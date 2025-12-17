@@ -8,7 +8,7 @@
 import Foundation
 
 /// Network errors that can occur during API requests
-public enum NetworkError: Error, LocalizedError {
+public enum NetworkError: Error, LocalizedError, Sendable {
 	case invalidURL
 	case noData
 	case invalidResponse
@@ -44,7 +44,7 @@ public enum NetworkError: Error, LocalizedError {
 }
 
 /// HTTP method types
-public enum HTTPMethod: String {
+public enum HTTPMethod: String, Sendable {
 	case GET = "GET"
 	case POST = "POST"
 	case PUT = "PUT"
@@ -53,7 +53,7 @@ public enum HTTPMethod: String {
 }
 
 /// Networking foundation class for PeerTube API communication
-public class NetworkingFoundation {
+public final class NetworkingFoundation: @unchecked Sendable {
 
 	// MARK: - Properties
 
@@ -64,7 +64,7 @@ public class NetworkingFoundation {
 	public let urlSession: URLSession
 
 	/// JSON decoder with custom date decoding strategy
-	public let jsonDecoder: JSONDecoder = {
+	public nonisolated(unsafe) let jsonDecoder: JSONDecoder = {
 		let decoder = JSONDecoder()
 		decoder.dateDecodingStrategy = .iso8601
 		decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -72,7 +72,7 @@ public class NetworkingFoundation {
 	}()
 
 	/// JSON encoder with custom date encoding strategy
-	public let jsonEncoder: JSONEncoder = {
+	public nonisolated(unsafe) let jsonEncoder: JSONEncoder = {
 		let encoder = JSONEncoder()
 		encoder.dateEncodingStrategy = .iso8601
 		encoder.keyEncodingStrategy = .convertToSnakeCase
@@ -94,7 +94,7 @@ public class NetworkingFoundation {
 	// MARK: - Request Methods
 
 	/// Perform a generic network request
-	public func request<T: Codable>(
+	public func request<T: Codable & Sendable>(
 		url: URL,
 		method: HTTPMethod = .GET,
 		headers: [String: String]? = nil,
@@ -130,7 +130,7 @@ public class NetworkingFoundation {
 	}
 
 	/// Perform a request with a Codable request body
-	public func request<Request: Codable, Response: Codable>(
+	public func request<Request: Codable & Sendable, Response: Codable & Sendable>(
 		url: URL,
 		method: HTTPMethod = .POST,
 		headers: [String: String]? = nil,
@@ -225,6 +225,8 @@ extension URL {
 		return components.url
 	}
 }
+
+extension URLQueryItem: @retroactive Sendable {}
 
 extension URLQueryItem {
 	/// Convenience initializer for string values

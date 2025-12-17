@@ -9,13 +9,13 @@ import CoreData
 import Foundation
 
 /// Protocol for dependency injection container
-public protocol DependencyContainerProtocol {
+public protocol DependencyContainerProtocol: Sendable {
 	var coreDataStack: CoreDataStack { get }
 	var networkingFoundation: NetworkingFoundation { get }
 }
 
 /// Dependency injection container for managing app services
-public class DependencyContainer: DependencyContainerProtocol {
+public final class DependencyContainer: DependencyContainerProtocol, @unchecked Sendable {
 
 	// MARK: - Properties
 
@@ -34,11 +34,8 @@ public class DependencyContainer: DependencyContainerProtocol {
 
 	// MARK: - Private Properties
 
-	/// Dictionary to store registered services
-	private var services: [String: Any] = [:]
-
-	/// Lock for thread-safe access to services
-	private let servicesLock = NSLock()
+	/// Actor to manage services thread-safely
+	private let servicesManager = ServicesManager()
 
 	// MARK: - Initialization
 
@@ -49,73 +46,36 @@ public class DependencyContainer: DependencyContainerProtocol {
 	// MARK: - Service Registration
 
 	/// Register a service with the container
-	public func register<T>(_ serviceType: T.Type, factory: @escaping () -> T) {
-		let key = String(describing: serviceType)
-		servicesLock.lock()
-		defer { servicesLock.unlock() }
-		services[key] = factory
+	public func register<T>(_ serviceType: T.Type, factory: @escaping @Sendable () -> T) {
+		Task {
+			await servicesManager.register(serviceType, factory: factory)
+		}
 	}
 
 	/// Register a singleton service with the container
-	public func registerSingleton<T>(_ serviceType: T.Type, factory: @escaping () -> T) {
-		let key = String(describing: serviceType)
-		servicesLock.lock()
-		defer { servicesLock.unlock() }
-
-		// Create a lazy singleton wrapper
-		var instance: T?
-		services[key] = {
-			if let existingInstance = instance {
-				return existingInstance
-			}
-			let newInstance = factory()
-			instance = newInstance
-			return newInstance
+	public func registerSingleton<T>(_ serviceType: T.Type, factory: @escaping @Sendable () -> T) {
+		Task {
+			await servicesManager.registerSingleton(serviceType, factory: factory)
 		}
 	}
 
 	/// Register an existing instance as a singleton
 	public func registerInstance<T>(_ serviceType: T.Type, instance: T) {
-		let key = String(describing: serviceType)
-		servicesLock.lock()
-		defer { servicesLock.unlock() }
-		services[key] = { instance }
+		Task {
+			await servicesManager.registerInstance(serviceType, instance: instance)
+		}
 	}
 
 	// MARK: - Service Resolution
 
 	/// Resolve a service from the container
-	public func resolve<T>(_ serviceType: T.Type) -> T {
-		let key = String(describing: serviceType)
-		servicesLock.lock()
-		defer { servicesLock.unlock() }
-
-		guard let factory = services[key] else {
-			fatalError("Service \(serviceType) is not registered")
-		}
-
-		if let serviceFactory = factory as? () -> T {
-			return serviceFactory()
-		} else {
-			fatalError("Service \(serviceType) factory has wrong type")
-		}
+	public func resolve<T>(_ serviceType: T.Type) async -> T {
+		await servicesManager.resolve(serviceType)
 	}
 
 	/// Resolve a service from the container (optional)
-	public func resolveOptional<T>(_ serviceType: T.Type) -> T? {
-		let key = String(describing: serviceType)
-		servicesLock.lock()
-		defer { servicesLock.unlock() }
-
-		guard let factory = services[key] else {
-			return nil
-		}
-
-		if let serviceFactory = factory as? () -> T {
-			return serviceFactory()
-		} else {
-			return nil
-		}
+	public func resolveOptional<T>(_ serviceType: T.Type) async -> T? {
+		await servicesManager.resolveOptional(serviceType)
 	}
 
 	// MARK: - Private Methods
@@ -130,17 +90,85 @@ public class DependencyContainer: DependencyContainerProtocol {
 
 	/// Reset all registered services (for testing)
 	public func reset() {
-		servicesLock.lock()
-		defer { servicesLock.unlock() }
-		services.removeAll()
-		registerDefaultServices()
+		Task {
+			await servicesManager.reset()
+			registerDefaultServices()
+		}
 	}
 
 	/// Check if a service is registered
-	public func isRegistered<T>(_ serviceType: T.Type) -> Bool {
+	public func isRegistered<T>(_ serviceType: T.Type) async -> Bool {
+		await servicesManager.isRegistered(serviceType)
+	}
+}
+
+// MARK: - Services Manager Actor
+
+/// Actor to manage services in a thread-safe manner
+private actor ServicesManager {
+	private var services: [String: Any] = [:]
+	private var singletonInstances: [String: Any] = [:]
+
+	func register<T>(_ serviceType: T.Type, factory: @escaping @Sendable () -> T) {
 		let key = String(describing: serviceType)
-		servicesLock.lock()
-		defer { servicesLock.unlock() }
+		services[key] = factory
+	}
+
+	func registerSingleton<T>(_ serviceType: T.Type, factory: @escaping @Sendable () -> T) {
+		let key = String(describing: serviceType)
+		services[key] = { [weak self] in
+			guard let self = self else { return factory() }
+
+			if let instance = self.singletonInstances[key] as? T {
+				return instance
+			}
+
+			let newInstance = factory()
+			self.singletonInstances[key] = newInstance
+			return newInstance
+		}
+	}
+
+	func registerInstance<T>(_ serviceType: T.Type, instance: T) {
+		let key = String(describing: serviceType)
+		services[key] = { instance }
+	}
+
+	func resolve<T>(_ serviceType: T.Type) -> T {
+		let key = String(describing: serviceType)
+
+		guard let factory = services[key] else {
+			fatalError("Service \(serviceType) is not registered")
+		}
+
+		if let serviceFactory = factory as? () -> T {
+			return serviceFactory()
+		} else {
+			fatalError("Service \(serviceType) factory has wrong type")
+		}
+	}
+
+	func resolveOptional<T>(_ serviceType: T.Type) -> T? {
+		let key = String(describing: serviceType)
+
+		guard let factory = services[key] else {
+			return nil
+		}
+
+		if let serviceFactory = factory as? () -> T {
+			return serviceFactory()
+		} else {
+			return nil
+		}
+	}
+
+	func reset() {
+		services.removeAll()
+		singletonInstances.removeAll()
+	}
+
+	func isRegistered<T>(_ serviceType: T.Type) -> Bool {
+		let key = String(describing: serviceType)
 		return services[key] != nil
 	}
 }
@@ -149,12 +177,14 @@ public class DependencyContainer: DependencyContainerProtocol {
 
 /// Property wrapper for automatic dependency injection
 @propertyWrapper
-public struct Injected<T> {
+public struct Injected<T>: @unchecked Sendable {
 	private let serviceType: T.Type
 	private var container: DependencyContainer
 
 	public var wrappedValue: T {
-		container.resolve(serviceType)
+		get async {
+			await container.resolve(serviceType)
+		}
 	}
 
 	public init(_ serviceType: T.Type, container: DependencyContainer = .shared) {
@@ -168,7 +198,9 @@ public struct Injected<T> {
 extension DependencyContainer {
 	/// Convenience method for resolving services with a more fluent API
 	public subscript<T>(_ serviceType: T.Type) -> T {
-		return resolve(serviceType)
+		get async {
+			return await resolve(serviceType)
+		}
 	}
 }
 
@@ -177,12 +209,12 @@ extension DependencyContainer {
 /// Global service locator for convenience
 public enum ServiceLocator {
 	/// Resolve a service using the shared container
-	public static func resolve<T>(_ serviceType: T.Type) -> T {
-		return DependencyContainer.shared.resolve(serviceType)
+	public static func resolve<T>(_ serviceType: T.Type) async -> T {
+		return await DependencyContainer.shared.resolve(serviceType)
 	}
 
 	/// Resolve a service optionally using the shared container
-	public static func resolveOptional<T>(_ serviceType: T.Type) -> T? {
-		return DependencyContainer.shared.resolveOptional(serviceType)
+	public static func resolveOptional<T>(_ serviceType: T.Type) async -> T? {
+		return await DependencyContainer.shared.resolveOptional(serviceType)
 	}
 }

@@ -8,7 +8,7 @@
 import Foundation
 
 /// Video privacy levels
-public enum VideoPrivacy: Int, Codable, CaseIterable {
+public enum VideoPrivacy: Int, Codable, CaseIterable, Sendable {
 	case `public` = 1
 	case unlisted = 2
 	case `private` = 3
@@ -17,7 +17,7 @@ public enum VideoPrivacy: Int, Codable, CaseIterable {
 }
 
 /// Video state during processing
-public enum VideoState: Int, Codable, CaseIterable {
+public enum VideoState: Int, Codable, CaseIterable, Sendable {
 	case published = 1
 	case toTranscode = 2
 	case toImport = 3
@@ -31,31 +31,31 @@ public enum VideoState: Int, Codable, CaseIterable {
 }
 
 /// Video category
-public struct VideoCategory: Codable, Hashable {
+public struct VideoCategory: Codable, Hashable, Sendable {
 	public let id: Int
 	public let label: String
 }
 
 /// Video licence
-public struct VideoLicence: Codable, Hashable {
+public struct VideoLicence: Codable, Hashable, Sendable {
 	public let id: Int
 	public let label: String
 }
 
 /// Video language
-public struct VideoLanguage: Codable, Hashable {
+public struct VideoLanguage: Codable, Hashable, Sendable {
 	public let id: String
 	public let label: String
 }
 
 /// NSFW (Not Safe For Work) flags
-public struct NSFWFlag: Codable, Hashable {
+public struct NSFWFlag: Codable, Hashable, Sendable {
 	public let id: Int
 	public let label: String
 }
 
 /// Live video schedule
-public struct LiveSchedule: Codable, Hashable {
+public struct LiveSchedule: Codable, Hashable, Sendable {
 	/// Schedule identifier
 	public let id: Int
 
@@ -70,7 +70,7 @@ public struct LiveSchedule: Codable, Hashable {
 }
 
 /// Video scheduled update
-public struct VideoScheduledUpdate: Codable, Hashable {
+public struct VideoScheduledUpdate: Codable, Hashable, Sendable {
 	/// Update timestamp
 	public let updateAt: Date
 
@@ -79,13 +79,13 @@ public struct VideoScheduledUpdate: Codable, Hashable {
 }
 
 /// User's viewing history for a video
-public struct UserVideoHistory: Codable, Hashable {
+public struct UserVideoHistory: Codable, Hashable, Sendable {
 	/// Current playback position in seconds
 	public let currentTime: Int
 }
 
 /// Core Video model representing a PeerTube video
-public struct Video: Codable, Hashable, Identifiable {
+public struct Video: Codable, Hashable, Identifiable, Sendable {
 	/// Unique numeric identifier
 	public let id: Int
 
@@ -329,7 +329,7 @@ extension Video {
 }
 
 /// Lightweight summary of a Video for list views
-public struct VideoSummary: Codable, Hashable, Identifiable {
+public struct VideoSummary: Codable, Hashable, Identifiable, Sendable {
 	/// Unique identifier
 	public let id: Int
 
