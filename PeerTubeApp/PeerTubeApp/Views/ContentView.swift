@@ -76,6 +76,8 @@ struct ContentView: View {
 			SettingsView()
 		case .about:
 			AboutView()
+		case .subscriptionManagement:
+			SubscriptionManagementView()
 		}
 	}
 }
