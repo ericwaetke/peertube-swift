@@ -1,0 +1,8 @@
+{
+	"context_servers": {
+		"beads": {
+			"command": "mise",
+			"args": ["run", "beads"]
+		}
+	},
+}
