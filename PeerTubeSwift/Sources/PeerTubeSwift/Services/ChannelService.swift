@@ -63,7 +63,7 @@ public struct ChannelSearchParameters: Sendable {
 public enum ChannelSort: String, CaseIterable, Sendable {
 	case createdAt = "-createdAt"
 	case updatedAt = "-updatedAt"
-	case name = "name"
+	case name
 	case followersCount = "-followersCount"
 	case videosCount = "-videosCount"
 	case relevance = "-match"  // For search results only
@@ -94,7 +94,6 @@ public struct ChannelListResponse: Codable, Sendable {
 /// Service for video channel-related API operations with Swift 6 concurrency support
 @MainActor
 public final class ChannelService: Sendable {
-
 	// MARK: - Properties
 
 	private let apiClient: APIClient
@@ -294,7 +293,11 @@ public final class ChannelService: Sendable {
 
 			// Both should be populated at this point
 			guard let finalChannel = channel, let finalVideos = videos else {
-				throw PeerTubeAPIError.networkError(.unknown)
+				throw PeerTubeAPIError.networkError(
+					.unknown(
+						NSError(
+							domain: "PeerTubeSwift", code: -1,
+							userInfo: [NSLocalizedDescriptionKey: "Unknown error occurred"])))
 			}
 
 			return (channel: finalChannel, videos: finalVideos)
@@ -305,7 +308,6 @@ public final class ChannelService: Sendable {
 // MARK: - Convenience Extensions
 
 extension ChannelService {
-
 	/// Get the most recently created channels
 	/// - Parameter count: Number of channels to fetch (default: 15)
 	/// - Returns: Recent channels sorted by creation date
@@ -385,7 +387,6 @@ extension ChannelService {
 // MARK: - Channel Statistics Extensions
 
 extension ChannelService {
-
 	/// Get aggregated statistics for a channel
 	/// - Parameter channelHandle: Channel handle or ID
 	/// - Returns: Channel with computed statistics
@@ -396,7 +397,8 @@ extension ChannelService {
 		// Get first page of videos to compute basic stats
 		let videoParams = VideoListParameters(count: 100, skipCount: false)
 		let videos = try await getChannelVideos(
-			channelHandle: channelHandle, videoParameters: videoParams)
+			channelHandle: channelHandle, videoParameters: videoParams
+		)
 
 		let totalViews = videos.data.reduce(0) { $0 + $1.views }
 		let totalLikes = videos.data.reduce(0) { $0 + $1.likes }

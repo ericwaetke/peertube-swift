@@ -11,348 +11,346 @@ import PeerTubeSwift
 /// App-level subscription service that coordinates local subscriptions with PeerTube API
 @MainActor
 public final class SubscriptionService: ObservableObject {
+    // MARK: - Properties
 
-	// MARK: - Properties
+    private let repository: SubscriptionRepository
+    private weak var appState: AppState?
 
-	private let repository: SubscriptionRepository
-	private weak var appState: AppState?
+    /// Published subscriptions for UI binding
+    @Published public var subscriptions: [ChannelSubscription] = []
 
-	/// Published subscriptions for UI binding
-	@Published public var subscriptions: [ChannelSubscription] = []
+    /// Published subscription count
+    @Published public var subscriptionCount: Int = 0
 
-	/// Published subscription count
-	@Published public var subscriptionCount: Int = 0
+    /// Published loading state for UI feedback
+    @Published public var isLoading = false
 
-	/// Published loading state for UI feedback
-	@Published public var isLoading = false
+    /// Published error state
+    @Published public var error: Error?
 
-	/// Published error state
-	@Published public var error: Error?
+    // MARK: - Initialization
 
-	// MARK: - Initialization
+    public init(repository: SubscriptionRepository = SubscriptionRepository()) {
+        self.repository = repository
+        subscriptions = repository.getAllSubscriptions()
+        subscriptionCount = repository.getSubscriptionCount()
 
-	public init(repository: SubscriptionRepository = SubscriptionRepository()) {
-		self.repository = repository
-		self.subscriptions = repository.getAllSubscriptions()
-		self.subscriptionCount = repository.getSubscriptionCount()
+        // Observe repository changes
+        repository.$subscriptions
+            .assign(to: &$subscriptions)
 
-		// Observe repository changes
-		repository.$subscriptions
-			.assign(to: &$subscriptions)
+        repository.$subscriptionCount
+            .assign(to: &$subscriptionCount)
+    }
 
-		repository.$subscriptionCount
-			.assign(to: &$subscriptionCount)
-	}
+    /// Set the app state reference for API access
+    public func setAppState(_ appState: AppState) {
+        self.appState = appState
+    }
 
-	/// Set the app state reference for API access
-	public func setAppState(_ appState: AppState) {
-		self.appState = appState
-	}
+    // MARK: - Subscription Management
 
-	// MARK: - Subscription Management
+    /// Subscribe to a channel
+    /// - Parameter channel: The channel to subscribe to
+    public func subscribe(to channel: VideoChannel) async {
+        isLoading = true
+        error = nil
 
-	/// Subscribe to a channel
-	/// - Parameter channel: The channel to subscribe to
-	public func subscribe(to channel: VideoChannel) async {
-		isLoading = true
-		error = nil
+        do {
+            let subscription = try repository.subscribe(to: channel)
 
-		do {
-			let subscription = try repository.subscribe(to: channel)
+            // Optionally update channel info from API if we have services
+            if let services = appState?.services {
+                await updateChannelInfo(channel.name, services: services)
+            }
 
-			// Optionally update channel info from API if we have services
-			if let services = appState?.services {
-				await updateChannelInfo(channel.name, services: services)
-			}
+            print("Successfully subscribed to \(channel.effectiveDisplayName)")
+        } catch {
+            self.error = error
+            print("Failed to subscribe to channel: \(error)")
+        }
 
-			print("Successfully subscribed to \(channel.effectiveDisplayName)")
-		} catch {
-			self.error = error
-			print("Failed to subscribe to channel: \(error)")
-		}
+        isLoading = false
+    }
 
-		isLoading = false
-	}
+    /// Unsubscribe from a channel
+    /// - Parameter channelName: The channel name/handle
+    public func unsubscribe(from channelName: String) async {
+        isLoading = true
+        error = nil
 
-	/// Unsubscribe from a channel
-	/// - Parameter channelName: The channel name/handle
-	public func unsubscribe(from channelName: String) async {
-		isLoading = true
-		error = nil
+        do {
+            try repository.unsubscribe(from: channelName)
+            print("Successfully unsubscribed from \(channelName)")
+        } catch {
+            self.error = error
+            print("Failed to unsubscribe from channel: \(error)")
+        }
 
-		do {
-			try repository.unsubscribe(from: channelName)
-			print("Successfully unsubscribed from \(channelName)")
-		} catch {
-			self.error = error
-			print("Failed to unsubscribe from channel: \(error)")
-		}
+        isLoading = false
+    }
 
-		isLoading = false
-	}
+    /// Toggle subscription status
+    /// - Parameter subscription: The subscription to toggle
+    public func toggleSubscription(_ subscription: ChannelSubscription) async {
+        do {
+            try repository.toggleSubscription(subscription.id)
+        } catch {
+            self.error = error
+            print("Failed to toggle subscription: \(error)")
+        }
+    }
 
-	/// Toggle subscription status
-	/// - Parameter subscription: The subscription to toggle
-	public func toggleSubscription(_ subscription: ChannelSubscription) async {
-		do {
-			try repository.toggleSubscription(subscription.id)
-		} catch {
-			self.error = error
-			print("Failed to toggle subscription: \(error)")
-		}
-	}
+    // MARK: - Subscription Queries
 
-	// MARK: - Subscription Queries
+    /// Check if subscribed to a channel
+    /// - Parameter channelName: The channel name/handle
+    /// - Returns: True if subscribed and enabled
+    public func isSubscribed(to channelName: String) -> Bool {
+        return repository.isSubscribed(to: channelName)
+    }
 
-	/// Check if subscribed to a channel
-	/// - Parameter channelName: The channel name/handle
-	/// - Returns: True if subscribed and enabled
-	public func isSubscribed(to channelName: String) -> Bool {
-		return repository.isSubscribed(to: channelName)
-	}
+    /// Get subscription for a channel
+    /// - Parameter channelName: The channel name/handle
+    /// - Returns: The subscription if it exists
+    public func getSubscription(for channelName: String) -> ChannelSubscription? {
+        return try? repository.getSubscription(for: channelName)
+    }
 
-	/// Get subscription for a channel
-	/// - Parameter channelName: The channel name/handle
-	/// - Returns: The subscription if it exists
-	public func getSubscription(for channelName: String) -> ChannelSubscription? {
-		return try? repository.getSubscription(for: channelName)
-	}
+    /// Get enabled subscriptions only
+    /// - Returns: Array of enabled subscriptions
+    public func getEnabledSubscriptions() -> [ChannelSubscription] {
+        return repository.getEnabledSubscriptions()
+    }
 
-	/// Get enabled subscriptions only
-	/// - Returns: Array of enabled subscriptions
-	public func getEnabledSubscriptions() -> [ChannelSubscription] {
-		return repository.getEnabledSubscriptions()
-	}
+    // MARK: - Subscription Feed
 
-	// MARK: - Subscription Feed
+    /// Get recent videos from all subscribed channels
+    /// - Parameters:
+    ///   - limit: Maximum number of videos per channel (default: 5)
+    ///   - maxAge: Maximum age of videos in hours (default: 168 = 1 week)
+    /// - Returns: Array of videos sorted by publication date
+    public func getSubscriptionFeed(limit: Int = 5, maxAge: TimeInterval = 168 * 3600) async
+        -> [Video]
+    {
+        guard let services = appState?.services else {
+            print("No PeerTube services available for subscription feed")
+            return []
+        }
 
-	/// Get recent videos from all subscribed channels
-	/// - Parameters:
-	///   - limit: Maximum number of videos per channel (default: 5)
-	///   - maxAge: Maximum age of videos in hours (default: 168 = 1 week)
-	/// - Returns: Array of videos sorted by publication date
-	public func getSubscriptionFeed(limit: Int = 5, maxAge: TimeInterval = 168 * 3600) async
-		-> [Video]
-	{
-		guard let services = appState?.services else {
-			print("No PeerTube services available for subscription feed")
-			return []
-		}
+        let enabledSubscriptions = getEnabledSubscriptions()
+        guard !enabledSubscriptions.isEmpty else {
+            return []
+        }
 
-		let enabledSubscriptions = getEnabledSubscriptions()
-		guard !enabledSubscriptions.isEmpty else {
-			return []
-		}
+        isLoading = true
+        var allVideos: [Video] = []
 
-		isLoading = true
-		var allVideos: [Video] = []
+        // Fetch videos from each subscribed channel
+        await withTaskGroup(of: [Video].self) { group in
+            for subscription in enabledSubscriptions {
+                group.addTask {
+                    do {
+                        let parameters = VideoListParameters(
+                            start: 0,
+                            count: limit,
+                            sort: .publishedAt
+                        )
+                        let response = try await services.videos.getChannelVideos(
+                            channelHandle: subscription.channel.name,
+                            parameters: parameters
+                        )
 
-		// Fetch videos from each subscribed channel
-		await withTaskGroup(of: [Video].self) { group in
-			for subscription in enabledSubscriptions {
-				group.addTask {
-					do {
-						let parameters = VideoListParameters(
-							start: 0,
-							count: limit,
-							sort: .publishedAt
-						)
-						let response = try await services.videos.getChannelVideos(
-							channelHandle: subscription.channel.name,
-							parameters: parameters
-						)
+                        // Filter by age
+                        let cutoffDate = Date().addingTimeInterval(-maxAge)
+                        return response.data.filter { video in
+                            (video.publishedAt ?? video.createdAt) > cutoffDate
+                        }
+                    } catch {
+                        print("Failed to fetch videos for \(subscription.channel.name): \(error)")
+                        return []
+                    }
+                }
+            }
 
-						// Filter by age
-						let cutoffDate = Date().addingTimeInterval(-maxAge)
-						return response.data.filter { video in
-							(video.publishedAt ?? video.createdAt) > cutoffDate
-						}
-					} catch {
-						print("Failed to fetch videos for \(subscription.channel.name): \(error)")
-						return []
-					}
-				}
-			}
+            for await videos in group {
+                allVideos.append(contentsOf: videos)
+            }
+        }
 
-			for await videos in group {
-				allVideos.append(contentsOf: videos)
-			}
-		}
+        // Sort by publication date (newest first)
+        allVideos.sort { lhs, rhs in
+            let lhsDate = lhs.publishedAt ?? lhs.createdAt
+            let rhsDate = rhs.publishedAt ?? rhs.createdAt
+            return lhsDate > rhsDate
+        }
 
-		// Sort by publication date (newest first)
-		allVideos.sort { lhs, rhs in
-			let lhsDate = lhs.publishedAt ?? lhs.createdAt
-			let rhsDate = rhs.publishedAt ?? rhs.createdAt
-			return lhsDate > rhsDate
-		}
+        // Cache video metadata for faster future loading
+        await cacheVideoMetadata(allVideos)
 
-		// Cache video metadata for faster future loading
-		await cacheVideoMetadata(allVideos)
+        isLoading = false
+        return allVideos
+    }
 
-		isLoading = false
-		return allVideos
-	}
+    /// Refresh all subscription data from API
+    public func refreshAllSubscriptions() async {
+        guard let services = appState?.services else {
+            print("No PeerTube services available for refresh")
+            return
+        }
 
-	/// Refresh all subscription data from API
-	public func refreshAllSubscriptions() async {
-		guard let services = appState?.services else {
-			print("No PeerTube services available for refresh")
-			return
-		}
+        isLoading = true
+        error = nil
 
-		isLoading = true
-		error = nil
+        let enabledSubscriptions = getEnabledSubscriptions()
 
-		let enabledSubscriptions = getEnabledSubscriptions()
+        await withTaskGroup(of: Void.self) { group in
+            for subscription in enabledSubscriptions {
+                group.addTask {
+                    await self.updateChannelInfo(subscription.channel.name, services: services)
+                }
+            }
+        }
 
-		await withTaskGroup(of: Void.self) { group in
-			for subscription in enabledSubscriptions {
-				group.addTask {
-					await self.updateChannelInfo(subscription.channel.name, services: services)
-				}
-			}
-		}
+        isLoading = false
+    }
 
-		isLoading = false
-	}
+    // MARK: - Data Management
 
-	// MARK: - Data Management
+    /// Clear error state
+    public func clearError() {
+        error = nil
+    }
 
-	/// Clear error state
-	public func clearError() {
-		error = nil
-	}
+    /// Import subscriptions from a list (for migration/backup restore)
+    /// - Parameter channels: Array of channels to subscribe to
+    public func importSubscriptions(_ channels: [VideoChannel]) async {
+        isLoading = true
 
-	/// Import subscriptions from a list (for migration/backup restore)
-	/// - Parameter channels: Array of channels to subscribe to
-	public func importSubscriptions(_ channels: [VideoChannel]) async {
-		isLoading = true
+        for channel in channels {
+            do {
+                try repository.subscribe(to: channel)
+            } catch {
+                print("Failed to import subscription for \(channel.name): \(error)")
+            }
+        }
 
-		for channel in channels {
-			do {
-				try repository.subscribe(to: channel)
-			} catch {
-				print("Failed to import subscription for \(channel.name): \(error)")
-			}
-		}
+        isLoading = false
+    }
 
-		isLoading = false
-	}
+    /// Export subscriptions for backup
+    /// - Returns: Array of subscribed channels
+    public func exportSubscriptions() -> [VideoChannel] {
+        return subscriptions.map { $0.channel }
+    }
 
-	/// Export subscriptions for backup
-	/// - Returns: Array of subscribed channels
-	public func exportSubscriptions() -> [VideoChannel] {
-		return subscriptions.map { $0.channel }
-	}
+    /// Clear all subscriptions (for testing or reset)
+    public func clearAllSubscriptions() async {
+        do {
+            try repository.clearAllSubscriptions()
+        } catch {
+            self.error = error
+            print("Failed to clear subscriptions: \(error)")
+        }
+    }
 
-	/// Clear all subscriptions (for testing or reset)
-	public func clearAllSubscriptions() async {
-		do {
-			try repository.clearAllSubscriptions()
-		} catch {
-			self.error = error
-			print("Failed to clear subscriptions: \(error)")
-		}
-	}
+    // MARK: - Private Methods
 
-	// MARK: - Private Methods
+    private func updateChannelInfo(_ channelName: String, services: PeerTubeServices) async {
+        do {
+            let updatedChannel = try await services.channels.getChannel(handle: channelName)
+            try repository.updateChannel(updatedChannel)
+        } catch {
+            print("Failed to update channel info for \(channelName): \(error)")
+        }
+    }
 
-	private func updateChannelInfo(_ channelName: String, services: PeerTubeServices) async {
-		do {
-			let updatedChannel = try await services.channels.getChannel(handle: channelName)
-			try repository.updateChannel(updatedChannel)
-		} catch {
-			print("Failed to update channel info for \(channelName): \(error)")
-		}
-	}
+    private func cacheVideoMetadata(_ videos: [Video]) async {
+        // Group videos by channel
+        let videosByChannel = Dictionary(grouping: videos) { $0.channel.name }
 
-	private func cacheVideoMetadata(_ videos: [Video]) async {
-		// Group videos by channel
-		let videosByChannel = Dictionary(grouping: videos) { $0.channel.name }
-
-		for (channelName, channelVideos) in videosByChannel {
-			do {
-				try repository.cacheVideos(channelVideos, for: channelName)
-			} catch {
-				print("Failed to cache videos for \(channelName): \(error)")
-			}
-		}
-	}
+        for (channelName, channelVideos) in videosByChannel {
+            do {
+                try repository.cacheVideos(channelVideos, for: channelName)
+            } catch {
+                print("Failed to cache videos for \(channelName): \(error)")
+            }
+        }
+    }
 }
 
 // MARK: - Convenience Extensions
 
-extension SubscriptionService {
+public extension SubscriptionService {
+    /// Subscribe to a channel by name (fetches channel info first)
+    /// - Parameter channelName: The channel name/handle
+    func subscribe(to channelName: String) async {
+        guard let services = appState?.services else {
+            error = SubscriptionServiceError.noServicesAvailable
+            return
+        }
 
-	/// Subscribe to a channel by name (fetches channel info first)
-	/// - Parameter channelName: The channel name/handle
-	public func subscribe(to channelName: String) async {
-		guard let services = appState?.services else {
-			error = SubscriptionServiceError.noServicesAvailable
-			return
-		}
+        isLoading = true
+        error = nil
 
-		isLoading = true
-		error = nil
+        do {
+            let channel = try await services.channels.getChannel(handle: channelName)
+            await subscribe(to: channel)
+        } catch {
+            self.error = error
+            print("Failed to fetch channel info for \(channelName): \(error)")
+        }
 
-		do {
-			let channel = try await services.channels.getChannel(handle: channelName)
-			await subscribe(to: channel)
-		} catch {
-			self.error = error
-			print("Failed to fetch channel info for \(channelName): \(error)")
-		}
+        isLoading = false
+    }
 
-		isLoading = false
-	}
-
-	/// Get subscription status for UI binding
-	/// - Parameter channelName: The channel name
-	/// - Returns: Subscription status
-	public func getSubscriptionStatus(for channelName: String) -> SubscriptionStatus {
-		if let subscription = getSubscription(for: channelName) {
-			return subscription.isNotificationEnabled ? .subscribed : .disabled
-		}
-		return .notSubscribed
-	}
+    /// Get subscription status for UI binding
+    /// - Parameter channelName: The channel name
+    /// - Returns: Subscription status
+    func getSubscriptionStatus(for channelName: String) -> SubscriptionStatus {
+        if let subscription = getSubscription(for: channelName) {
+            return subscription.isNotificationEnabled ? .subscribed : .disabled
+        }
+        return .notSubscribed
+    }
 }
 
 // MARK: - Supporting Types
 
 /// Subscription status for UI
 public enum SubscriptionStatus {
-	case notSubscribed
-	case subscribed
-	case disabled
+    case notSubscribed
+    case subscribed
+    case disabled
 
-	public var isSubscribed: Bool {
-		switch self {
-		case .subscribed, .disabled:
-			return true
-		case .notSubscribed:
-			return false
-		}
-	}
+    public var isSubscribed: Bool {
+        switch self {
+        case .subscribed, .disabled:
+            return true
+        case .notSubscribed:
+            return false
+        }
+    }
 
-	public var isEnabled: Bool {
-		return self == .subscribed
-	}
+    public var isEnabled: Bool {
+        return self == .subscribed
+    }
 }
 
 /// Subscription service errors
 public enum SubscriptionServiceError: LocalizedError {
-	case noServicesAvailable
-	case channelNotFound
-	case networkError(Error)
+    case noServicesAvailable
+    case channelNotFound
+    case networkError(Error)
 
-	public var errorDescription: String? {
-		switch self {
-		case .noServicesAvailable:
-			return "PeerTube services are not available"
-		case .channelNotFound:
-			return "Channel not found"
-		case .networkError(let error):
-			return "Network error: \(error.localizedDescription)"
-		}
-	}
+    public var errorDescription: String? {
+        switch self {
+        case .noServicesAvailable:
+            return "PeerTube services are not available"
+        case .channelNotFound:
+            return "Channel not found"
+        case let .networkError(error):
+            return "Network error: \(error.localizedDescription)"
+        }
+    }
 }

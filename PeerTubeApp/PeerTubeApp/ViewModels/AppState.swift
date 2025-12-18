@@ -26,7 +26,6 @@ enum NavigationDestination: Hashable {
 
 @MainActor
 final class AppState: ObservableObject {
-
 	// MARK: - Published Properties
 
 	@Published var currentInstance: Instance?
@@ -66,7 +65,7 @@ final class AppState: ObservableObject {
 
 	init() {
 		// Initialize subscription service
-		self.subscriptionService = SubscriptionService()
+		subscriptionService = SubscriptionService()
 
 		AppStateProvider.shared.setAppState(self)
 		loadSettings()
@@ -120,8 +119,8 @@ final class AppState: ObservableObject {
 	// MARK: - Instance Management
 
 	func setInstance(_ instance: Instance) {
-		self.currentInstance = instance
-		self.services = PeerTubeServices(instanceURL: instance.url)
+		currentInstance = instance
+		services = PeerTubeServices(instanceURL: instance.url)
 		saveCurrentInstance()
 
 		// Update subscription service with new services
@@ -224,7 +223,6 @@ enum AppError: LocalizedError {
 // MARK: - Extensions
 
 extension AppState {
-
 	/// Convenience method to check if services are available
 	var hasServices: Bool {
 		services != nil
@@ -283,7 +281,7 @@ extension AppState {
 
 /// Video quality preference options
 public enum VideoQuality: String, CaseIterable {
-	case auto = "auto"
+	case auto
 	case low = "240p"
 	case medium = "480p"
 	case high = "720p"
@@ -296,11 +294,33 @@ public enum VideoQuality: String, CaseIterable {
 		case .low:
 			return "240p (Data Saver)"
 		case .medium:
-			return "480p"
+			return "480p (Standard)"
 		case .high:
-			return "720p HD"
+			return "720p (HD)"
 		case .veryHigh:
-			return "1080p Full HD"
+			return "1080p (Full HD)"
+		}
+	}
+
+	/// Get the maximum resolution for this quality preference
+	public var maxResolution: Int {
+		switch self {
+		case .auto: return Int.max
+		case .low: return 240
+		case .medium: return 480
+		case .high: return 720
+		case .veryHigh: return 1080
+		}
+	}
+
+	/// Get recommended minimum bandwidth for this quality
+	public var recommendedBandwidth: Double {
+		switch self {
+		case .auto: return 0
+		case .low: return 1.5  // 1.5 Mbps for 240p
+		case .medium: return 3  // 3 Mbps for 480p
+		case .high: return 5  // 5 Mbps for 720p
+		case .veryHigh: return 8  // 8 Mbps for 1080p
 		}
 	}
 }
