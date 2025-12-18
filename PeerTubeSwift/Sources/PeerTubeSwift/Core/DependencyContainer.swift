@@ -55,7 +55,7 @@ public final class DependencyContainer: DependencyContainerProtocol, @unchecked 
 	}
 
 	/// Register an existing instance as a singleton
-	public func registerInstance<T>(_ serviceType: T.Type, instance: T) {
+	public func registerInstance<T: Sendable>(_ serviceType: T.Type, instance: T) {
 		Task {
 			await servicesManager.registerInstance(serviceType, instance: instance)
 		}
@@ -64,12 +64,12 @@ public final class DependencyContainer: DependencyContainerProtocol, @unchecked 
 	// MARK: - Service Resolution
 
 	/// Resolve a service from the container
-	public func resolve<T>(_ serviceType: T.Type) async -> T {
+	public func resolve<T: Sendable>(_ serviceType: T.Type) async -> T {
 		await servicesManager.resolve(serviceType)
 	}
 
 	/// Resolve a service from the container (optional)
-	public func resolveOptional<T>(_ serviceType: T.Type) async -> T? {
+	public func resolveOptional<T: Sendable>(_ serviceType: T.Type) async -> T? {
 		await servicesManager.resolveOptional(serviceType)
 	}
 
@@ -101,73 +101,89 @@ public final class DependencyContainer: DependencyContainerProtocol, @unchecked 
 
 /// Actor to manage services in a thread-safe manner
 private actor ServicesManager {
-	private var services: [String: Any] = [:]
+	private enum ServiceType {
+		case transient(() -> Any)
+		case singleton(() -> Any)
+	}
+
+	private var services: [String: ServiceType] = [:]
 	private var singletonInstances: [String: Any] = [:]
 
 	func register<T>(_ serviceType: T.Type, factory: @escaping @Sendable () -> T) {
 		let key = String(describing: serviceType)
-		services[key] = factory
+		services[key] = .transient(factory)
 	}
 
 	func registerSingleton<T>(_ serviceType: T.Type, factory: @escaping @Sendable () -> T) {
 		let key = String(describing: serviceType)
-		services[key] = { [weak self] in
-			guard let self = self else { return factory() }
+		services[key] = .singleton(factory)
+	}
 
-			if let instance = self.singletonInstances[key] as? T {
+	func registerInstance<T: Sendable>(_ serviceType: T.Type, instance: T) {
+		let key = String(describing: serviceType)
+		services[key] = .transient({ instance })
+		singletonInstances[key] = instance
+	}
+
+	func resolve<T: Sendable>(_ serviceType: T.Type) -> T {
+		let key = String(describing: serviceType)
+
+		guard let service = services[key] else {
+			fatalError("Service \(serviceType) is not registered")
+		}
+
+		switch service {
+		case .transient(let factory):
+			guard let typedFactory = factory as? () -> T else {
+				fatalError("Service \(serviceType) has incorrect type")
+			}
+			return typedFactory()
+
+		case .singleton(let factory):
+			if let instance = singletonInstances[key] as? T {
 				return instance
 			}
 
-			let newInstance = factory()
-			self.singletonInstances[key] = newInstance
+			guard let typedFactory = factory as? () -> T else {
+				fatalError("Service \(serviceType) has incorrect type")
+			}
+
+			let newInstance = typedFactory()
+			singletonInstances[key] = newInstance
 			return newInstance
 		}
 	}
 
-	func registerInstance<T>(_ serviceType: T.Type, instance: T) {
-		let key = String(describing: serviceType)
-		services[key] = { instance }
-	}
-
-	func resolve<T>(_ serviceType: T.Type) -> T {
-		let key = String(describing: serviceType)
-
-		guard let factory = services[key] else {
-			fatalError("Service \(serviceType) is not registered")
-		}
-
-		if let serviceFactory = factory as? () -> T {
-			return serviceFactory()
-		} else {
-			fatalError("Service \(serviceType) factory has wrong type")
-		}
-	}
-
 	func resolveSync<T>(_ serviceType: T.Type) -> T {
-		let key = String(describing: serviceType)
-
-		guard let factory = services[key] else {
-			fatalError("Service \(serviceType) is not registered")
-		}
-
-		if let serviceFactory = factory as? () -> T {
-			return serviceFactory()
-		} else {
-			fatalError("Service \(serviceType) factory has wrong type")
-		}
+		return resolve(serviceType)
 	}
 
-	func resolveOptional<T>(_ serviceType: T.Type) -> T? {
+	func resolveOptional<T: Sendable>(_ serviceType: T.Type) -> T? {
 		let key = String(describing: serviceType)
 
-		guard let factory = services[key] else {
+		guard let service = services[key] else {
 			return nil
 		}
 
-		if let serviceFactory = factory as? () -> T {
-			return serviceFactory()
-		} else {
-			return nil
+		switch service {
+		case .transient(let factory):
+			guard let typedFactory = factory as? () -> T else {
+				return nil
+			}
+			return typedFactory()
+
+		case .singleton(let factory):
+			if let instance = singletonInstances[key] as? T {
+				return instance
+			}
+
+			guard let typedFactory = factory as? () -> T else {
+				return nil
+			}
+
+			let newInstance = typedFactory()
+			singletonInstances[key] = newInstance
+			return newInstance
 		}
 	}
 
@@ -193,7 +209,7 @@ public struct Injected<T>: @unchecked Sendable {
 	public var wrappedValue: T {
 		// For now, use a simple synchronous resolution
 		// This will need to be refactored for proper async support
-		let key = String(describing: serviceType)
+		_ = String(describing: serviceType)
 
 		// Handle core services that are always available
 		if serviceType == CoreDataStack.self {
