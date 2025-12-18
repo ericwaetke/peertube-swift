@@ -165,7 +165,7 @@ struct SubscriptionsView: View {
 
         // MARK: - Methods
 
-        private func loadSubscriptionFeed() async {
+        func loadSubscriptionFeed() async {
             isLoadingFeed = true
             feedVideos = await appState.subscriptionService.getSubscriptionFeed()
             isLoadingFeed = false

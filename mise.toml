@@ -6,6 +6,9 @@ swiftformat = "latest"
 [tasks.beads]
 run = "uvx beads-mcp"
 
+[tasks.xcode-mcp]
+run = "npx -y xcodebuildmcp@latest"
+
 [tasks.lint]
 run = "swiftlint"
 
