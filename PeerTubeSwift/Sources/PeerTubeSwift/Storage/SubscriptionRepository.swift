@@ -36,12 +36,12 @@ public final class SubscriptionRepository: ObservableObject {
 	/// - Parameter channel: The channel to subscribe to
 	/// - Returns: The created subscription
 	/// - Throws: Core Data errors
-	public func subscribe(to channel: VideoChannel) throws -> ChannelSubscription {
+	public func subscribe(to channel: VideoChannel) async throws -> ChannelSubscription {
 		// Check if already subscribed
 		if let existing = try getSubscription(for: channel.name) {
 			if !existing.isNotificationEnabled {
 				// Re-enable existing subscription
-				try enableSubscription(existing.id)
+				try await enableSubscription(existing.id)
 				return existing
 			} else {
 				// Already subscribed
@@ -53,9 +53,9 @@ public final class SubscriptionRepository: ObservableObject {
 		let subscriptionId = UUID()
 		let now = Date()
 
-		try coreDataStack.performBackgroundTask { context in
+		try await coreDataStack.performAsyncBackgroundTask { context in
 			// Create or update channel entity
-			let channelEntity = try self.createOrUpdateChannelEntity(
+			let channelEntity = try await self.createOrUpdateChannelEntity(
 				from: channel,
 				in: context
 			)
@@ -94,8 +94,8 @@ public final class SubscriptionRepository: ObservableObject {
 	/// Unsubscribe from a channel
 	/// - Parameter channelName: The name/handle of the channel
 	/// - Throws: Core Data errors
-	public func unsubscribe(from channelName: String) throws {
-		try coreDataStack.performBackgroundTask { context in
+	public func unsubscribe(from channelName: String) async throws {
+		try await coreDataStack.performBackgroundTask { context in
 			let request: NSFetchRequest<SubscriptionManagedObject> = NSFetchRequest(
 				entityName: "Subscription"
 			)
@@ -115,14 +115,14 @@ public final class SubscriptionRepository: ObservableObject {
 	/// Toggle subscription status (enable/disable)
 	/// - Parameter subscriptionId: The subscription ID
 	/// - Throws: Core Data errors
-	public func toggleSubscription(_ subscriptionId: UUID) throws {
+	public func toggleSubscription(_ subscriptionId: UUID) async throws {
 		guard let subscription = subscriptions.first(where: { $0.id == subscriptionId }) else {
 			throw SubscriptionError.subscriptionNotFound
 		}
 
 		let newStatus = !subscription.isNotificationEnabled
 
-		try coreDataStack.performBackgroundTask { context in
+		try await coreDataStack.performBackgroundTask { context in
 			let request: NSFetchRequest<SubscriptionManagedObject> = NSFetchRequest(
 				entityName: "Subscription"
 			)
@@ -141,8 +141,8 @@ public final class SubscriptionRepository: ObservableObject {
 	/// Enable a subscription
 	/// - Parameter subscriptionId: The subscription ID
 	/// - Throws: Core Data errors
-	public func enableSubscription(_ subscriptionId: UUID) throws {
-		try coreDataStack.performBackgroundTask { context in
+	public func enableSubscription(_ subscriptionId: UUID) async throws {
+		try await coreDataStack.performBackgroundTask { context in
 			let request: NSFetchRequest<SubscriptionManagedObject> = NSFetchRequest(
 				entityName: "Subscription"
 			)
@@ -206,9 +206,9 @@ public final class SubscriptionRepository: ObservableObject {
 	/// Update channel information (when fetching new data from API)
 	/// - Parameter channel: Updated channel information
 	/// - Throws: Core Data errors
-	public func updateChannel(_ channel: VideoChannel) throws {
-		try coreDataStack.performBackgroundTask { context in
-			_ = try self.createOrUpdateChannelEntity(from: channel, in: context)
+	public func updateChannel(_ channel: VideoChannel) async throws {
+		try await coreDataStack.performAsyncBackgroundTask { context in
+			_ = try await self.createOrUpdateChannelEntity(from: channel, in: context)
 			try context.saveIfNeeded()
 		}
 
@@ -220,8 +220,8 @@ public final class SubscriptionRepository: ObservableObject {
 	///   - videos: Array of videos to cache
 	///   - channelName: The channel name
 	/// - Throws: Core Data errors
-	public func cacheVideos(_ videos: [Video], for channelName: String) throws {
-		try coreDataStack.performBackgroundTask { context in
+	public func cacheVideos(_ videos: [Video], for channelName: String) async throws {
+		try await coreDataStack.performBackgroundTask { context in
 			// Find the channel
 			let channelRequest: NSFetchRequest<ChannelManagedObject> = NSFetchRequest(
 				entityName: "Channel"
@@ -277,8 +277,8 @@ public final class SubscriptionRepository: ObservableObject {
 
 	/// Clear all subscriptions (for testing or reset)
 	/// - Throws: Core Data errors
-	public func clearAllSubscriptions() throws {
-		try coreDataStack.performBackgroundTask { context in
+	public func clearAllSubscriptions() async throws {
+		try await coreDataStack.performBackgroundTask { context in
 			let request: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(
 				entityName: "Subscription"
 			)
@@ -294,9 +294,9 @@ public final class SubscriptionRepository: ObservableObject {
 	/// Import subscriptions from an array
 	/// - Parameter subscriptions: Subscriptions to import
 	/// - Throws: Core Data errors
-	public func importSubscriptions(_ subscriptions: [ChannelSubscription]) throws {
+	public func importSubscriptions(_ subscriptions: [ChannelSubscription]) async throws {
 		for subscription in subscriptions {
-			try subscribe(to: subscription.channel)
+			_ = try await subscribe(to: subscription.channel)
 		}
 	}
 
@@ -371,7 +371,7 @@ public final class SubscriptionRepository: ObservableObject {
 	private func createOrUpdateChannelEntity(
 		from channel: VideoChannel,
 		in context: NSManagedObjectContext
-	) throws -> ChannelManagedObject {
+	) async throws -> ChannelManagedObject {
 		// Find existing channel
 		let channelRequest: NSFetchRequest<ChannelManagedObject> = NSFetchRequest(
 			entityName: "Channel"
@@ -402,7 +402,7 @@ public final class SubscriptionRepository: ObservableObject {
 		channelEntity.updatedAt = channel.updatedAt
 
 		// Find or create instance entity
-		channelEntity.instance = try createOrUpdateInstanceEntity(
+		channelEntity.instance = try await createOrUpdateInstanceEntity(
 			host: channel.host,
 			in: context
 		)
@@ -413,7 +413,7 @@ public final class SubscriptionRepository: ObservableObject {
 	private func createOrUpdateInstanceEntity(
 		host: String,
 		in context: NSManagedObjectContext
-	) throws -> InstanceManagedObject {
+	) async throws -> InstanceManagedObject {
 		// Find existing instance
 		let instanceRequest: NSFetchRequest<InstanceManagedObject> = NSFetchRequest(
 			entityName: "Instance"
