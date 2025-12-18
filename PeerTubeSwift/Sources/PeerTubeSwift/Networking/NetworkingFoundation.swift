@@ -226,14 +226,9 @@ extension URL {
 }
 
 extension URLQueryItem {
-	/// Convenience initializer for string values
-	init(name: String, value: String?) {
-		self.init(name: name, value: value)
-	}
-
 	/// Convenience initializer for integer values
 	init(name: String, value: Int) {
-		self.init(name: name, value: String(value))
+		self.init(name: name, value: "\(value)")
 	}
 
 	/// Convenience initializer for boolean values
