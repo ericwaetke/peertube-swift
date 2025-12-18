@@ -5,10 +5,10 @@
 //  Created on 2024-12-17.
 //
 
+import Combine
 import Foundation
 import PeerTubeSwift
 import SwiftUI
-internal import Combine
 
 // MARK: - Navigation Destination
 
