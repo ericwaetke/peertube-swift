@@ -7,6 +7,7 @@
 
 import AVFoundation
 import Foundation
+import UIKit
 
 /// Utilities for video player functionality
 public enum VideoPlayerUtils {

@@ -2,7 +2,17 @@
 	"context_servers": {
 		"beads": {
 			"command": "mise",
-			"args": ["run", "beads"]
+			"args": [
+				"run",
+				"beads"
+			]
+		},
+		"xcode-mcp": {
+			"command": "mise",
+			"args": [
+				"run",
+				"xcode-mcp"
+			]
 		}
 	},
 }
