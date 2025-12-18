@@ -10,7 +10,6 @@ import Foundation
 
 /// Core Data stack for managing local storage in PeerTubeSwift
 public final class CoreDataStack: @unchecked Sendable {
-
 	// MARK: - Properties
 
 	/// Shared instance of the Core Data stack
@@ -20,7 +19,7 @@ public final class CoreDataStack: @unchecked Sendable {
 	private let modelName = "PeerTubeModel"
 
 	/// Main managed object context for UI operations (main queue)
-	public nonisolated(unsafe) lazy var mainContext: NSManagedObjectContext = {
+	public lazy var mainContext: NSManagedObjectContext = {
 		let context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
 		context.persistentStoreCoordinator = persistentStoreCoordinator
 		context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
@@ -28,7 +27,7 @@ public final class CoreDataStack: @unchecked Sendable {
 	}()
 
 	/// Background context for data operations (private queue)
-	public nonisolated(unsafe) lazy var backgroundContext: NSManagedObjectContext = {
+	public lazy var backgroundContext: NSManagedObjectContext = {
 		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
 		context.persistentStoreCoordinator = persistentStoreCoordinator
 		context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
@@ -46,33 +45,30 @@ public final class CoreDataStack: @unchecked Sendable {
 	}()
 
 	/// Persistent store coordinator
-	private nonisolated(unsafe) lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator =
-		{
-			let coordinator = NSPersistentStoreCoordinator(managedObjectModel: managedObjectModel)
+	private lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator = {
+		let coordinator = NSPersistentStoreCoordinator(managedObjectModel: managedObjectModel)
 
-			let storeURL = storeURL
+		let storeURL = storeURL
 
-			do {
-				try coordinator.addPersistentStore(
-					ofType: NSSQLiteStoreType,
-					configurationName: nil,
-					at: storeURL,
-					options: [
-						NSMigratePersistentStoresAutomaticallyOption: true,
-						NSInferMappingModelAutomaticallyOption: true,
-					]
-				)
-			} catch {
-				fatalError("Failed to create persistent store: \(error)")
-			}
+		do {
+			try coordinator.addPersistentStore(
+				ofType: NSSQLiteStoreType,
+				configurationName: nil,
+				at: storeURL,
+				options: [
+					NSMigratePersistentStoresAutomaticallyOption: true,
+					NSInferMappingModelAutomaticallyOption: true,
+				]
+			)
+		} catch {
+			fatalError("Failed to create persistent store: \(error)")
+		}
 
-			return coordinator
-		}()
+		return coordinator
+	}()
 
 	/// Managed object model
-	private nonisolated(unsafe) lazy var managedObjectModel: NSManagedObjectModel = {
-		return PeerTubeDataModel.createModel()
-	}()
+	private lazy var managedObjectModel: NSManagedObjectModel = PeerTubeDataModel.createModel()
 
 	/// URL for the persistent store
 	private var storeURL: URL {

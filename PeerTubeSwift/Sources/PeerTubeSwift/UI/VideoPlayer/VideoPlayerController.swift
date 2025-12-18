@@ -6,45 +6,43 @@
 //
 
 import AVFoundation
-import AVKit
 import Combine
 import Foundation
 
 /// Controller for managing AVPlayer with PeerTube video playback
 @MainActor
-@Observable
-public final class VideoPlayerController: Sendable {
-
-	// MARK: - Properties
+public final class VideoPlayerController: ObservableObject {
+	// MARK: - Published Properties
 
 	/// The underlying AVPlayer instance
-	public private(set) var player: AVPlayer?
+	@Published public private(set) var player: AVPlayer?
 
 	/// Current playback state
-	public private(set) var isPlaying = false
+	@Published public private(set) var isPlaying = false
 
 	/// Whether the player is currently loading content
-	public private(set) var isLoading = false
+	@Published public private(set) var isLoading = false
 
 	/// Current playback error, if any
-	public private(set) var error: VideoPlayerError?
+	@Published public private(set) var error: VideoPlayerError?
 
 	/// Whether controls should be visible
-	public private(set) var showControls = true
+	@Published public private(set) var showControls = true
 
 	/// Current playback time
-	public private(set) var currentTime: TimeInterval = 0
+	@Published public private(set) var currentTime: TimeInterval = 0
 
 	/// Total duration of the video
-	public private(set) var duration: TimeInterval = 0
+	@Published public private(set) var duration: TimeInterval = 0
 
 	/// Current playback rate
-	public private(set) var playbackRate: Float = 1.0
+	@Published public private(set) var playbackRate: Float = 1.0
 
 	/// Whether the video has finished playing
-	public private(set) var hasFinished = false
+	@Published public private(set) var hasFinished = false
 
-	// Private properties
+	// MARK: - Private Properties
+
 	private let video: VideoDetails?
 	private let directURL: URL?
 	private var timeObserver: Any?
@@ -264,7 +262,7 @@ public final class VideoPlayerController: Sendable {
 			setupPlayerObservations(player: newPlayer, item: playerItem)
 
 			// Update UI
-			self.player = newPlayer
+			player = newPlayer
 			isLoading = false
 
 		} catch {
@@ -324,19 +322,17 @@ public final class VideoPlayerController: Sendable {
 			.store(in: &cancellables)
 
 		// Failed to play to end time notification
-		NotificationCenter.default.publisher(
-			for: .AVPlayerItemFailedToPlayToEndTime, object: item
-		)
-		.sink { [weak self] notification in
-			Task { @MainActor in
-				if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey]
-					as? Error
-				{
-					self?.error = .playbackError(error)
+		NotificationCenter.default.publisher(for: .AVPlayerItemFailedToPlayToEndTime, object: item)
+			.sink { [weak self] notification in
+				Task { @MainActor in
+					if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey]
+						as? Error
+					{
+						self?.error = .playbackError(error)
+					}
 				}
 			}
-		}
-		.store(in: &cancellables)
+			.store(in: &cancellables)
 	}
 
 	private func handlePlayerItemStatusChange(_ status: AVPlayerItem.Status) async {

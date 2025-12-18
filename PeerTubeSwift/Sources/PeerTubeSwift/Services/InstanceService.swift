@@ -67,7 +67,6 @@ public struct Administrator: Codable, Sendable {
 /// Service for instance-related API operations with Swift 6 concurrency support
 @MainActor
 public final class InstanceService: Sendable {
-
 	// MARK: - Properties
 
 	private let apiClient: APIClient
@@ -113,7 +112,7 @@ public final class InstanceService: Sendable {
 	/// Get server debug information (requires admin privileges)
 	/// - Returns: Server debug information
 	/// - Throws: PeerTubeAPIError if the request fails or user lacks permissions
-	public func getServerDebug() async throws -> [String: Any] {
+	public func getServerDebug() async throws -> [String: String] {
 		return try await apiClient.get(
 			path: "/server/debug",
 			authenticated: true
@@ -246,7 +245,11 @@ public final class InstanceService: Sendable {
 				let finalAbout = about,
 				let finalStats = stats
 			else {
-				throw PeerTubeAPIError.networkError(.unknown)
+				throw PeerTubeAPIError.networkError(
+					.unknown(
+						NSError(
+							domain: "PeerTubeSwift", code: -1,
+							userInfo: [NSLocalizedDescriptionKey: "Unknown error occurred"])))
 			}
 
 			return (config: finalConfig, about: finalAbout, stats: finalStats)
@@ -297,7 +300,11 @@ public final class InstanceService: Sendable {
 				let finalLanguages = languages,
 				let finalPrivacies = privacies
 			else {
-				throw PeerTubeAPIError.networkError(.unknown)
+				throw PeerTubeAPIError.networkError(
+					.unknown(
+						NSError(
+							domain: "PeerTubeSwift", code: -1,
+							userInfo: [NSLocalizedDescriptionKey: "Unknown error occurred"])))
 			}
 
 			return (
@@ -339,7 +346,7 @@ public final class InstanceService: Sendable {
 		do {
 			// Create a task with timeout
 			return try await withThrowingTimeout(seconds: timeout) {
-				return await self.checkHealth()
+				await self.checkHealth()
 			}
 		} catch {
 			return false
@@ -489,9 +496,9 @@ public struct InstanceFollowingActor: Codable, Sendable {
 
 /// Follow relationship state
 public enum FollowState: String, Codable, CaseIterable, Sendable {
-	case pending = "pending"
-	case accepted = "accepted"
-	case rejected = "rejected"
+	case pending
+	case accepted
+	case rejected
 
 	public var displayName: String {
 		switch self {
@@ -505,7 +512,6 @@ public enum FollowState: String, Codable, CaseIterable, Sendable {
 // MARK: - Convenience Extensions
 
 extension InstanceService {
-
 	/// Get basic instance information for display
 	/// - Returns: Simplified instance information
 	public func getBasicInfo() async throws -> BasicInstanceInfo {
@@ -603,9 +609,9 @@ public enum InstanceFeature: CaseIterable, Sendable {
 // MARK: - Timeout Helper
 
 /// Helper function to add timeout to async operations
-private func withThrowingTimeout<T>(
+private func withThrowingTimeout<T: Sendable>(
 	seconds: TimeInterval,
-	operation: @escaping () async throws -> T
+	operation: @escaping @Sendable () async throws -> T
 ) async throws -> T {
 	return try await withThrowingTaskGroup(of: T.self) { group in
 		// Add the operation task

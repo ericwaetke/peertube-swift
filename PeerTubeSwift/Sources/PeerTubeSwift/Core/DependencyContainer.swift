@@ -16,21 +16,16 @@ public protocol DependencyContainerProtocol: Sendable {
 
 /// Dependency injection container for managing app services
 public final class DependencyContainer: DependencyContainerProtocol, @unchecked Sendable {
-
 	// MARK: - Properties
 
 	/// Shared instance of the dependency container
 	public static let shared = DependencyContainer()
 
 	/// Core Data stack for local storage
-	public lazy var coreDataStack: CoreDataStack = {
-		CoreDataStack.shared
-	}()
+	public lazy var coreDataStack: CoreDataStack = .shared
 
 	/// Networking foundation for API communication
-	public lazy var networkingFoundation: NetworkingFoundation = {
-		NetworkingFoundation.shared
-	}()
+	public lazy var networkingFoundation: NetworkingFoundation = .shared
 
 	// MARK: - Private Properties
 
@@ -148,6 +143,20 @@ private actor ServicesManager {
 		}
 	}
 
+	func resolveSync<T>(_ serviceType: T.Type) -> T {
+		let key = String(describing: serviceType)
+
+		guard let factory = services[key] else {
+			fatalError("Service \(serviceType) is not registered")
+		}
+
+		if let serviceFactory = factory as? () -> T {
+			return serviceFactory()
+		} else {
+			fatalError("Service \(serviceType) factory has wrong type")
+		}
+	}
+
 	func resolveOptional<T>(_ serviceType: T.Type) -> T? {
 		let key = String(describing: serviceType)
 
@@ -182,9 +191,20 @@ public struct Injected<T>: @unchecked Sendable {
 	private var container: DependencyContainer
 
 	public var wrappedValue: T {
-		get async {
-			await container.resolve(serviceType)
+		// For now, use a simple synchronous resolution
+		// This will need to be refactored for proper async support
+		let key = String(describing: serviceType)
+
+		// Handle core services that are always available
+		if serviceType == CoreDataStack.self {
+			return container.coreDataStack as! T
+		} else if serviceType == NetworkingFoundation.self {
+			return container.networkingFoundation as! T
 		}
+
+		fatalError(
+			"Service \(serviceType) cannot be resolved synchronously. Use async resolution instead."
+		)
 	}
 
 	public init(_ serviceType: T.Type, container: DependencyContainer = .shared) {
@@ -199,7 +219,7 @@ extension DependencyContainer {
 	/// Convenience method for resolving services with a more fluent API
 	public subscript<T>(_ serviceType: T.Type) -> T {
 		get async {
-			return await resolve(serviceType)
+			await resolve(serviceType)
 		}
 	}
 }

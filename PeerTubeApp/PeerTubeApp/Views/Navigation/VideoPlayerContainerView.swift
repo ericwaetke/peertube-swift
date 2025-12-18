@@ -10,7 +10,6 @@ import PeerTubeSwift
 import SwiftUI
 
 struct VideoPlayerContainerView: View {
-
 	// MARK: - Properties
 
 	let video: VideoDetails
@@ -23,6 +22,10 @@ struct VideoPlayerContainerView: View {
 	@State private var error: Error?
 	@State private var showingControls = true
 	@State private var isFullscreen = false
+	@State private var showingQualitySelection = false
+	@State private var availableQualities: [VideoQualityOption] = []
+	@State private var currentQuality: VideoQualityOption?
+	@StateObject private var qualityManager = VideoQualityManager()
 
 	// MARK: - Body
 
@@ -42,9 +45,21 @@ struct VideoPlayerContainerView: View {
 		.statusBarHidden(isFullscreen)
 		.onAppear {
 			setupPlayer()
+			qualityManager.startMonitoring()
 		}
 		.onDisappear {
 			cleanup()
+			qualityManager.stopMonitoring()
+		}
+		.sheet(isPresented: $showingQualitySelection) {
+			VideoQualitySelectionView(
+				appState: appState,
+				availableQualities: availableQualities,
+				currentQuality: currentQuality,
+				isPresented: $showingQualitySelection
+			) { selectedQuality in
+				switchToQuality(selectedQuality)
+			}
 		}
 	}
 
@@ -231,9 +246,9 @@ struct VideoPlayerContainerView: View {
 			Spacer()
 
 			Button(action: {
-				// TODO: Implement quality selection
+				showingQualitySelection = true
 			}) {
-				Text("HD")
+				Text(currentQualityLabel)
 					.font(.caption)
 					.fontWeight(.semibold)
 					.foregroundColor(.white)
@@ -293,10 +308,15 @@ struct VideoPlayerContainerView: View {
 					throw PlayerError.servicesUnavailable
 				}
 
-				// Select the best quality stream from available files
-				guard let streamURL = selectBestStream(from: video) else {
+				// Extract available qualities and select optimal one
+				extractAvailableQualities()
+				guard let selectedQuality = selectOptimalQuality(),
+					let streamURL = selectedQuality.url
+				else {
 					throw PlayerError.noStreamAvailable
 				}
+
+				currentQuality = selectedQuality
 
 				await MainActor.run {
 					let newPlayer = AVPlayer(url: streamURL)
@@ -332,6 +352,52 @@ struct VideoPlayerContainerView: View {
 		}
 
 		return nil
+	}
+
+	// MARK: - Quality Selection
+
+	private var currentQualityLabel: String {
+		if let currentQuality = currentQuality {
+			return currentQuality.label
+		} else {
+			return "Auto"
+		}
+	}
+
+	private func extractAvailableQualities() {
+		availableQualities = VideoPlayerUtils.extractQualityOptions(from: video)
+	}
+
+	private func selectOptimalQuality() -> VideoQualityOption? {
+		return qualityManager.selectOptimalQuality(
+			from: availableQualities,
+			userPreference: appState.defaultVideoQuality,
+			useWiFiOnly: appState.useWiFiOnly
+		) ?? availableQualities.first
+	}
+
+	private func switchToQuality(_ quality: VideoQualityOption) {
+		guard let url = quality.url,
+			let player = player
+		else { return }
+
+		// Store current time
+		let currentTime = player.currentTime()
+
+		// Create new player item with selected quality
+		let newPlayerItem = AVPlayerItem(url: url)
+		player.replaceCurrentItem(with: newPlayerItem)
+
+		// Seek to previous position
+		player.seek(to: currentTime)
+
+		// Update current quality
+		currentQuality = quality
+
+		// Resume playback if it was playing
+		if player.timeControlStatus == .playing {
+			player.play()
+		}
 	}
 
 	// MARK: - Player Controls

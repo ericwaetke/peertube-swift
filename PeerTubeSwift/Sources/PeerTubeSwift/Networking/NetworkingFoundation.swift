@@ -45,16 +45,15 @@ public enum NetworkError: Error, LocalizedError, Sendable {
 
 /// HTTP method types
 public enum HTTPMethod: String, Sendable {
-	case GET = "GET"
-	case POST = "POST"
-	case PUT = "PUT"
-	case DELETE = "DELETE"
-	case PATCH = "PATCH"
+	case GET
+	case POST
+	case PUT
+	case DELETE
+	case PATCH
 }
 
 /// Networking foundation class for PeerTube API communication
 public final class NetworkingFoundation: @unchecked Sendable {
-
 	// MARK: - Properties
 
 	/// Shared instance
@@ -64,7 +63,7 @@ public final class NetworkingFoundation: @unchecked Sendable {
 	public let urlSession: URLSession
 
 	/// JSON decoder with custom date decoding strategy
-	public nonisolated(unsafe) let jsonDecoder: JSONDecoder = {
+	public let jsonDecoder: JSONDecoder = {
 		let decoder = JSONDecoder()
 		decoder.dateDecodingStrategy = .iso8601
 		decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -72,7 +71,7 @@ public final class NetworkingFoundation: @unchecked Sendable {
 	}()
 
 	/// JSON encoder with custom date encoding strategy
-	public nonisolated(unsafe) let jsonEncoder: JSONEncoder = {
+	public let jsonEncoder: JSONEncoder = {
 		let encoder = JSONEncoder()
 		encoder.dateEncodingStrategy = .iso8601
 		encoder.keyEncodingStrategy = .convertToSnakeCase
@@ -88,7 +87,7 @@ public final class NetworkingFoundation: @unchecked Sendable {
 		configuration.requestCachePolicy = .useProtocolCachePolicy
 		configuration.httpMaximumConnectionsPerHost = 5
 
-		self.urlSession = URLSession(configuration: configuration)
+		urlSession = URLSession(configuration: configuration)
 	}
 
 	// MARK: - Request Methods
@@ -225,8 +224,6 @@ extension URL {
 		return components.url
 	}
 }
-
-extension URLQueryItem: @retroactive Sendable {}
 
 extension URLQueryItem {
 	/// Convenience initializer for string values
