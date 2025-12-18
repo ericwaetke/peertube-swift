@@ -8,6 +8,7 @@
 import Foundation
 import PeerTubeSwift
 import SwiftUI
+internal import Combine
 
 // MARK: - Navigation Destination
 
