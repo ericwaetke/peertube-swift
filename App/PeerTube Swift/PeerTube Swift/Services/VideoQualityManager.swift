@@ -35,7 +35,7 @@ public final class VideoQualityManager: ObservableObject {
 	}
 
 	deinit {
-		stopMonitoring()
+		pathMonitor.cancel()
 	}
 
 	// MARK: - Public Methods
@@ -363,32 +363,6 @@ public enum ConnectionType: String, CaseIterable {
 		case .cellular: return "antenna.radiowaves.left.and.right"
 		case .ethernet: return "cable.connector"
 		case .unknown: return "questionmark.circle"
-		}
-	}
-}
-
-// MARK: - Extensions
-
-extension VideoQuality {
-	/// Get the maximum resolution for this quality preference
-	public var maxResolution: Int {
-		switch self {
-		case .auto: return Int.max
-		case .low: return 240
-		case .medium: return 480
-		case .high: return 720
-		case .veryHigh: return 1080
-		}
-	}
-
-	/// Get recommended minimum bandwidth for this quality
-	public var recommendedBandwidth: Double {
-		switch self {
-		case .auto: return 0
-		case .low: return 1.5  // 1.5 Mbps for 240p
-		case .medium: return 3  // 3 Mbps for 480p
-		case .high: return 5  // 5 Mbps for 720p
-		case .veryHigh: return 8  // 8 Mbps for 1080p
 		}
 	}
 }

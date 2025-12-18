@@ -31,16 +31,16 @@ public final class SubscriptionService: ObservableObject {
 
 	// MARK: - Initialization
 
-	public init(repository: SubscriptionRepository = SubscriptionRepository()) {
-		self.repository = repository
-		subscriptions = repository.getAllSubscriptions()
-		subscriptionCount = repository.getSubscriptionCount()
+	public init(repository: SubscriptionRepository? = nil) {
+		self.repository = repository ?? SubscriptionRepository()
+		self.subscriptions = self.repository.getAllSubscriptions()
+		self.subscriptionCount = self.repository.getSubscriptionCount()
 
 		// Observe repository changes
-		repository.$subscriptions
+		self.repository.$subscriptions
 			.assign(to: &$subscriptions)
 
-		repository.$subscriptionCount
+		self.repository.$subscriptionCount
 			.assign(to: &$subscriptionCount)
 	}
 
@@ -58,7 +58,7 @@ public final class SubscriptionService: ObservableObject {
 		error = nil
 
 		do {
-			let subscription = try repository.subscribe(to: channel)
+			_ = try await repository.subscribe(to: channel)
 
 			// Optionally update channel info from API if we have services
 			if let services = appState?.services {
@@ -81,7 +81,7 @@ public final class SubscriptionService: ObservableObject {
 		error = nil
 
 		do {
-			try repository.unsubscribe(from: channelName)
+			try await repository.unsubscribe(from: channelName)
 			print("Successfully unsubscribed from \(channelName)")
 		} catch {
 			self.error = error
@@ -95,7 +95,7 @@ public final class SubscriptionService: ObservableObject {
 	/// - Parameter subscription: The subscription to toggle
 	public func toggleSubscription(_ subscription: ChannelSubscription) async {
 		do {
-			try repository.toggleSubscription(subscription.id)
+			try await repository.toggleSubscription(subscription.id)
 		} catch {
 			self.error = error
 			print("Failed to toggle subscription: \(error)")
@@ -230,7 +230,7 @@ public final class SubscriptionService: ObservableObject {
 
 		for channel in channels {
 			do {
-				try repository.subscribe(to: channel)
+				_ = try await repository.subscribe(to: channel)
 			} catch {
 				print("Failed to import subscription for \(channel.name): \(error)")
 			}
@@ -248,7 +248,7 @@ public final class SubscriptionService: ObservableObject {
 	/// Clear all subscriptions (for testing or reset)
 	public func clearAllSubscriptions() async {
 		do {
-			try repository.clearAllSubscriptions()
+			try await repository.clearAllSubscriptions()
 		} catch {
 			self.error = error
 			print("Failed to clear subscriptions: \(error)")
@@ -260,7 +260,7 @@ public final class SubscriptionService: ObservableObject {
 	private func updateChannelInfo(_ channelName: String, services: PeerTubeServices) async {
 		do {
 			let updatedChannel = try await services.channels.getChannel(handle: channelName)
-			try repository.updateChannel(updatedChannel)
+			try await repository.updateChannel(updatedChannel)
 		} catch {
 			print("Failed to update channel info for \(channelName): \(error)")
 		}
@@ -272,7 +272,7 @@ public final class SubscriptionService: ObservableObject {
 
 		for (channelName, channelVideos) in videosByChannel {
 			do {
-				try repository.cacheVideos(channelVideos, for: channelName)
+				try await repository.cacheVideos(channelVideos, for: channelName)
 			} catch {
 				print("Failed to cache videos for \(channelName): \(error)")
 			}
