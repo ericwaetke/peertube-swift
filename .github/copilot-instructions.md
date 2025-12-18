@@ -68,11 +68,87 @@ For MCP-compatible clients (Claude Desktop, etc.), install the beads MCP server:
 Run `bd <command> --help` to see all available flags for any command.
 For example: `bd create --help` shows `--parent`, `--deps`, `--assignee`, etc.
 
+## Project Context
+
+### Architecture Overview
+
+This is a **PeerTube Swift** project consisting of:
+
+1. **Swift Package** (`/PeerTubeSwift/`): Core SDK with API client, models, and shared components
+2. **iOS App** (`/App/PeerTube Swift/`): Native SwiftUI application consuming the SDK
+3. **Documentation** (`*.md` files): Architecture, models, setup guides, and API documentation
+
+### Key Project Structure
+
+```
+peertube-swift/
+├── PeerTubeSwift/                    # Swift Package (SDK)
+│   ├── Sources/PeerTubeSwift/        # Core library code
+│   │   ├── Models/                   # Data models (Video, Channel, etc.)
+│   │   ├── Services/                 # API services
+│   │   └── UI/                       # Shared UI components
+│   └── Package.swift                 # Package manifest
+├── App/PeerTube Swift/               # iOS Application
+│   ├── PeerTube Swift/               # App source code
+│   │   ├── Services/                 # App-level services
+│   │   ├── Views/                    # SwiftUI views
+│   │   ├── ViewModels/               # App state & view models
+│   │   └── Extensions/               # Model extensions
+│   └── PeerTube Swift.xcodeproj      # Xcode project
+└── .beads/                           # Issue tracking database
+```
+
+### Development Environment
+
+**Xcode Setup:**
+- Main project: `/App/PeerTube Swift/PeerTube Swift.xcodeproj`
+- Two build schemes:
+  - `"PeerTube Swift"`: Full iOS app (currently has build issues)
+  - `"PeerTubeSwift"`: Swift package only (builds successfully)
+- Target iOS 17.0+, uses SwiftUI + Combine
+
+**Current Status:**
+- ⚠️ **App has compilation errors** (tracked in bd issue `peertube-swift-a0l`)
+- ✅ Swift package builds and tests pass
+- ✅ Core API models and services are functional
+
+### Common Development Patterns
+
+**Data Flow:**
+1. `PeerTubeServices` → API calls via SDK
+2. `AppState` → Global app state management
+3. View Models → Local state for specific views
+4. SwiftUI Views → UI presentation
+
+**Key Types to Know:**
+- `Video`, `VideoChannel`, `Account` → Core content models
+- `Instance` → PeerTube server configuration
+- `PeerTubeServices` → Main API service container
+- `AppState` → Root application state
+
+**Code Style:**
+- Use `@Published` properties with `ObservableObject` for reactive state
+- Async/await for API calls
+- SwiftUI for all UI (no UIKit)
+- Proper error handling with `Result` types
+
+### Quick Start for AI Assistants
+
+1. **Check current issues**: `bd ready --json`
+2. **For build problems**: Focus on `/App/PeerTube Swift/` compilation errors
+3. **For API work**: Work in `/PeerTubeSwift/Sources/PeerTubeSwift/`
+4. **Always import**: `Combine` for `@Published`, `PeerTubeSwift` for models
+5. **Test builds**: Use Xcode MCP server with "PeerTube Swift" scheme
+
 ## Important Rules
 
 - ✅ Use bd for ALL task tracking
 - ✅ Always use `--json` flag for programmatic use
 - ✅ Run `bd sync` at end of sessions
 - ✅ Run `bd <cmd> --help` to discover available flags
+- ✅ Import `Combine` when using `@Published` or `ObservableObject`
+- ✅ Use `ActorImage.url` not `.path` for image URLs
+- ✅ Check both Swift package and app compilation separately
 - ❌ Do NOT create markdown TODO lists
 - ❌ Do NOT commit `.beads/beads.db` (JSONL only)
+- ❌ Do NOT mix async contexts without proper `await` annotations
