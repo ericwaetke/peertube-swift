@@ -1,5 +1,19 @@
 [tools]
 uv = "latest"
+swiftlint = "latest"
+swiftformat = "latest"
 
 [tasks.beads]
 run = "uvx beads-mcp"
+
+[tasks.lint]
+run = "swiftlint"
+
+[tasks.format]
+run = "swiftformat ."
+
+[tasks.build]
+run = "cd PeerTubeSwift && swift build"
+
+[tasks.test]
+run = "cd PeerTubeSwift && swift test"
