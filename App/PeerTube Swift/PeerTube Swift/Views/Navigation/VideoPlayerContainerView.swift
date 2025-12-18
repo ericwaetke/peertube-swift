@@ -482,62 +482,9 @@ enum PlayerError: LocalizedError {
 #if DEBUG
 	struct VideoPlayerContainerView_Previews: PreviewProvider {
 		static var previews: some View {
-			let sampleVideo = VideoDetails(
-				id: "sample-id",
-				uuid: "sample-uuid",
-				name: "Sample Video",
-				description: "A sample video for preview",
-				isLive: false,
-				duration: 630,
-				views: 1234,
-				likes: 56,
-				dislikes: 2,
-				publishedAt: Date(),
-				originallyPublishedAt: nil,
-				category: VideoCategory(id: 1, label: "Music"),
-				licence: VideoLicence(id: 1, label: "Attribution"),
-				language: VideoLanguage(id: "en", label: "English"),
-				privacy: VideoPrivacy(id: 1, label: "Public"),
-				thumbnailURL: URL(string: "https://example.com/thumbnail.jpg"),
-				previewURL: URL(string: "https://example.com/preview.jpg"),
-				embedURL: URL(string: "https://example.com/embed"),
-				channel: VideoChannel(
-					id: "channel-id",
-					name: "sample-channel",
-					displayName: "Sample Channel",
-					description: nil,
-					avatarURL: nil,
-					bannerURL: nil,
-					followersCount: 100,
-					host: "example.com"
-				),
-				account: Account(
-					id: 1,
-					url: "https://example.com/accounts/sample-account",
-					name: "sample-account",
-					host: "example.com",
-					followingCount: 0,
-					followersCount: 0,
-					createdAt: Date(),
-					updatedAt: Date(),
-					displayName: "Sample Account",
-					description: nil
-				),
-				tags: ["sample", "video"],
-				support: nil,
-				nsfw: false,
-				waitTranscoding: false,
-				state: VideoState(id: 1, label: "Published"),
-				scheduledUpdate: nil,
-				blacklisted: false,
-				blacklistedReason: nil,
-				downloadEnabled: true,
-				commentsEnabled: true,
-				files: []
-			)
-
-			VideoPlayerContainerView(video: sampleVideo)
-				.environmentObject(AppState())
+			// Simplified preview to avoid constructor issues
+			Text("VideoPlayerContainerView Preview")
+				.navigationTitle("Video Player")
 		}
 	}
 #endif

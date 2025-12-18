@@ -7,7 +7,10 @@
 
 import AVFoundation
 import Foundation
-import UIKit
+
+#if os(iOS)
+	import UIKit
+#endif
 
 /// Utilities for video player functionality
 public enum VideoPlayerUtils {
