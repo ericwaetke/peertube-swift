@@ -22,7 +22,7 @@ public final class CoreDataStack: @unchecked Sendable {
 	public lazy var mainContext: NSManagedObjectContext = {
 		let context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
 		context.persistentStoreCoordinator = persistentStoreCoordinator
-		context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+		context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy as! NSMergePolicy
 		return context
 	}()
 
@@ -30,7 +30,7 @@ public final class CoreDataStack: @unchecked Sendable {
 	public lazy var backgroundContext: NSManagedObjectContext = {
 		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
 		context.persistentStoreCoordinator = persistentStoreCoordinator
-		context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+		context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy as! NSMergePolicy
 
 		// Automatically merge changes from background context to main context
 		NotificationCenter.default.addObserver(
@@ -131,11 +131,36 @@ public final class CoreDataStack: @unchecked Sendable {
 		}
 	}
 
+	/// Perform an async background task with automatic context management
+	public func performAsyncBackgroundTask<T>(
+		_ block: @escaping @Sendable (NSManagedObjectContext) async throws -> T
+	)
+		async throws -> T
+	{
+		return try await withCheckedThrowingContinuation { continuation in
+			backgroundContext.perform {
+				Task {
+					do {
+						let result = try await block(self.backgroundContext)
+
+						if self.backgroundContext.hasChanges {
+							try self.backgroundContext.save()
+						}
+
+						continuation.resume(returning: result)
+					} catch {
+						continuation.resume(throwing: error)
+					}
+				}
+			}
+		}
+	}
+
 	/// Create a new background context for batch operations
 	public func newBackgroundContext() -> NSManagedObjectContext {
 		let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
 		context.persistentStoreCoordinator = persistentStoreCoordinator
-		context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+		context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy as! NSMergePolicy
 		return context
 	}
 

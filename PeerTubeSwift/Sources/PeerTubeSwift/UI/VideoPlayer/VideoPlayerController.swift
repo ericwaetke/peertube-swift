@@ -72,7 +72,8 @@ public final class VideoPlayerController: ObservableObject {
 	}
 
 	deinit {
-		cleanupPlayer()
+		// Cleanup will happen automatically when the object is deallocated
+		// AVPlayer and other resources will be released by ARC
 	}
 
 	// MARK: - Public Methods

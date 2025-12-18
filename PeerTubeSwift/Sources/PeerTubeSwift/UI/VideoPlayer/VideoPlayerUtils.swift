@@ -106,7 +106,7 @@ public enum VideoPlayerUtils {
 
 		// Remove duplicates and sort by resolution (highest first)
 		let uniqueOptions = Array(Set(options))
-		return options.sorted { $0.resolution > $1.resolution }
+		return uniqueOptions.sorted { $0.resolution > $1.resolution }
 	}
 
 	/// Select best quality from available options
