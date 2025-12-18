@@ -415,14 +415,14 @@ struct VideoPlayerContainerView: View {
 	private func seekBackward() {
 		guard let player = player else { return }
 		let currentTime = player.currentTime()
-		let newTime = CMTimeSubtract(currentTime, CMTimeMakeWithSeconds(15, 1))
+		let newTime = CMTimeSubtract(currentTime, CMTimeMakeWithSeconds(15, preferredTimescale: 1))
 		player.seek(to: newTime)
 	}
 
 	private func seekForward() {
 		guard let player = player else { return }
 		let currentTime = player.currentTime()
-		let newTime = CMTimeAdd(currentTime, CMTimeMakeWithSeconds(15, 1))
+		let newTime = CMTimeAdd(currentTime, CMTimeMakeWithSeconds(15, preferredTimescale: 1))
 		player.seek(to: newTime)
 	}
 

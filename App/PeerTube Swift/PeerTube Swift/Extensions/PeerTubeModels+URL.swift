@@ -15,7 +15,7 @@ extension VideoDetails {
 	var thumbnailURL: URL? {
 		guard let appState = AppStateProvider.shared.appState,
 			let instanceURL = appState.currentInstance?.baseURL,
-			let thumbnailPath = thumbnailPath
+			thumbnailPath != nil
 		else {
 			return nil
 		}
