@@ -251,12 +251,14 @@ public final class VideoPlayerController: ObservableObject {
 			// Create player
 			let newPlayer = AVPlayer(playerItem: playerItem)
 
-			// Configure audio session
-			try AVAudioSession.sharedInstance().setCategory(
-				.playback,
-				mode: .moviePlayback,
-				options: []
-			)
+			// Configure audio session (iOS only)
+			#if os(iOS)
+				try AVAudioSession.sharedInstance().setCategory(
+					.playback,
+					mode: .moviePlayback,
+					options: []
+				)
+			#endif
 
 			// Set up observations
 			setupPlayerObservations(player: newPlayer, item: playerItem)
