@@ -151,7 +151,7 @@ struct VideoQualitySelectionView: View {
 
 	// MARK: - Helper Methods
 
-	private func getNetworkCondition() -> NetworkCondition {
+	private func getNetworkCondition() -> SimpleNetworkCondition {
 		// This would integrate with actual network monitoring
 		// For now, return a mock condition based on settings
 		if appState.useWiFiOnly {
@@ -180,7 +180,7 @@ struct VideoQualitySelectionView: View {
 	}
 
 	private func selectOptimalQuality(
-		for condition: NetworkCondition,
+		for condition: SimpleNetworkCondition,
 		from qualities: [VideoQualityOption]
 	) -> VideoQualityOption? {
 		switch condition {
@@ -206,7 +206,7 @@ struct VideoQualitySelectionView: View {
 struct QualityPreferenceRow: View {
 	let quality: VideoQuality
 	let isSelected: Bool
-	let networkCondition: NetworkCondition
+	let networkCondition: SimpleNetworkCondition
 	let action: () -> Void
 
 	var body: some View {
@@ -425,7 +425,7 @@ struct AdvancedQualitySettingsView: View {
 
 // MARK: - Supporting Types
 
-enum NetworkCondition {
+enum SimpleNetworkCondition {
 	case wifi
 	case cellular
 	case poor

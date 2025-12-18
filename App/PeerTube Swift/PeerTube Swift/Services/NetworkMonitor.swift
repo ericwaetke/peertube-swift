@@ -38,7 +38,7 @@ public final class NetworkMonitor: ObservableObject {
 	}
 
 	deinit {
-		stopMonitoring()
+		pathMonitor.cancel()
 	}
 
 	// MARK: - Public Methods

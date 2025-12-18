@@ -26,7 +26,7 @@ enum NavigationDestination: Hashable {
 // MARK: - App State
 
 @MainActor
-final class AppState: ObservableObject {
+public final class AppState: ObservableObject {
 	// MARK: - Published Properties
 
 	@Published var currentInstance: Instance?
@@ -121,7 +121,9 @@ final class AppState: ObservableObject {
 
 	func setInstance(_ instance: Instance) {
 		currentInstance = instance
-		services = PeerTubeServices(instanceURL: instance.url)
+		if let baseURL = instance.baseURL {
+			services = PeerTubeServices(instanceURL: baseURL)
+		}
 		saveCurrentInstance()
 
 		// Update subscription service with new services
@@ -171,7 +173,7 @@ final class AppState: ObservableObject {
 
 	private func loadSavedInstance() {
 		if let savedURLString = userDefaults.string(forKey: Self.currentInstanceKey),
-			let url = URL(string: savedURLString)
+			URL(string: savedURLString) != nil
 		{
 			// Try to load the saved instance
 			Task {
