@@ -10,19 +10,18 @@ import Foundation
 /// Main service manager that provides centralized access to all PeerTube API services
 @MainActor
 public final class PeerTubeServices: Sendable {
-
 	// MARK: - Properties
 
 	private let apiClient: APIClient
 
 	/// Video-related operations service
-	public lazy var videos: VideoService = VideoService(apiClient: apiClient)
+	public lazy var videos: VideoService = .init(apiClient: apiClient)
 
 	/// Channel-related operations service
-	public lazy var channels: ChannelService = ChannelService(apiClient: apiClient)
+	public lazy var channels: ChannelService = .init(apiClient: apiClient)
 
 	/// Instance-related operations service
-	public lazy var instance: InstanceService = InstanceService(apiClient: apiClient)
+	public lazy var instance: InstanceService = .init(apiClient: apiClient)
 
 	// MARK: - Initialization
 
@@ -51,7 +50,6 @@ public final class PeerTubeServices: Sendable {
 // MARK: - Authentication Convenience
 
 extension PeerTubeServices {
-
 	/// Set authentication token for all services
 	/// - Parameter token: Authentication token to use
 	public func setAuthToken(_ token: AuthToken?) async {
@@ -79,7 +77,6 @@ extension PeerTubeServices {
 // MARK: - Instance Information Convenience
 
 extension PeerTubeServices {
-
 	/// Get the instance hostname this service manager is connected to
 	public var instanceHost: String {
 		apiClient.instanceHost
@@ -96,7 +93,6 @@ extension PeerTubeServices {
 // MARK: - Health Check Convenience
 
 extension PeerTubeServices {
-
 	/// Perform a quick health check on the connected instance
 	/// - Returns: True if instance is reachable and responding
 	public func checkHealth() async -> Bool {
@@ -114,7 +110,6 @@ extension PeerTubeServices {
 // MARK: - Commonly Used Operations
 
 extension PeerTubeServices {
-
 	/// Quick search across videos and channels
 	/// - Parameters:
 	///   - query: Search query string
@@ -126,7 +121,6 @@ extension PeerTubeServices {
 		videoCount: Int = 10,
 		channelCount: Int = 5
 	) async throws -> QuickSearchResults {
-
 		// Use structured concurrency to search videos and channels in parallel
 		return try await withThrowingTaskGroup(of: Void.self) { group in
 			var videoResults: VideoListResponse?
@@ -147,7 +141,11 @@ extension PeerTubeServices {
 
 			// Both should be populated at this point
 			guard let videos = videoResults, let channels = channelResults else {
-				throw PeerTubeAPIError.networkError(.unknown)
+				throw PeerTubeAPIError.networkError(
+					.unknown(
+						NSError(
+							domain: "PeerTubeSwift", code: -1,
+							userInfo: [NSLocalizedDescriptionKey: "Unknown error occurred"])))
 			}
 
 			return QuickSearchResults(
@@ -167,7 +165,6 @@ extension PeerTubeServices {
 		videoCount: Int = 15,
 		channelCount: Int = 10
 	) async throws -> HomepageContent {
-
 		return try await withThrowingTaskGroup(of: Void.self) { group in
 			var trendingVideos: VideoListResponse?
 			var popularChannels: ChannelListResponse?
@@ -196,7 +193,11 @@ extension PeerTubeServices {
 				let channels = popularChannels,
 				let info = instanceInfo
 			else {
-				throw PeerTubeAPIError.networkError(.unknown)
+				throw PeerTubeAPIError.networkError(
+					.unknown(
+						NSError(
+							domain: "PeerTubeSwift", code: -1,
+							userInfo: [NSLocalizedDescriptionKey: "Unknown error occurred"])))
 			}
 
 			return HomepageContent(

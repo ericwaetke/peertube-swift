@@ -10,7 +10,6 @@ import Foundation
 
 /// Utilities for video player functionality
 public enum VideoPlayerUtils {
-
 	// MARK: - Format Detection
 
 	/// Check if a URL is an HLS playlist
@@ -107,7 +106,90 @@ public enum VideoPlayerUtils {
 
 		// Remove duplicates and sort by resolution (highest first)
 		let uniqueOptions = Array(Set(options))
-		return uniqueOptions.sorted { $0.resolution > $1.resolution }
+		return options.sorted { $0.resolution > $1.resolution }
+	}
+
+	/// Select best quality from available options
+	/// - Parameters:
+	///   - qualities: Available quality options
+	///   - preferHLS: Whether to prefer HLS streaming
+	///   - maxResolution: Maximum resolution limit
+	/// - Returns: Best quality option within constraints
+	public static func selectBestQuality(
+		from qualities: [VideoQualityOption],
+		preferHLS: Bool = true,
+		maxResolution: Int = Int.max
+	) -> VideoQualityOption? {
+		let filtered = qualities.filter { $0.resolution <= maxResolution }
+
+		if preferHLS {
+			return filtered.filter { $0.isHLS }.max { $0.resolution < $1.resolution }
+				?? filtered.max { $0.resolution < $1.resolution }
+		} else {
+			return filtered.max { $0.resolution < $1.resolution }
+		}
+	}
+
+	/// Recommend quality based on available bandwidth
+	/// - Parameters:
+	///   - qualities: Available quality options
+	///   - bandwidth: Available bandwidth in Mbps
+	/// - Returns: Recommended quality option
+	public static func recommendQuality(
+		from qualities: [VideoQualityOption],
+		availableBandwidth bandwidth: Double
+	) -> VideoQualityOption? {
+		let sorted = qualities.sorted { $0.resolution > $1.resolution }
+
+		for quality in sorted {
+			let requiredBandwidth = getRequiredBandwidth(for: quality.resolution)
+			if bandwidth >= requiredBandwidth {
+				return quality
+			}
+		}
+
+		return sorted.last  // Fallback to lowest quality
+	}
+
+	/// Estimate data usage for video playback
+	/// - Parameters:
+	///   - resolution: Video resolution
+	///   - durationMinutes: Duration in minutes
+	/// - Returns: Estimated data usage in MB
+	public static func estimateDataUsage(resolution: Int, durationMinutes: Double) -> Double {
+		let mbPerMinute: Double
+		switch resolution {
+		case 0..<360:
+			mbPerMinute = 5.0  // ~5MB/min for 240p
+		case 360..<540:
+			mbPerMinute = 15.0  // ~15MB/min for 480p
+		case 540..<900:
+			mbPerMinute = 25.0  // ~25MB/min for 720p
+		case 900..<1440:
+			mbPerMinute = 45.0  // ~45MB/min for 1080p
+		default:
+			mbPerMinute = 80.0  // ~80MB/min for higher resolutions
+		}
+
+		return mbPerMinute * durationMinutes
+	}
+
+	/// Get required bandwidth for a resolution
+	/// - Parameter resolution: Video resolution
+	/// - Returns: Required bandwidth in Mbps
+	private static func getRequiredBandwidth(for resolution: Int) -> Double {
+		switch resolution {
+		case 0..<360:
+			return 1.0  // 1 Mbps for 240p
+		case 360..<540:
+			return 2.5  // 2.5 Mbps for 480p
+		case 540..<900:
+			return 5.0  // 5 Mbps for 720p
+		case 900..<1440:
+			return 8.0  // 8 Mbps for 1080p
+		default:
+			return 15.0  // 15 Mbps for 1440p+
+		}
 	}
 
 	/// Get the best quality URL from VideoDetails
