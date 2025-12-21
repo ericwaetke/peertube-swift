@@ -7,8 +7,8 @@
 
 import Combine
 import Foundation
-import PeerTubeSwift
 import SwiftUI
+import OpenAPIURLSession
 
 // MARK: - Navigation Destination
 
@@ -16,7 +16,7 @@ enum NavigationDestination: Hashable {
 	case instanceSelection
 	case videoDetail(videoId: String)
 	case channelDetail(channelId: String)
-	case videoPlayer(video: VideoDetails)
+	case videoPlayer(video: String)
 	case search
 	case settings
 	case about
@@ -28,16 +28,17 @@ enum NavigationDestination: Hashable {
 @MainActor
 public final class AppState: ObservableObject {
 	// MARK: - Published Properties
+    
+    @Published var client: Client
 
-	@Published var currentInstance: Instance?
-	@Published var services: PeerTubeServices?
+//	@Published var currentInstance: Instance?
 	@Published var navigationPath = NavigationPath()
 	@Published var selectedTab: Tab = .browse
 	@Published var isLoading = false
 	@Published var error: Error?
 
 	/// Subscription service for managing local channel subscriptions
-	@Published var subscriptionService: SubscriptionService
+//	@Published var subscriptionService: SubscriptionService
 
 	// MARK: - User Settings
 
@@ -60,20 +61,21 @@ public final class AppState: ObservableObject {
 
 	private let userDefaults = UserDefaults.standard
 	private static let currentInstanceKey = "CurrentInstance"
-	private static let defaultInstanceURL = "https://framatube.org"
+	private static let defaultInstanceURL = "https://peertube.wtf"
 
 	// MARK: - Initialization
 
 	init() {
 		// Initialize subscription service
-		subscriptionService = SubscriptionService()
-
-		AppStateProvider.shared.setAppState(self)
-		loadSettings()
-		loadSavedInstance()
-
-		// Set up subscription service reference
-		subscriptionService.setAppState(self)
+//		subscriptionService = SubscriptionService()
+//
+//		AppStateProvider.shared.setAppState(self)
+//		loadSettings()
+////		loadSavedInstance()
+//
+//		// Set up subscription service reference
+//		subscriptionService.setAppState(self)
+        self.client = Client(serverURL: URL(string: AppState.defaultInstanceURL)!, transport: URLSessionTransport())
 	}
 
 	// MARK: - Navigation
@@ -117,81 +119,6 @@ public final class AppState: ObservableObject {
 		resetNavigation()
 	}
 
-	// MARK: - Instance Management
-
-	func setInstance(_ instance: Instance) {
-		currentInstance = instance
-		if let baseURL = instance.baseURL {
-			services = PeerTubeServices(instanceURL: baseURL)
-		}
-		saveCurrentInstance()
-
-		// Update subscription service with new services
-		subscriptionService.setAppState(self)
-	}
-
-	func setInstanceURL(_ urlString: String) async throws {
-		guard let url = URL(string: urlString) else {
-			throw AppError.invalidURL
-		}
-
-		isLoading = true
-		error = nil
-
-		do {
-			let services = PeerTubeServices(instanceURL: url)
-			let instanceInfo = try await services.instance.getBasicInfo()
-
-			// Create Instance object from basic info
-			let instance = Instance(
-				host: url.host ?? url.absoluteString,
-				name: instanceInfo.name,
-				shortDescription: instanceInfo.description,
-				version: instanceInfo.version,
-				signupAllowed: instanceInfo.isSignupAllowed,
-				totalUsers: instanceInfo.userCount,
-				totalVideos: instanceInfo.videoCount
-			)
-
-			await MainActor.run {
-				self.currentInstance = instance
-				self.services = services
-				self.isLoading = false
-				saveCurrentInstance()
-
-				// Update subscription service with new services
-				subscriptionService.setAppState(self)
-			}
-		} catch {
-			await MainActor.run {
-				self.error = error
-				self.isLoading = false
-			}
-			throw error
-		}
-	}
-
-	private func loadSavedInstance() {
-		if let savedURLString = userDefaults.string(forKey: Self.currentInstanceKey),
-			URL(string: savedURLString) != nil
-		{
-			// Try to load the saved instance
-			Task {
-				try? await setInstanceURL(savedURLString)
-			}
-		} else {
-			// Load default instance
-			Task {
-				try? await setInstanceURL(Self.defaultInstanceURL)
-			}
-		}
-	}
-
-	private func saveCurrentInstance() {
-		if let instance = currentInstance {
-			userDefaults.set(instance.baseURL?.absoluteString, forKey: Self.currentInstanceKey)
-		}
-	}
 
 	// MARK: - Error Handling
 
@@ -227,19 +154,19 @@ enum AppError: LocalizedError {
 
 extension AppState {
 	/// Convenience method to check if services are available
-	var hasServices: Bool {
-		services != nil
-	}
-
-	/// Convenience method to get the current instance name
-	var instanceName: String {
-		currentInstance?.name ?? "Unknown Instance"
-	}
-
-	/// Convenience method to get the current instance URL
-	var instanceURL: String {
-		currentInstance?.baseURL?.absoluteString ?? ""
-	}
+//	var hasServices: Bool {
+//		services != nil
+//	}
+//
+//	/// Convenience method to get the current instance name
+//	var instanceName: String {
+//		currentInstance?.name ?? "Unknown Instance"
+//	}
+//
+//	/// Convenience method to get the current instance URL
+//	var instanceURL: String {
+//		currentInstance?.baseURL?.absoluteString ?? ""
+//	}
 
 	// MARK: - Settings Management
 
