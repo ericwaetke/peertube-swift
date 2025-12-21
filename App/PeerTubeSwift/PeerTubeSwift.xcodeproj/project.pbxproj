@@ -1,0 +1,679 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		F67429152EF4B1A6000600DB /* OpenAPIURLSession in Frameworks */ = {isa = PBXBuildFile; productRef = F67429142EF4B1A6000600DB /* OpenAPIURLSession */; };
+		F67429182EF4B1B0000600DB /* OpenAPIRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = F67429172EF4B1B0000600DB /* OpenAPIRuntime */; };
+		F6742FFA2EF4B89B000600DB /* OpenAPIClient in Frameworks */ = {isa = PBXBuildFile; productRef = F6742FF92EF4B89B000600DB /* OpenAPIClient */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F67428F32EF4AFC9000600DB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F67428D92EF4AFC6000600DB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F67428E02EF4AFC6000600DB;
+			remoteInfo = PeerTubeSwift;
+		};
+		F67428FD2EF4AFC9000600DB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F67428D92EF4AFC6000600DB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F67428E02EF4AFC6000600DB;
+			remoteInfo = PeerTubeSwift;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PeerTubeSwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F67428F22EF4AFC9000600DB /* PeerTubeSwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeerTubeSwiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F67428FC2EF4AFC9000600DB /* PeerTubeSwiftUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeerTubeSwiftUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		F67429042EF4AFC9000600DB /* Exceptions for "PeerTubeSwift" folder in "PeerTubeSwift" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = F67428E02EF4AFC6000600DB /* PeerTubeSwift */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		F67428E32EF4AFC6000600DB /* PeerTubeSwift */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				F67429042EF4AFC9000600DB /* Exceptions for "PeerTubeSwift" folder in "PeerTubeSwift" target */,
+			);
+			path = PeerTubeSwift;
+			sourceTree = "<group>";
+		};
+		F67428F52EF4AFC9000600DB /* PeerTubeSwiftTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PeerTubeSwiftTests;
+			sourceTree = "<group>";
+		};
+		F67428FF2EF4AFC9000600DB /* PeerTubeSwiftUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PeerTubeSwiftUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F67428DE2EF4AFC6000600DB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F6742FFA2EF4B89B000600DB /* OpenAPIClient in Frameworks */,
+				F67429182EF4B1B0000600DB /* OpenAPIRuntime in Frameworks */,
+				F67429152EF4B1A6000600DB /* OpenAPIURLSession in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F67428EF2EF4AFC9000600DB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F67428F92EF4AFC9000600DB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		F67428D82EF4AFC6000600DB = {
+			isa = PBXGroup;
+			children = (
+				F67428E32EF4AFC6000600DB /* PeerTubeSwift */,
+				F67428F52EF4AFC9000600DB /* PeerTubeSwiftTests */,
+				F67428FF2EF4AFC9000600DB /* PeerTubeSwiftUITests */,
+				F67428E22EF4AFC6000600DB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F67428E22EF4AFC6000600DB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */,
+				F67428F22EF4AFC9000600DB /* PeerTubeSwiftTests.xctest */,
+				F67428FC2EF4AFC9000600DB /* PeerTubeSwiftUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F67428E02EF4AFC6000600DB /* PeerTubeSwift */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F67429052EF4AFC9000600DB /* Build configuration list for PBXNativeTarget "PeerTubeSwift" */;
+			buildPhases = (
+				F67428DD2EF4AFC6000600DB /* Sources */,
+				F67428DE2EF4AFC6000600DB /* Frameworks */,
+				F67428DF2EF4AFC6000600DB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F67429342EF4B586000600DB /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				F67428E32EF4AFC6000600DB /* PeerTubeSwift */,
+			);
+			name = PeerTubeSwift;
+			packageProductDependencies = (
+				F67429142EF4B1A6000600DB /* OpenAPIURLSession */,
+				F67429172EF4B1B0000600DB /* OpenAPIRuntime */,
+				F6742FF92EF4B89B000600DB /* OpenAPIClient */,
+			);
+			productName = PeerTubeSwift;
+			productReference = F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F67428F12EF4AFC9000600DB /* PeerTubeSwiftTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F674290A2EF4AFC9000600DB /* Build configuration list for PBXNativeTarget "PeerTubeSwiftTests" */;
+			buildPhases = (
+				F67428EE2EF4AFC9000600DB /* Sources */,
+				F67428EF2EF4AFC9000600DB /* Frameworks */,
+				F67428F02EF4AFC9000600DB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F67428F42EF4AFC9000600DB /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				F67428F52EF4AFC9000600DB /* PeerTubeSwiftTests */,
+			);
+			name = PeerTubeSwiftTests;
+			packageProductDependencies = (
+			);
+			productName = PeerTubeSwiftTests;
+			productReference = F67428F22EF4AFC9000600DB /* PeerTubeSwiftTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F67428FB2EF4AFC9000600DB /* PeerTubeSwiftUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F674290D2EF4AFC9000600DB /* Build configuration list for PBXNativeTarget "PeerTubeSwiftUITests" */;
+			buildPhases = (
+				F67428F82EF4AFC9000600DB /* Sources */,
+				F67428F92EF4AFC9000600DB /* Frameworks */,
+				F67428FA2EF4AFC9000600DB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F67428FE2EF4AFC9000600DB /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				F67428FF2EF4AFC9000600DB /* PeerTubeSwiftUITests */,
+			);
+			name = PeerTubeSwiftUITests;
+			packageProductDependencies = (
+			);
+			productName = PeerTubeSwiftUITests;
+			productReference = F67428FC2EF4AFC9000600DB /* PeerTubeSwiftUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F67428D92EF4AFC6000600DB /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					F67428E02EF4AFC6000600DB = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					F67428F12EF4AFC9000600DB = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = F67428E02EF4AFC6000600DB;
+					};
+					F67428FB2EF4AFC9000600DB = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = F67428E02EF4AFC6000600DB;
+					};
+				};
+			};
+			buildConfigurationList = F67428DC2EF4AFC6000600DB /* Build configuration list for PBXProject "PeerTubeSwift" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = F67428D82EF4AFC6000600DB;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F67429132EF4B1A6000600DB /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */,
+				F67429162EF4B1B0000600DB /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */,
+				F67429322EF4B580000600DB /* XCRemoteSwiftPackageReference "swift-openapi-generator" */,
+				F6742FF82EF4B89B000600DB /* XCLocalSwiftPackageReference "../../PeerTubeSDK" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = F67428E22EF4AFC6000600DB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F67428E02EF4AFC6000600DB /* PeerTubeSwift */,
+				F67428F12EF4AFC9000600DB /* PeerTubeSwiftTests */,
+				F67428FB2EF4AFC9000600DB /* PeerTubeSwiftUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F67428DF2EF4AFC6000600DB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F67428F02EF4AFC9000600DB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F67428FA2EF4AFC9000600DB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F67428DD2EF4AFC6000600DB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F67428EE2EF4AFC9000600DB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F67428F82EF4AFC9000600DB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F67428F42EF4AFC9000600DB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F67428E02EF4AFC6000600DB /* PeerTubeSwift */;
+			targetProxy = F67428F32EF4AFC9000600DB /* PBXContainerItemProxy */;
+		};
+		F67428FE2EF4AFC9000600DB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F67428E02EF4AFC6000600DB /* PeerTubeSwift */;
+			targetProxy = F67428FD2EF4AFC9000600DB /* PBXContainerItemProxy */;
+		};
+		F67429342EF4B586000600DB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = F67429332EF4B586000600DB /* OpenAPIGenerator */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		F67429062EF4AFC9000600DB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PeerTubeSwift/PeerTubeSwift.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 855632PAQ8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PeerTubeSwift/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = design.woven.PeerTubeSwift;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		F67429072EF4AFC9000600DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PeerTubeSwift/PeerTubeSwift.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 855632PAQ8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PeerTubeSwift/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = design.woven.PeerTubeSwift;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F67429082EF4AFC9000600DB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 855632PAQ8;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		F67429092EF4AFC9000600DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 855632PAQ8;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		F674290B2EF4AFC9000600DB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 855632PAQ8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = design.woven.PeerTubeSwiftTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PeerTubeSwift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PeerTubeSwift";
+			};
+			name = Debug;
+		};
+		F674290C2EF4AFC9000600DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 855632PAQ8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = design.woven.PeerTubeSwiftTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PeerTubeSwift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PeerTubeSwift";
+			};
+			name = Release;
+		};
+		F674290E2EF4AFC9000600DB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 855632PAQ8;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = design.woven.PeerTubeSwiftUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PeerTubeSwift;
+			};
+			name = Debug;
+		};
+		F674290F2EF4AFC9000600DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 855632PAQ8;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = design.woven.PeerTubeSwiftUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PeerTubeSwift;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F67428DC2EF4AFC6000600DB /* Build configuration list for PBXProject "PeerTubeSwift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F67429082EF4AFC9000600DB /* Debug */,
+				F67429092EF4AFC9000600DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F67429052EF4AFC9000600DB /* Build configuration list for PBXNativeTarget "PeerTubeSwift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F67429062EF4AFC9000600DB /* Debug */,
+				F67429072EF4AFC9000600DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F674290A2EF4AFC9000600DB /* Build configuration list for PBXNativeTarget "PeerTubeSwiftTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F674290B2EF4AFC9000600DB /* Debug */,
+				F674290C2EF4AFC9000600DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F674290D2EF4AFC9000600DB /* Build configuration list for PBXNativeTarget "PeerTubeSwiftUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F674290E2EF4AFC9000600DB /* Debug */,
+				F674290F2EF4AFC9000600DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		F6742FF82EF4B89B000600DB /* XCLocalSwiftPackageReference "../../PeerTubeSDK" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../PeerTubeSDK;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F67429132EF4B1A6000600DB /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-urlsession";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.0;
+			};
+		};
+		F67429162EF4B1B0000600DB /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-runtime";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.9.0;
+			};
+		};
+		F67429322EF4B580000600DB /* XCRemoteSwiftPackageReference "swift-openapi-generator" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-generator";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.10.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F67429142EF4B1A6000600DB /* OpenAPIURLSession */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F67429132EF4B1A6000600DB /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */;
+			productName = OpenAPIURLSession;
+		};
+		F67429172EF4B1B0000600DB /* OpenAPIRuntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F67429162EF4B1B0000600DB /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */;
+			productName = OpenAPIRuntime;
+		};
+		F67429332EF4B586000600DB /* OpenAPIGenerator */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F67429322EF4B580000600DB /* XCRemoteSwiftPackageReference "swift-openapi-generator" */;
+			productName = "plugin:OpenAPIGenerator";
+		};
+		F6742FF92EF4B89B000600DB /* OpenAPIClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenAPIClient;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = F67428D92EF4AFC6000600DB /* Project object */;
+}
