@@ -3,6 +3,7 @@ uv = "latest"
 swiftlint = "latest"
 swiftformat = "latest"
 "npm:beads-ui" = "latest"
+"npm:@openapitools/openapi-generator-cli" = "latest"
 
 [tasks.beads]
 run = "uvx beads-mcp"
@@ -24,3 +25,6 @@ run = "cd PeerTubeSwift && swift build"
 
 [tasks.test]
 run = "cd PeerTubeSwift && swift test"
+
+[tasks.generate-client]
+run = "openapi-generator-cli generate -i openapi.json -g swift5 -o PeertubeClientOpenAPI --global-property=tag:Video"

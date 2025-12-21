@@ -9,6 +9,8 @@ import Combine
 import Foundation
 import SwiftUI
 import OpenAPIURLSession
+import PeertubeSDK
+import OpenAPIClient
 
 // MARK: - Navigation Destination
 
@@ -29,7 +31,7 @@ enum NavigationDestination: Hashable {
 public final class AppState: ObservableObject {
 	// MARK: - Published Properties
     
-    @Published var client: Client
+    @Published var client: PeertubeClient
 
 //	@Published var currentInstance: Instance?
 	@Published var navigationPath = NavigationPath()
@@ -75,7 +77,7 @@ public final class AppState: ObservableObject {
 //
 //		// Set up subscription service reference
 //		subscriptionService.setAppState(self)
-        self.client = Client(serverURL: URL(string: AppState.defaultInstanceURL)!, transport: URLSessionTransport())
+        self.client = PeertubeClient(serverURL: AppState.defaultInstanceURL)
 	}
 
 	// MARK: - Navigation
