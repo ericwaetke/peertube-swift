@@ -9,8 +9,7 @@ import Combine
 import Foundation
 import SwiftUI
 import OpenAPIURLSession
-import PeertubeSDK
-import OpenAPIClient
+import peertube_swift_sdk
 
 // MARK: - Navigation Destination
 
@@ -77,7 +76,7 @@ public final class AppState: ObservableObject {
 //
 //		// Set up subscription service reference
 //		subscriptionService.setAppState(self)
-        self.client = PeertubeClient(serverURL: AppState.defaultInstanceURL)
+        self.client = PeertubeClient(scheme: "https", host: "peertube.wtf")
 	}
 
 	// MARK: - Navigation
