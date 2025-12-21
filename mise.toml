@@ -27,4 +27,4 @@ run = "cd PeerTubeSwift && swift build"
 run = "cd PeerTubeSwift && swift test"
 
 [tasks.generate-client]
-run = "openapi-generator-cli generate -i openapi.json -g swift5 -o PeertubeClientOpenAPI --global-property=tag:Video"
+run = "openapi-generator-cli generate -i openapi.json -g swift6 -o PeertubeClientOpenAPI --global-property=tag:Video"
