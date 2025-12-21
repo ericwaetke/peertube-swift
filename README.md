@@ -8,6 +8,11 @@ This is a working Title for a Native iOS PeerTube Client
 - https://github.com/jellyfin/Swiftfin/
 	- https://raw.githubusercontent.com/jellyfin/Swiftfin/refs/heads/main/Documentation/players.md
 - https://developer.apple.com/documentation/AVKit
+- https://gitlab.futo.org/videostreaming/grayjay
+	- https://gitlab.futo.org/videostreaming/plugins/peertube
+- https://github.com/TeamNewPipe/NewPipe
+- https://codeberg.org/tom79/Fedilab
+- https://gitlab.com/agosto182/p2play
 
 ## Features
 
