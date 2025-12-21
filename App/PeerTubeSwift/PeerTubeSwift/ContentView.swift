@@ -6,82 +6,80 @@
 //
 
 import SwiftUI
-import SwiftData
-
-import OpenAPIRuntime
-import OpenAPIURLSession
-
-import OpenAPIClient
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-    
-    let client: Client
-    
-    init() {
-        self.client = Client(serverURL: URL(string: "https://peertube.wtf")!, transport: URLSessionTransport())
-    }
-    
-    func fetchVideos() async throws {
-        let response = try await client.getVideos()
-        
-        switch response {
-        case let .ok(okResponse):
-            switch okResponse.body {
-            case .json(jsosn):
-                jsosn.description
-            }
-        case .undocumented(statusCode: let statusCode, _):
-            thrrow
-        }
-    }
+	@EnvironmentObject var appState: AppState
+	@StateObject private var networkMonitor = NetworkMonitor()
 
+	var body: some View {
+		TabView(selection: $appState.selectedTab) {
+			// Browse Tab
+			NavigationStack(path: $appState.navigationPath) {
+				VStack(spacing: 12) {
+					Text("Browse")
+						.font(.title2)
+					Text("Instance: \(appState.instanceName)")
+					Text("Network: \(networkMonitor.networkCondition.displayName)")
+						.foregroundStyle(networkMonitor.networkCondition.color)
+				}
+				.padding()
+				.navigationTitle("Browse")
+			}
+			.tabItem {
+				Label(AppState.Tab.browse.rawValue, systemImage: AppState.Tab.browse.systemImage)
+			}
+			.tag(AppState.Tab.browse)
 
-    var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
+			// Subscriptions Tab
+			NavigationStack {
+				VStack(spacing: 12) {
+					Text("Subscriptions")
+						.font(.title2)
+					Text("Count: \(appState.subscriptionService.subscriptionCount)")
+				}
+				.padding()
+				.navigationTitle("Subscriptions")
+			}
+			.tabItem {
+				Label(
+					AppState.Tab.subscriptions.rawValue,
+					systemImage: AppState.Tab.subscriptions.systemImage)
+			}
+			.tag(AppState.Tab.subscriptions)
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
-    }
+			// Settings Tab
+			NavigationStack {
+				Form {
+					Section(header: Text("Playback")) {
+						Toggle("Auto-play videos", isOn: $appState.autoPlayVideos)
+						Picker("Default quality", selection: $appState.defaultVideoQuality) {
+							ForEach(VideoQuality.allCases, id: \.self) { quality in
+								Text(quality.displayName).tag(quality)
+							}
+						}
+					}
+					Section(header: Text("Network")) {
+						Toggle("Use WiFi only", isOn: $appState.useWiFiOnly)
+					}
+					Section(header: Text("Notifications")) {
+						Toggle("Enable notifications", isOn: $appState.enableNotifications)
+					}
+				}
+				.navigationTitle("Settings")
+			}
+			.tabItem {
+				Label(
+					AppState.Tab.settings.rawValue, systemImage: AppState.Tab.settings.systemImage)
+			}
+			.tag(AppState.Tab.settings)
+		}
+		.onAppear {
+			networkMonitor.startMonitoring()
+		}
+	}
 }
 
 #Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+	ContentView()
+		.environmentObject(AppState())
 }
