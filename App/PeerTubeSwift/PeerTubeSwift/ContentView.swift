@@ -6,24 +6,42 @@
 //
 
 import SwiftUI
+import PeertubeSDK
 
 struct ContentView: View {
 	@EnvironmentObject var appState: AppState
 	@StateObject private var networkMonitor = NetworkMonitor()
+    
+    @State var videos: [Components.Schemas.Video] = []
 
 	var body: some View {
 		TabView(selection: $appState.selectedTab) {
 			// Browse Tab
 			NavigationStack(path: $appState.navigationPath) {
-				VStack(spacing: 12) {
-					Text("Browse")
-						.font(.title2)
-//					Text("Instance: \(appState.instanceName)")
-					Text("Network: \(networkMonitor.networkCondition.displayName)")
-						.foregroundStyle(networkMonitor.networkCondition.color)
-				}
+                ScrollView {
+                    LazyVStack(alignment: .leading) {
+                        ForEach(videos, id: \.self) { video in
+                            Text("Row \(String(describing: video.name))")
+                        }
+                    }
+                }
+
 				.padding()
 				.navigationTitle("Browse")
+                .onAppear {
+                    Task {
+                        do {
+                            guard let result = try await appState.client.getVideos() else {
+                                print("getVideos didnt throw, but returned nil")
+                                return
+                            }
+                            videos = result
+                        } catch {
+                            print("Error getting videos")
+                            print(error)
+                        }
+                    }
+                }
 			}
 			.tabItem {
 				Label(AppState.Tab.browse.rawValue, systemImage: AppState.Tab.browse.systemImage)
