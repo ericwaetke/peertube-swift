@@ -6,12 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		F67429152EF4B1A6000600DB /* OpenAPIURLSession in Frameworks */ = {isa = PBXBuildFile; productRef = F67429142EF4B1A6000600DB /* OpenAPIURLSession */; };
-		F67429182EF4B1B0000600DB /* OpenAPIRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = F67429172EF4B1B0000600DB /* OpenAPIRuntime */; };
-		F6742FFA2EF4B89B000600DB /* OpenAPIClient in Frameworks */ = {isa = PBXBuildFile; productRef = F6742FF92EF4B89B000600DB /* OpenAPIClient */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		F67428F32EF4AFC9000600DB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -33,6 +27,7 @@
 		F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PeerTubeSwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F67428F22EF4AFC9000600DB /* PeerTubeSwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeerTubeSwiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F67428FC2EF4AFC9000600DB /* PeerTubeSwiftUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeerTubeSwiftUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F6BF922F2EF860F6001EAFBD /* peertube-swift-sdk */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "peertube-swift-sdk"; path = "/Users/ericwatke/Documents/GitHub/peertube-swift-sdk"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -71,9 +66,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F6742FFA2EF4B89B000600DB /* OpenAPIClient in Frameworks */,
-				F67429182EF4B1B0000600DB /* OpenAPIRuntime in Frameworks */,
-				F67429152EF4B1A6000600DB /* OpenAPIURLSession in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -97,6 +89,7 @@
 		F67428D82EF4AFC6000600DB = {
 			isa = PBXGroup;
 			children = (
+				F6BF922F2EF860F6001EAFBD /* peertube-swift-sdk */,
 				F67428E32EF4AFC6000600DB /* PeerTubeSwift */,
 				F67428F52EF4AFC9000600DB /* PeerTubeSwiftTests */,
 				F67428FF2EF4AFC9000600DB /* PeerTubeSwiftUITests */,
@@ -128,16 +121,12 @@
 			buildRules = (
 			);
 			dependencies = (
-				F67429342EF4B586000600DB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				F67428E32EF4AFC6000600DB /* PeerTubeSwift */,
 			);
 			name = PeerTubeSwift;
 			packageProductDependencies = (
-				F67429142EF4B1A6000600DB /* OpenAPIURLSession */,
-				F67429172EF4B1B0000600DB /* OpenAPIRuntime */,
-				F6742FF92EF4B89B000600DB /* OpenAPIClient */,
 			);
 			productName = PeerTubeSwift;
 			productReference = F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */;
@@ -222,10 +211,6 @@
 			mainGroup = F67428D82EF4AFC6000600DB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				F67429132EF4B1A6000600DB /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */,
-				F67429162EF4B1B0000600DB /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */,
-				F67429322EF4B580000600DB /* XCRemoteSwiftPackageReference "swift-openapi-generator" */,
-				F6742FF82EF4B89B000600DB /* XCLocalSwiftPackageReference "../../PeerTubeSDK" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F67428E22EF4AFC6000600DB /* Products */;
@@ -297,10 +282,6 @@
 			isa = PBXTargetDependency;
 			target = F67428E02EF4AFC6000600DB /* PeerTubeSwift */;
 			targetProxy = F67428FD2EF4AFC9000600DB /* PBXContainerItemProxy */;
-		};
-		F67429342EF4B586000600DB /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = F67429332EF4B586000600DB /* OpenAPIGenerator */;
 		};
 /* End PBXTargetDependency section */
 
@@ -618,62 +599,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		F6742FF82EF4B89B000600DB /* XCLocalSwiftPackageReference "../../PeerTubeSDK" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../PeerTubeSDK;
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		F67429132EF4B1A6000600DB /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/apple/swift-openapi-urlsession";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.2.0;
-			};
-		};
-		F67429162EF4B1B0000600DB /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/apple/swift-openapi-runtime";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.9.0;
-			};
-		};
-		F67429322EF4B580000600DB /* XCRemoteSwiftPackageReference "swift-openapi-generator" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/apple/swift-openapi-generator";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.10.3;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		F67429142EF4B1A6000600DB /* OpenAPIURLSession */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F67429132EF4B1A6000600DB /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */;
-			productName = OpenAPIURLSession;
-		};
-		F67429172EF4B1B0000600DB /* OpenAPIRuntime */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F67429162EF4B1B0000600DB /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */;
-			productName = OpenAPIRuntime;
-		};
-		F67429332EF4B586000600DB /* OpenAPIGenerator */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F67429322EF4B580000600DB /* XCRemoteSwiftPackageReference "swift-openapi-generator" */;
-			productName = "plugin:OpenAPIGenerator";
-		};
-		F6742FF92EF4B89B000600DB /* OpenAPIClient */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = OpenAPIClient;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F67428D92EF4AFC6000600DB /* Project object */;
 }

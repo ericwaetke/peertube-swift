@@ -18,7 +18,7 @@ struct ContentView: View {
 				VStack(spacing: 12) {
 					Text("Browse")
 						.font(.title2)
-					Text("Instance: \(appState.instanceName)")
+//					Text("Instance: \(appState.instanceName)")
 					Text("Network: \(networkMonitor.networkCondition.displayName)")
 						.foregroundStyle(networkMonitor.networkCondition.color)
 				}
@@ -35,7 +35,7 @@ struct ContentView: View {
 				VStack(spacing: 12) {
 					Text("Subscriptions")
 						.font(.title2)
-					Text("Count: \(appState.subscriptionService.subscriptionCount)")
+//					Text("Count: \(appState.subscriptionService.subscriptionCount)")
 				}
 				.padding()
 				.navigationTitle("Subscriptions")
