@@ -2,9 +2,13 @@
 uv = "latest"
 swiftlint = "latest"
 swiftformat = "latest"
+"npm:beads-ui" = "latest"
 
 [tasks.beads]
 run = "uvx beads-mcp"
+
+[tasks.beads-ui]
+run = "bdui start --open --port 3535"
 
 [tasks.xcode-mcp]
 run = "npx -y xcodebuildmcp@latest"
