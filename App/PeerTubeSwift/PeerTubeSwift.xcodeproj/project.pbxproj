@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F635CF1D2EF86C01003D7CB2 /* PeertubeSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F635CF1C2EF86C01003D7CB2 /* PeertubeSDK */; };
+		F635CF602EF8A60B003D7CB2 /* peertube-swift-sdk in Frameworks */ = {isa = PBXBuildFile; productRef = F635CF5F2EF8A60B003D7CB2 /* peertube-swift-sdk */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,7 +70,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F635CF1D2EF86C01003D7CB2 /* PeertubeSDK in Frameworks */,
+				F635CF602EF8A60B003D7CB2 /* peertube-swift-sdk in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -140,7 +140,7 @@
 			);
 			name = PeerTubeSwift;
 			packageProductDependencies = (
-				F635CF1C2EF86C01003D7CB2 /* PeertubeSDK */,
+				F635CF5F2EF8A60B003D7CB2 /* peertube-swift-sdk */,
 			);
 			productName = PeerTubeSwift;
 			productReference = F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */;
@@ -225,7 +225,6 @@
 			mainGroup = F67428D82EF4AFC6000600DB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				F635CF1E2EF885B4003D7CB2 /* XCLocalSwiftPackageReference "../../PeertubeClientOpenAPI" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F67428E22EF4AFC6000600DB /* Products */;
@@ -617,17 +616,10 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		F635CF1E2EF885B4003D7CB2 /* XCLocalSwiftPackageReference "../../PeertubeClientOpenAPI" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../PeertubeClientOpenAPI;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
-		F635CF1C2EF86C01003D7CB2 /* PeertubeSDK */ = {
+		F635CF5F2EF8A60B003D7CB2 /* peertube-swift-sdk */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = PeertubeSDK;
+			productName = "peertube-swift-sdk";
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
