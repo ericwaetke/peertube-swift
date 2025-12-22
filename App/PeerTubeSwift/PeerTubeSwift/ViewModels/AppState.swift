@@ -10,6 +10,7 @@ import Foundation
 import SwiftUI
 import OpenAPIURLSession
 import peertube_swift_sdk
+import Observation
 
 // MARK: - Navigation Destination
 
@@ -26,37 +27,37 @@ enum NavigationDestination: Hashable {
 
 // MARK: - App State
 
-@MainActor
-public final class AppState: ObservableObject {
+@Observable
+final class AppState {
 	// MARK: - Published Properties
     
-    @Published var client: PeertubeClient
+    var client: PeertubeClient
 
-//	@Published var currentInstance: Instance?
-	@Published var navigationPath = NavigationPath()
-	@Published var selectedTab: Tab = .browse
-	@Published var isLoading = false
-	@Published var error: Error?
+//	var currentInstance: Instance?
+	var navigationPath = NavigationPath()
+	var selectedTab: Tab = .browse
+	var isLoading = false
+	var error: Error?
 
 	/// Subscription service for managing local channel subscriptions
-//	@Published var subscriptionService: SubscriptionService
+//	var subscriptionService: SubscriptionService
 
 	// MARK: - User Settings
 
 	/// Auto-play videos when opened
-	@Published var autoPlayVideos = true
+	var autoPlayVideos = true
 
 	/// Default video quality preference
-	@Published var defaultVideoQuality: VideoQuality = .auto
+	var defaultVideoQuality: VideoQuality = .auto
 
 	/// Use WiFi only for streaming
-	@Published var useWiFiOnly = false
+	var useWiFiOnly = false
 
 	/// Enable notifications for subscriptions
-	@Published var enableNotifications = true
+	var enableNotifications = true
 
 	/// Color scheme preference
-	@Published var colorScheme: ColorScheme?
+	var colorScheme: ColorScheme?
 
 	// MARK: - Private Properties
 
