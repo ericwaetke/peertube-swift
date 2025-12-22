@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import peertube_swift_sdk
+import TubeSDK
 
 struct Explore: View {
     @Environment(AppState.self) private var appState: AppState
