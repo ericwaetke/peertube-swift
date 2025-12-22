@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import peertube_swift_sdk
+import TubeSDK
 
 struct VideoCard: View {
     @Environment(AppState.self) private var appState: AppState
@@ -83,9 +83,6 @@ struct VideoCard: View {
 }
 
 #Preview {
-//    var state = AppState()
-//    let videos = try await state.client.getVideos()
-//    if let video = videos.first{
-//        VideoCard(video: video)
-//    }
+    VideoCard(host: "example.com", video: VideoMockData)
+        .environment(AppState.example)
 }

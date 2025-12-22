@@ -8,8 +8,7 @@
 import Combine
 import Foundation
 import SwiftUI
-import OpenAPIURLSession
-import peertube_swift_sdk
+import TubeSDK
 import Observation
 
 // MARK: - Navigation Destination
@@ -31,7 +30,7 @@ enum NavigationDestination: Hashable {
 final class AppState {
 	// MARK: - Published Properties
     
-    var client: PeertubeClient
+    var client: TubeSDKClient
 
 //	var currentInstance: Instance?
 	var navigationPath = NavigationPath()
@@ -77,14 +76,20 @@ final class AppState {
 //
 //		// Set up subscription service reference
 //		subscriptionService.setAppState(self)
-        self.client = PeertubeClient()
+        self.client = TubeSDKClient()
         do {
             try self.client.connect(scheme: "https", host: "peertube.wtf")
+            try self.client.connect(scheme: "https", host: "tube.tchncs.de")
         } catch {
             print("Couldnt connect to peertube instance")
             print(error)
         }
 	}
+    
+    // Initialiser for Example State
+    init(example: Bool) {
+        self.client = TubeSDKClient()
+    }
 
 	// MARK: - Navigation
 
@@ -285,4 +290,8 @@ extension ColorScheme {
 			return nil
 		}
 	}
+}
+
+extension AppState {
+  static var example: AppState = AppState(example: true)
 }

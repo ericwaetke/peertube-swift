@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F635CF602EF8A60B003D7CB2 /* peertube-swift-sdk in Frameworks */ = {isa = PBXBuildFile; productRef = F635CF5F2EF8A60B003D7CB2 /* peertube-swift-sdk */; };
+		F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F627376B2EF9A871001DAA70 /* TubeSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,7 +70,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F635CF602EF8A60B003D7CB2 /* peertube-swift-sdk in Frameworks */,
+				F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -140,7 +140,7 @@
 			);
 			name = PeerTubeSwift;
 			packageProductDependencies = (
-				F635CF5F2EF8A60B003D7CB2 /* peertube-swift-sdk */,
+				F627376B2EF9A871001DAA70 /* TubeSDK */,
 			);
 			productName = PeerTubeSwift;
 			productReference = F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */;
@@ -617,9 +617,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		F635CF5F2EF8A60B003D7CB2 /* peertube-swift-sdk */ = {
+		F627376B2EF9A871001DAA70 /* TubeSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = "peertube-swift-sdk";
+			productName = TubeSDK;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
