@@ -37,7 +37,11 @@ struct Explore: View {
                             }), id: \.self) { pair in
                                 VideoCard(host: pair.host, video: pair.video)
                                     .onTapGesture {
-                                        appState.navigationPath.append(pair)
+                                        guard let videoId = pair.video.uuid?.uuidString else {
+                                            print("Couldnt get video id")
+                                            return
+                                        }
+                                        appState.navigateTo(.videoDetail(host: pair.host, videoId: videoId))
                                     }
                             }
                         }
@@ -46,8 +50,14 @@ struct Explore: View {
                 }
             }
             .navigationTitle("Explore")
-            .navigationDestination(for: InstanceVideoPair.self) { pair in
-                VideoDetails(host: pair.host, video: pair.video)
+            .navigationDestination(for: NavigationDestination.self) { destination in
+                switch destination {
+                case let .videoDetail(host: host, videoId: videoId):
+                    VideoDetails(host: host, videoId: videoId)
+                default:
+                    Text("View not implemented")
+                }
+                
             }
             .onAppear {
                 if appState.client.videoFeed.count > 0 { return }
