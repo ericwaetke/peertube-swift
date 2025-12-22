@@ -99,8 +99,8 @@ final class AppState {
 	// MARK: - Tab Selection
 
 	enum Tab: String, CaseIterable {
-		case browse = "Browse"
-		case subscriptions = "Subscriptions"
+		case browse = "Explore"
+		case subscriptions = "Feed"
 		case settings = "Settings"
 
 		var systemImage: String {
