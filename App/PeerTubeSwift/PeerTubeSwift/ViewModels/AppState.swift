@@ -89,6 +89,12 @@ final class AppState {
     // Initialiser for Example State
     init(example: Bool) {
         self.client = TubeSDKClient()
+        client.videoFeed = [
+            InstanceVideoPair(host: "example.com", video: VideoMockData),
+            InstanceVideoPair(host: "example.com", video: VideoMockData),
+            InstanceVideoPair(host: "example.com", video: VideoMockData),
+            InstanceVideoPair(host: "example.com", video: VideoMockData)
+        ]
     }
     
     // MARK: - Navigation

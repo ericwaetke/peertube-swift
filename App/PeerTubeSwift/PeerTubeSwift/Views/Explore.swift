@@ -11,7 +11,6 @@ import TubeSDK
 struct Explore: View {
     @Environment(AppState.self) private var appState: AppState
     
-    //    @State var videos: [InstanceVideoPair] = []
     @State var loading = false
     
     var body: some View {
@@ -91,5 +90,5 @@ struct Explore: View {
 
 #Preview {
     Explore()
-        .environment(AppState())
+        .environment(AppState.example)
 }
