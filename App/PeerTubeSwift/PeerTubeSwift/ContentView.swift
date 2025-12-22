@@ -9,13 +9,14 @@ import SwiftUI
 import peertube_swift_sdk
 
 struct ContentView: View {
-    @EnvironmentObject var appState: AppState
+    @Environment(AppState.self) private var appState: AppState
     @StateObject private var networkMonitor = NetworkMonitor()
     
     @State var videos: [Video] = []
     @State var videoDetails: VideoDetails?
     
     var body: some View {
+        @Bindable var appState = appState
         TabView(selection: $appState.selectedTab) {
             // Browse Tab
             NavigationStack(path: $appState.navigationPath) {
@@ -79,37 +80,7 @@ struct ContentView: View {
                 }
                 .navigationTitle("Browse")
                 .navigationDestination(for: Video.self) { video in
-                    VStack {
-                        if let videoDetails = videoDetails,
-                           let streamingPlaylists = videoDetails.streamingPlaylists,
-                           let video = streamingPlaylists.first,
-//                           let qualities = video.files,
-//                           let fullHD = qualities.first,
-                           let urlString = video.playlistUrl,
-                           let url = URL(string: urlString){
-                            VideoPlayerView(videoURL: url)
-                                .frame(
-                                    minWidth: 0,
-                                    maxWidth: .infinity,
-                                    minHeight: 100,
-                                    maxHeight: .infinity
-                                )
-                                .aspectRatio(16 / 9, contentMode: .fit)
-                        }
-                        Text(video.name ?? "Unknown Video Title")
-                            .fontWeight(.bold)
-                            .onAppear {
-                                print(video.name)
-                            }
-                    }
-                    .onAppear {
-                        videoDetails = nil
-                        Task {
-                            if let uuid = video.uuid {
-                                videoDetails = try await appState.client.getVideo(id: uuid.uuidString)
-                            }
-                        }
-                    }
+                    VideoDetails(video: video)
                 }
                 .onAppear {
                     Task {
@@ -179,5 +150,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(AppState())
+        .environment(AppState())
 }

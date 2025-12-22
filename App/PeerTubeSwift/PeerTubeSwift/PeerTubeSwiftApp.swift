@@ -10,12 +10,13 @@ import SwiftUI
 
 @main
 struct PeerTubeSwiftApp: App {
-	@StateObject private var appState = AppState()
+//	@StateObject private var appState = AppState()
+    let appState = AppState()
 
 	var body: some Scene {
 		WindowGroup {
 			ContentView()
-				.environmentObject(appState)
+				.environment(appState)
 		}
 	}
 }
