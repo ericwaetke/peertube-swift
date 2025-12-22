@@ -19,7 +19,10 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         let player = AVPlayer(url: videoURL)
         let playerViewController = AVPlayerViewController()
         playerViewController.player = player
-        playerViewController.player?.play()
+        #if targetEnvironment(preview)
+        #else
+//        playerViewController.player?.play()
+        #endif
         return playerViewController
     }
 

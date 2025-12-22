@@ -34,23 +34,25 @@ struct VideoCard: View {
                     .aspectRatio(16 / 9, contentMode: .fit)
                     .clipShape(.rect(cornerRadius: 8))
                     
-                    if let instanceName = video.channel?.host {
-                        HStack (spacing: 8) {
-                            // Insert Instance Icon Later
-                            Image(systemName: "laser.burst")
-                                .frame(width: 12, height: 12)
-                                .foregroundStyle(.black)
-                                .frame(width: 36, height: 36)
-                                .background(Color(red: 0.74, green: 0.9, blue: 1))
-                                .clipShape(.rect(cornerRadius: 8))
-                            
-                            Text(instanceName)
-                                .padding(.horizontal, 8)
-                                .foregroundStyle(.black)
-                                .background(Color(red: 0.74, green: 0.9, blue: 1))
-                                .clipShape(.rect(cornerRadius: 4))
+                    VStack(alignment: .leading) {
+                        if let instanceName = video.channel?.host {
+                            InstanceIndicator(instanceName: instanceName, instanceImage: nil)
+                            .padding(8)
                         }
-                        .padding(8)
+                        
+                        Spacer()
+                        
+                        HStack {
+                            Spacer()
+                            if let durationInt = video.duration {
+                                Text(Duration.seconds(durationInt).formatted())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
+//                                    .clipShape(.rect(cornerRadius: 4))
+                                    .padding(8)
+                            }
+                        }
                     }
                 }
             } else {
@@ -95,5 +97,5 @@ struct VideoCard: View {
 
 #Preview {
     VideoCard(host: "example.com", video: VideoMockData)
-        .environment(AppState.example)
+        .environment(AppState())
 }
