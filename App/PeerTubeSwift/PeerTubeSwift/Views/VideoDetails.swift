@@ -10,6 +10,7 @@ import peertube_swift_sdk
 
 struct VideoDetails: View {
     @Environment(AppState.self) private var appState: AppState
+    let host: String
     let video: Video
     
     @State var videoDetails: peertube_swift_sdk.VideoDetails?
@@ -34,15 +35,40 @@ struct VideoDetails: View {
             }
             Text(video.name ?? "Unknown Video Title")
                 .fontWeight(.bold)
-                .onAppear {
-                    print(video.name)
+            
+            if let views = video.views {
+                Text(views.formatted())
+                    .font(.caption)
+            }
+            if let likes = video.likes,
+               let dislikes = video.dislikes{
+                HStack {
+                    Button {
+                        print("added like")
+                    } label: {
+                        HStack {
+                            Image(systemName: "hand.thumbsup")
+                            Text(likes.formatted())
+                        }
+                    }
+                    
+                    Button {
+                        print("added dislike")
+                    } label: {
+                        HStack {
+                            Image(systemName: "hand.thumbsdown")
+                            Text(dislikes.formatted())
+                        }
+                    }
                 }
+            }
         }
+        .navigationTitle(video.name ?? "Unknown Video")
         .onAppear {
             videoDetails = nil
             Task {
                 if let uuid = video.uuid {
-                    videoDetails = try await appState.client.getVideo(id: uuid.uuidString)
+                    videoDetails = try await appState.client.getVideo(host: host, id: uuid.uuidString)
                 }
             }
         }

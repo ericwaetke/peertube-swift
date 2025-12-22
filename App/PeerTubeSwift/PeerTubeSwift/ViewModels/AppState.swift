@@ -77,7 +77,13 @@ final class AppState {
 //
 //		// Set up subscription service reference
 //		subscriptionService.setAppState(self)
-        self.client = PeertubeClient(scheme: "https", host: "peertube.wtf")
+        self.client = PeertubeClient()
+        do {
+            try self.client.connect(scheme: "https", host: "peertube.wtf")
+        } catch {
+            print("Couldnt connect to peertube instance")
+            print(error)
+        }
 	}
 
 	// MARK: - Navigation

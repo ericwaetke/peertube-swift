@@ -10,12 +10,13 @@ import peertube_swift_sdk
 
 struct VideoCard: View {
     @Environment(AppState.self) private var appState: AppState
+    let host: String
     let video: Video
     
     var body: some View {
         VStack {
             if let path = video.thumbnailPath,
-               let url = try? appState.client.getImageUrl(path: path) {
+               let url = try? appState.client.getImageUrl(host: host, path: path) {
                 ZStack(alignment: .topLeading) {
                     AsyncImage(url: url) { image in
                         image.resizable()
