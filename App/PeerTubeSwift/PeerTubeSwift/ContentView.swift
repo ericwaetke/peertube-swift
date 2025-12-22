@@ -29,15 +29,42 @@ struct ContentView: View {
                                     } placeholder: {
                                         Color.secondary
                                     }
-//                                    .frame(width: .infinity)
+                                    .frame(
+                                        minWidth: 0,
+                                        maxWidth: .infinity,
+                                        minHeight: 100,
+                                        maxHeight: .infinity
+                                    )
+                                    .aspectRatio(16 / 9, contentMode: .fit)
+                                    .clipShape(.rect(cornerRadius: 8))
                                 } else {
                                     Text("Couldn’t load thumbnail")
                                 }
-                                Text(video.name ?? "Unknown Video Title")
-                                    .fontWeight(.bold)
+                                HStack (alignment: .top) {
+                                    if let avatars = video.account?.avatars,
+                                       let avatar = avatars.first,
+                                       let fileUrl = avatar.fileUrl,
+                                       let url = URL(string: fileUrl) {
+                                        AsyncImage(url: url) { image in
+                                            image.resizable()
+                                        } placeholder: {
+                                            Color.secondary
+                                        }
+                                        .frame(width: 48, height: 48)
+                                        .clipShape(.rect(cornerRadius: 8))
+                                    } else {
+                                        Text("Couldn’t load Avatar")
+                                    }
+                                    VStack (alignment: .leading) {
+                                        Text(video.name ?? "Unknown Video Title")
+                                            .fontWeight(.bold)
+                                        Text(video.account?.displayName ?? "Unknown Channel")
+                                            .font(.caption)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "ellipsis.circle")
+                                }
                             }
-                            .background(.tertiary)
-                            .clipShape(.rect(cornerRadius: 8))
                         }
                     }
                     .padding()
@@ -47,6 +74,7 @@ struct ContentView: View {
                     Task {
                         do {
                             let result = try await appState.client.getVideos()
+                            print(result.first?.account)
                             videos = result
                         } catch {
                             print("Error getting videos")
