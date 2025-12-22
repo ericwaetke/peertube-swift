@@ -6,14 +6,14 @@
 //
 
 import SwiftUI
-import peertube_swift_sdk
+import TubeSDK
 
 struct VideoDetails: View {
     @Environment(AppState.self) private var appState: AppState
     let host: String
     let video: Video
     
-    @State var videoDetails: peertube_swift_sdk.VideoDetails?
+    @State var videoDetails: TubeSDK.VideoDetails?
     
     var body: some View {
         VStack {
