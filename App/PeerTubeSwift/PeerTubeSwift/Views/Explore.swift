@@ -11,7 +11,7 @@ import TubeSDK
 struct Explore: View {
     @Environment(AppState.self) private var appState: AppState
     
-//    @State var videos: [InstanceVideoPair] = []
+    //    @State var videos: [InstanceVideoPair] = []
     @State var loading = false
     
     var body: some View {
@@ -24,7 +24,17 @@ struct Explore: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading) {
-                            ForEach(appState.client.videoFeed, id: \.self) { pair in
+                            ForEach(appState.client.videoFeed.sorted(by: { lp, rp in
+                                let lv = lp.video
+                                let rv = rp.video
+                                
+                                guard let lPub = lv.publishedAt,
+                                      let rPub = rv.publishedAt else {
+                                    print("couldnt extract date to sort")
+                                    return false
+                                }
+                                return lPub.timeIntervalSince1970 > rPub.timeIntervalSince1970
+                            }), id: \.self) { pair in
                                 VideoCard(host: pair.host, video: pair.video)
                                     .onTapGesture {
                                         appState.navigationPath.append(pair)
