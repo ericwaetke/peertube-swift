@@ -11,7 +11,7 @@ import peertube_swift_sdk
 struct Explore: View {
     @Environment(AppState.self) private var appState: AppState
     
-    @State var videos: [Video] = []
+//    @State var videos: [InstanceVideoPair] = []
     @State var loading = false
     
     var body: some View {
@@ -24,10 +24,10 @@ struct Explore: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading) {
-                            ForEach(videos, id: \.self) { video in
-                                VideoCard(video: video)
+                            ForEach(appState.client.videoFeed, id: \.self) { pair in
+                                VideoCard(host: pair.host, video: pair.video)
                                     .onTapGesture {
-                                        appState.navigationPath.append(video)
+                                        appState.navigationPath.append(pair)
                                     }
                             }
                         }
@@ -36,15 +36,16 @@ struct Explore: View {
                 }
             }
             .navigationTitle("Explore")
-            .navigationDestination(for: Video.self) { video in
-                VideoDetails(video: video)
+            .navigationDestination(for: InstanceVideoPair.self) { pair in
+                VideoDetails(host: pair.host, video: pair.video)
             }
             .onAppear {
+                if appState.client.videoFeed.count > 0 { return }
+                
                 loading = true
                 Task {
                     do {
-                        let result = try await appState.client.getVideos()
-                        videos = result
+                        try await appState.client.getVideos()
                         loading = false
                     } catch {
                         print("Error getting videos")
@@ -55,8 +56,7 @@ struct Explore: View {
             }
             .refreshable {
                 do {
-                    let result = try await appState.client.getVideos()
-                    videos = result
+                    try await appState.client.getVideos()
                     loading = false
                     print("Finished loading")
                 } catch {
