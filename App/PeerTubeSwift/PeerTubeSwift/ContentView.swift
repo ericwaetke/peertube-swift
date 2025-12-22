@@ -12,61 +12,99 @@ struct ContentView: View {
     @Environment(AppState.self) private var appState: AppState
     @StateObject private var networkMonitor = NetworkMonitor()
     
-    
-    @State var videoDetails: VideoDetails?
+    @State var search: String = ""
+    @State var errorString: String = ""
     
     var body: some View {
         @Bindable var appState = appState
         TabView(selection: $appState.selectedTab) {
-            // Browse Tab
-            Explore()
-            .tabItem {
-                Label(AppState.Tab.browse.rawValue, systemImage: AppState.Tab.browse.systemImage)
+            Tab(AppState.Tab.browse.rawValue, systemImage: AppState.Tab.browse.systemImage, value: AppState.Tab.browse) {
+                Explore()
             }
-            .tag(AppState.Tab.browse)
             
             // Subscriptions Tab
-            NavigationStack {
-                VStack(spacing: 12) {
-                    Text("Subscriptions")
-                        .font(.title2)
-                    //					Text("Count: \(appState.subscriptionService.subscriptionCount)")
+            Tab(AppState.Tab.subscriptions.rawValue, systemImage: AppState.Tab.subscriptions.systemImage, value: AppState.Tab.subscriptions) {
+                NavigationStack {
+                    VStack(spacing: 12) {
+                        Text("Subscriptions")
+                            .font(.title2)
+                        //                    Text("Count: \(appState.subscriptionService.subscriptionCount)")
+                    }
+                    .padding()
+                    .navigationTitle("Subscriptions")
                 }
-                .padding()
-                .navigationTitle("Subscriptions")
             }
-            .tabItem {
-                Label(
-                    AppState.Tab.subscriptions.rawValue,
-                    systemImage: AppState.Tab.subscriptions.systemImage)
-            }
-            .tag(AppState.Tab.subscriptions)
             
             // Settings Tab
-            NavigationStack {
-                Form {
-                    Section(header: Text("Playback")) {
-                        Toggle("Auto-play videos", isOn: $appState.autoPlayVideos)
-                        Picker("Default quality", selection: $appState.defaultVideoQuality) {
-                            ForEach(VideoQuality.allCases, id: \.self) { quality in
-                                Text(quality.displayName).tag(quality)
+            //            NavigationStack {
+            //                Form {
+            //                    Section(header: Text("Playback")) {
+            //                        Toggle("Auto-play videos", isOn: $appState.autoPlayVideos)
+            //                        Picker("Default quality", selection: $appState.defaultVideoQuality) {
+            //                            ForEach(VideoQuality.allCases, id: \.self) { quality in
+            //                                Text(quality.displayName).tag(quality)
+            //                            }
+            //                        }
+            //                    }
+            //                    Section(header: Text("Network")) {
+            //                        Toggle("Use WiFi only", isOn: $appState.useWiFiOnly)
+            //                    }
+            //                    Section(header: Text("Notifications")) {
+            //                        Toggle("Enable notifications", isOn: $appState.enableNotifications)
+            //                    }
+            //                }
+            //                .navigationTitle("Settings")
+            //            }
+            //            .tabItem {
+            //                Label(
+            //                    AppState.Tab.settings.rawValue, systemImage: AppState.Tab.settings.systemImage)
+            //            }
+            //            .tag(AppState.Tab.settings)
+            
+            Tab(AppState.Tab.search.rawValue, systemImage: AppState.Tab.search.systemImage, value: AppState.Tab.search, role: .search) {
+                VStack {
+                    Text(search)
+                    TextField("Search Peertube URL", text: $search, onCommit: {
+                        print("searching")
+                        Task {
+                            do {
+                                try await appState.searchVideo(urlString: search)
+                            } catch {
+                                print("error searching video")
+                                print(error)
                             }
                         }
+                    })
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .textFieldStyle(.roundedBorder)
+                    Text(errorString)
+                    Button {
+                        print("searching")
+                        Task {
+                            do {
+                                try await appState.searchVideo(urlString: search)
+                            } catch {
+                                print("error searching video")
+                                print(error)
+                                errorString = error.localizedDescription
+                            }
+                        }
+                    } label: {
+                        Text("Search")
                     }
-                    Section(header: Text("Network")) {
-                        Toggle("Use WiFi only", isOn: $appState.useWiFiOnly)
-                    }
-                    Section(header: Text("Notifications")) {
-                        Toggle("Enable notifications", isOn: $appState.enableNotifications)
+                    
+                    Button {
+                        appState.selectTab(.browse)
+                    } label: {
+                        Text("Navigate Back")
                     }
                 }
-                .navigationTitle("Settings")
+                .onAppear {
+                    search = ""
+                }
             }
-            .tabItem {
-                Label(
-                    AppState.Tab.settings.rawValue, systemImage: AppState.Tab.settings.systemImage)
-            }
-            .tag(AppState.Tab.settings)
         }
         .onAppear {
             networkMonitor.startMonitoring()
