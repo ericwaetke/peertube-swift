@@ -13,6 +13,8 @@ struct VideoCard: View {
     let host: String
     let video: Video
     
+    let formatter = RelativeDateTimeFormatter()
+    
     var body: some View {
         VStack {
             if let path = video.thumbnailPath,
@@ -67,13 +69,22 @@ struct VideoCard: View {
                     .frame(width: 48, height: 48)
                     .clipShape(.circle)
                 } else {
-                    Text("Couldn’t load Avatar")
+                    Color.secondary
+                        .frame(width: 48, height: 48)
+                        .clipShape(.circle)
                 }
                 VStack (alignment: .leading) {
                     Text(video.name ?? "Unknown Video Title")
                         .fontWeight(.bold)
-                    Text(video.channel?.displayName ?? "Unknown Channel")
-                        .font(.caption)
+                    HStack {
+                        Text("\(video.channel?.displayName ?? "Unknown Channel")")
+                            .font(.caption)
+                        if let publishedAt = video.publishedAt {
+                            Text("·")
+                            Text(formatter.localizedString(for: publishedAt, relativeTo: Date.now))
+                                .font(.caption)
+                        }
+                    }
                 }
                 Spacer()
                 Image(systemName: "ellipsis.circle")
