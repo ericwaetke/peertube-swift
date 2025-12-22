@@ -13,6 +13,7 @@ struct ContentView: View {
     @StateObject private var networkMonitor = NetworkMonitor()
     
     @State var videos: [Video] = []
+    @State var videoDetails: VideoDetails?
     
     var body: some View {
         TabView(selection: $appState.selectedTab) {
@@ -65,16 +66,55 @@ struct ContentView: View {
                                     Image(systemName: "ellipsis.circle")
                                 }
                             }
+                            .onTapGesture {
+                                guard let uuid = video.uuid else {
+                                    print("couldnt get video uuid")
+                                    return
+                                }
+                                appState.navigationPath.append(video)
+                            }
                         }
                     }
                     .padding()
                 }
                 .navigationTitle("Browse")
+                .navigationDestination(for: Video.self) { video in
+                    VStack {
+                        if let videoDetails = videoDetails,
+                           let streamingPlaylists = videoDetails.streamingPlaylists,
+                           let video = streamingPlaylists.first,
+//                           let qualities = video.files,
+//                           let fullHD = qualities.first,
+                           let urlString = video.playlistUrl,
+                           let url = URL(string: urlString){
+                            VideoPlayerView(videoURL: url)
+                                .frame(
+                                    minWidth: 0,
+                                    maxWidth: .infinity,
+                                    minHeight: 100,
+                                    maxHeight: .infinity
+                                )
+                                .aspectRatio(16 / 9, contentMode: .fit)
+                        }
+                        Text(video.name ?? "Unknown Video Title")
+                            .fontWeight(.bold)
+                            .onAppear {
+                                print(video.name)
+                            }
+                    }
+                    .onAppear {
+                        videoDetails = nil
+                        Task {
+                            if let uuid = video.uuid {
+                                videoDetails = try await appState.client.getVideo(id: uuid.uuidString)
+                            }
+                        }
+                    }
+                }
                 .onAppear {
                     Task {
                         do {
                             let result = try await appState.client.getVideos()
-                            print(result.first?.account)
                             videos = result
                         } catch {
                             print("Error getting videos")
