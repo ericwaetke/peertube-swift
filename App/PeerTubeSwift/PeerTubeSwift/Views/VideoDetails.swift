@@ -102,21 +102,24 @@ struct VideoDetails: View {
                                         }
                                     }
                                     
-                                    Button {
-                                        
-                                    } label: {
-                                        HStack {
-                                            Image(systemName: "square.and.arrow.up")
-                                            Text("Share")
-                                        }
-                                    }
-                                    .tint(hasDisliked ? .blue : .primary)
-                                    .apply {
-                                        if #available(iOS 26.0, *) {
-                                            $0.buttonStyle(.glass)
-                                        } else {
-                                            $0.buttonStyle(.automatic)
-                                        }
+//                                    Button {
+//                                        
+//                                    } label: {
+//                                        HStack {
+//                                            Image(systemName: "square.and.arrow.up")
+//                                            Text("Share")
+//                                        }
+//                                    }
+//                                    .tint(hasDisliked ? .blue : .primary)
+//                                    .apply {
+//                                        if #available(iOS 26.0, *) {
+//                                            $0.buttonStyle(.glass)
+//                                        } else {
+//                                            $0.buttonStyle(.automatic)
+//                                        }
+//                                    }
+                                    if let url = URL(string: "https://\(host)/w/\(videoId)") {
+                                        ShareLink(item: url)
                                     }
                                 }
                             }

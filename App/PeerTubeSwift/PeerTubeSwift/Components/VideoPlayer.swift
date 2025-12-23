@@ -21,7 +21,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         playerViewController.player = player
         #if targetEnvironment(preview)
         #else
-//        playerViewController.player?.play()
+        playerViewController.player?.play()
         #endif
         return playerViewController
     }
