@@ -64,7 +64,7 @@ struct Explore: View {
                 loading = true
                 Task {
                     do {
-                        try await appState.client.getVideos()
+//                        try await appState.client.getVideos()
                         loading = false
                     } catch {
                         print("Error getting videos")
@@ -75,7 +75,7 @@ struct Explore: View {
             }
             .refreshable {
                 do {
-                    try await appState.client.getVideos()
+//                    try await appState.client.getVideos()
                     loading = false
                     print("Finished loading")
                 } catch {
