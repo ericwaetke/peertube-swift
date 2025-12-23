@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F627376B2EF9A871001DAA70 /* TubeSDK */; };
+		F6BFCE672EFAEB890043499D /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE662EFAEB890043499D /* SQLiteData */; };
+		F6BFCE692EFAEB890043499D /* SQLiteDataTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE682EFAEB890043499D /* SQLiteDataTestSupport */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +72,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F6BFCE672EFAEB890043499D /* SQLiteData in Frameworks */,
 				F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -78,6 +81,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F6BFCE692EFAEB890043499D /* SQLiteDataTestSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -141,6 +145,7 @@
 			name = PeerTubeSwift;
 			packageProductDependencies = (
 				F627376B2EF9A871001DAA70 /* TubeSDK */,
+				F6BFCE662EFAEB890043499D /* SQLiteData */,
 			);
 			productName = PeerTubeSwift;
 			productReference = F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */;
@@ -164,6 +169,7 @@
 			);
 			name = PeerTubeSwiftTests;
 			packageProductDependencies = (
+				F6BFCE682EFAEB890043499D /* SQLiteDataTestSupport */,
 			);
 			productName = PeerTubeSwiftTests;
 			productReference = F67428F22EF4AFC9000600DB /* PeerTubeSwiftTests.xctest */;
@@ -225,6 +231,7 @@
 			mainGroup = F67428D82EF4AFC6000600DB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F67428E22EF4AFC6000600DB /* Products */;
@@ -330,7 +337,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -365,7 +372,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -431,6 +438,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = "";
 			};
 			name = Debug;
 		};
@@ -487,6 +495,7 @@
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = "";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -616,10 +625,31 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/sqlite-data";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.4.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		F627376B2EF9A871001DAA70 /* TubeSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TubeSDK;
+		};
+		F6BFCE662EFAEB890043499D /* SQLiteData */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */;
+			productName = SQLiteData;
+		};
+		F6BFCE682EFAEB890043499D /* SQLiteDataTestSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */;
+			productName = SQLiteDataTestSupport;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
