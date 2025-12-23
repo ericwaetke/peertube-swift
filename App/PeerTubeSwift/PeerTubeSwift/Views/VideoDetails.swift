@@ -219,7 +219,7 @@ struct VideoDetails: View {
         .onAppear {
 //            if (videoDetails != nil) {return}
             Task {
-                videoDetails = try await appState.client.getVideo(host: host, id: videoId)
+//                videoDetails = try await appState.client.getVideo(host: host, id: videoId)
             }
         }
     }

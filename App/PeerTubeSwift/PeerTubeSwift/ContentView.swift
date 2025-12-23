@@ -25,13 +25,7 @@ struct ContentView: View {
             // Subscriptions Tab
             Tab(AppState.Tab.subscriptions.rawValue, systemImage: AppState.Tab.subscriptions.systemImage, value: AppState.Tab.subscriptions) {
                 NavigationStack {
-                    VStack(spacing: 12) {
-                        Text("Subscriptions")
-                            .font(.title2)
-                        //                    Text("Count: \(appState.subscriptionService.subscriptionCount)")
-                    }
-                    .padding()
-                    .navigationTitle("Subscriptions")
+                    Subscriptions()
                 }
             }
             

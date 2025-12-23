@@ -43,7 +43,6 @@ struct InstanceIndicator: View {
                     .rotationEffect(Angle(degrees: -3))
             } else {
                 Image(systemName: "laser.burst")
-                    .resizable()
                     .frame(width: 12, height: 12)
                     .foregroundStyle(foregroundColor)
                     .frame(width: 20, height: 20)

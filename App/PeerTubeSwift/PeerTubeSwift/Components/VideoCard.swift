@@ -11,7 +11,7 @@ import TubeSDK
 struct VideoCard: View {
     @Environment(AppState.self) private var appState: AppState
     let host: String
-    let video: Video
+    let video: TubeSDK.Video
     
     let formatter = RelativeDateTimeFormatter()
     
@@ -96,6 +96,6 @@ struct VideoCard: View {
 }
 
 #Preview {
-    VideoCard(host: "example.com", video: VideoMockData)
-        .environment(AppState())
+//    VideoCard(host: "example.com", video: VideoMockData)
+//        .environment(AppState())
 }
