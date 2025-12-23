@@ -11,7 +11,20 @@ struct InstanceIndicator: View {
     let instanceName: String
     let instanceImage: String?
     
-    let badgeColor: Color = Color(red: 0.74, green: 0.9, blue: 1)
+    
+    // IDEA: Get dominant color from image
+    let mainColor: Color = Color.accentColor
+    let foregroundColor: Color
+    let backgroundColor: Color
+
+    init(instanceName: String, instanceImage: String?) {
+        self.instanceName = instanceName
+        self.instanceImage = instanceImage
+        
+        let systemBackground: Color = Color(uiColor: UIColor.systemBackground)
+        foregroundColor = .primary.mix(with: mainColor, by: 0.3)
+        backgroundColor = systemBackground.mix(with: mainColor, by: 0.2)
+    }
     
     var body: some View {
         HStack (spacing: 2) {
@@ -20,30 +33,30 @@ struct InstanceIndicator: View {
                     image.resizable()
                 } placeholder: {
                     ProgressView()
+                        .frame(width: 12, height: 12)
                 }
                     .frame(width: 12, height: 12)
                     .foregroundStyle(.black)
                     .frame(width: 20, height: 20)
-                    .background(badgeColor)
+                    .background(backgroundColor)
                     .clipShape(.rect(cornerRadius: 8))
                     .rotationEffect(Angle(degrees: -3))
             } else {
                 Image(systemName: "laser.burst")
                     .resizable()
                     .frame(width: 12, height: 12)
-                    .foregroundStyle(.black)
+                    .foregroundStyle(foregroundColor)
                     .frame(width: 20, height: 20)
-                    .background(badgeColor)
+                    .background(backgroundColor)
                     .clipShape(.rect(cornerRadius: 8))
                     .rotationEffect(Angle(degrees: -3))
             }
             
-            
             Text(instanceName)
                 .font(.caption2)
                 .padding(.horizontal, 6)
-                .foregroundStyle(.black)
-                .background(badgeColor)
+                .foregroundStyle(foregroundColor)
+                .background(backgroundColor)
                 .clipShape(.rect(cornerRadius: 4))
         }
     }
