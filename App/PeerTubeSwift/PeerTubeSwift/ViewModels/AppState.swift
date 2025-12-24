@@ -5,6 +5,8 @@
 //  Created on 2024-12-17.
 //
 
+import SQLiteData
+import Dependencies
 import Combine
 import Foundation
 import SwiftUI
@@ -30,13 +32,14 @@ enum NavigationDestination: Hashable {
 final class AppState {
     // MARK: - Published Properties
     
-    var client: TubeSDKClient
+//    var client: TubeSDKClient
     
     //	var currentInstance: Instance?
     var navigationPath = NavigationPath()
     var selectedTab: Tab = .browse
     var isLoading = false
     var error: Error?
+    @ObservationIgnored @Dependency(\.defaultDatabase) var database
     
     /// Subscription service for managing local channel subscriptions
     //	var subscriptionService: SubscriptionService
@@ -61,41 +64,17 @@ final class AppState {
     // MARK: - Private Properties
     
     private let userDefaults = UserDefaults.standard
+    public var instances: [String: TubeSDKClient] = [:]
     private static let currentInstanceKey = "CurrentInstance"
     private static let defaultInstanceURL = "https://peertube.wtf"
     
     // MARK: - Initialization
     
     init() {
-        // Initialize subscription service
-        //		subscriptionService = SubscriptionService()
-        //
-        //		AppStateProvider.shared.setAppState(self)
-        //		loadSettings()
-        ////		loadSavedInstance()
-        //
-        //		// Set up subscription service reference
-        //		subscriptionService.setAppState(self)
-        self.client = TubeSDKClient()
-        do {
-            try self.client.connect(scheme: "https", host: "peertube.wtf")
-            try self.client.connect(scheme: "https", host: "tube.tchncs.de")
-        } catch {
-            print("Couldnt connect to peertube instance")
-            print(error)
-        }
     }
     
     // Initialiser for Example State
-    init(example: Bool) {
-        self.client = TubeSDKClient()
-        client.videoFeed = [
-            InstanceVideoPair(host: "example.com", video: VideoMockData),
-            InstanceVideoPair(host: "example.com", video: VideoMockData),
-            InstanceVideoPair(host: "example.com", video: VideoMockData),
-            InstanceVideoPair(host: "example.com", video: VideoMockData)
-        ]
-    }
+
     
     // MARK: - Navigation
     
@@ -142,14 +121,16 @@ final class AppState {
     }
     
     
-    // MARK: - Error Handling
-    
-    func clearError() {
-        error = nil
-    }
-    
-    func handleError(_ error: Error) {
-        self.error = error
+    func addInstance(scheme: String, host: String) async throws {
+        instances[host] = try TubeSDKClient(scheme: scheme, host: host)
+        
+        withErrorReporting {
+            try database.write { db in
+                try Instance
+                    .insert { Instance.Draft(scheme: scheme, host: host) }
+                    .execute(db)
+            }
+        }
     }
     
     public func searchVideo(urlString: String) async throws {
@@ -164,7 +145,7 @@ final class AppState {
             throw ClientError.instanceNotFound
         }
         
-        try client.connect(scheme: scheme, host: host)
+        try await addInstance(scheme: scheme, host: host)
         
         // Potential URL: https://peertube.wtf/w/18QZB6GTN1DRd1LtkeQm22
         let pathParts = url.pathComponents
@@ -181,11 +162,7 @@ final class AppState {
             throw URLError(.badURL)
         }
         
-        //        let video = try await client.getVideo(host: host, id: videoId)
-        //        let pair = InstanceVideoDetailsPair(
-        
         selectTab(.browse)
-        //        navigationPath.append(pair)
         navigateTo(.videoDetail(host: host, videoId: videoId))
     }
 }
@@ -339,5 +316,5 @@ extension ColorScheme {
 }
 
 extension AppState {
-    static var example: AppState = AppState(example: true)
+//    static var example: AppState = AppState(example: true)
 }
