@@ -87,6 +87,9 @@ struct Explore: View {
                                 .insert {
                                     PeertubeImage.Draft(
                                         instanceID: instance.id, url: thumbnailURL.absoluteString)
+                                } onConflictDoUpdate: { updates, excluded in
+                                    // Update the URL field if a conflict occurs
+                                    updates.url = excluded.url
                                 }
                                 .returning(\.id)
                                 .fetchOne(db)
