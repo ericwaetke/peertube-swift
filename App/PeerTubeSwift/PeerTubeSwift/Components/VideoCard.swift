@@ -10,22 +10,19 @@ import SwiftUI
 import TubeSDK
 
 struct VideoCard: View {
-    @Environment(AppState.self) private var appState: AppState
-    let host: String
-    let video: Video
+    let row: Explore.Row
     
-    @FetchOne
-    var channel: VideoChannel?
-    
-    @FetchOne
-    var thumbnail: PeertubeImage?
+//    @FetchOne
+//    var channel: VideoChannel?
+//    
+//    @FetchOne(PeertubeImage.where { $0.id == video.thumbnailID }) var thumbnail: PeertubeImage?
     
     let formatter = RelativeDateTimeFormatter()
     
     var body: some View {
         VStack {
-            if let thumbnail = thumbnail,
-               let url = URL(string: thumbnail.url) {
+            if let thumbnail = row.thumbnail,
+                let url = URL(string: thumbnail.url) {
                 ZStack(alignment: .topLeading) {
                     AsyncImage(url: url) { image in
                         image.resizable()
@@ -63,7 +60,15 @@ struct VideoCard: View {
 //                    }
                 }
             } else {
-                Text("Couldn’t load thumbnail")
+            Color.secondary
+                .frame(
+                    minWidth: 0,
+                    maxWidth: .infinity,
+                    minHeight: 100,
+                    maxHeight: .infinity
+                )
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .clipShape(.rect(cornerRadius: 8))
             }
             HStack (alignment: .top) {
 //                if let avatars = video.channel?.avatars,
@@ -83,15 +88,14 @@ struct VideoCard: View {
 //                        .clipShape(.circle)
 //                }
                 VStack (alignment: .leading) {
-                    Text(video.thumbnailID?.uuidString ?? "no is")
-                    Text(video.name)
+                    Text(row.video.name)
                         .fontWeight(.bold)
                     HStack {
-                        Text(channel?.name ?? "unknown channel")
+                        Text(row.channel?.name ?? "unknown channel")
                             .font(.caption)
                         
                             Text("·")
-                            Text(formatter.localizedString(for: video.publishDate, relativeTo: Date.now))
+                        Text(formatter.localizedString(for: row.video.publishDate, relativeTo: Date.now))
                                 .font(.caption)
                         
                     }
@@ -101,19 +105,13 @@ struct VideoCard: View {
             }
         }
         .task {
-            await withErrorReporting {
-                try await $channel.load(
-                    VideoChannel
-                        .where { $0.name == video.channelID }
-                )
-                .task
-                
-                try await $thumbnail.load(
-                    PeertubeImage
-                        .where { $0.id == video.thumbnailID }
-                )
-                .task
-            }
+//            await withErrorReporting {
+//                try await $channel.load(
+//                    VideoChannel
+//                        .where { $0.name == video.channelID }
+//                )
+//                .task
+//            }
         }
     }
 }

@@ -17,7 +17,7 @@ import SQLiteData
     var avatarID: PeertubeImage.ID?
 }
 
-@Table struct VideoChannel: Identifiable {
+@Table struct VideoChannel: Identifiable, Hashable {
     // \(host)-\(id)
     let id: String
     var name: String
@@ -35,7 +35,7 @@ import SQLiteData
     var avatarID: PeertubeImage.ID?
 }
 
-@Table struct PeertubeImage: Identifiable {
+@Table struct PeertubeImage: Identifiable, Hashable {
     let id: UUID
     let instanceID: Instance.ID
     var url: String
