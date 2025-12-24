@@ -22,11 +22,11 @@ struct Subscriptions: View {
                         withErrorReporting {
                             try database.write { db in
                                 try VideoChannel
-                                    .insert { VideoChannel(id: UUID(1), name: "Gronkh", instanceID: UUID(1)) }
+                                    .insert { VideoChannel(id: "peertube.wtf-1", name: "Gronkh", instanceID: UUID(1)) }
                                     .execute(db)
                                 
                                 try Subscription
-                                    .insert { Subscription.Draft(channelID: UUID(1), createdAt: .now) }
+                                    .insert { Subscription.Draft(channelID: "peertube.wtf-2", createdAt: .now) }
                                     .execute(db)
                             }
                         }
@@ -53,7 +53,7 @@ struct Subscriptions: View {
             withErrorReporting {
                 try database.write { db in
                     try Instance
-                        .insert { Instance(id: UUID(1), schema: "https", host: "peertube.wtf") }
+                        .insert { Instance(id: UUID(1), scheme: "https", host: "peertube.wtf") }
                         .execute(db)
                 }
             }
