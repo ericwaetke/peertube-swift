@@ -101,7 +101,7 @@ func appDatabase() throws -> any DatabaseWriter {
                 CREATE TABLE "peertubeImages" (
                     "id" TEXT PRIMARY KEY NOT NULL ON CONFLICT REPLACE DEFAULT (uuid()),
                     "instanceID" TEXT NOT NULL REFERENCES "instances"("id") ON DELETE CASCADE,
-                    "url" TEXT NOT NULL
+                    "url" TEXT NOT NULL UNIQUE
                 ) STRICT
             """
         )
