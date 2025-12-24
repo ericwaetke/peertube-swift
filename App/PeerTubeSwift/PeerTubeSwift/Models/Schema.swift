@@ -18,7 +18,8 @@ import SQLiteData
 }
 
 @Table struct VideoChannel: Identifiable {
-    let id: UUID
+    // \(host)-\(id)
+    let id: String
     var name: String
 
     var avatarID: PeertubeImage.ID?
@@ -27,7 +28,7 @@ import SQLiteData
 
 @Table struct Instance: Identifiable {
     let id: UUID
-    var schema: String
+    var scheme: String
     var host: String
     var name: String?
 
@@ -51,10 +52,18 @@ import SQLiteData
 //    var dislikes: Int
 //}
 
-@Table struct Video: Identifiable {
+@Table struct Video: Identifiable, Hashable {
     let id: UUID
     let channelID: VideoChannel.ID
     var instanceID: Instance.ID
+
+    var name: String
+    var publishDate: Date
+    var views: Int = 0
+    var comments: Int = 0
+    var likes: Int = 0
+    var dislikes: Int = 0
+    var thumbnailID: PeertubeImage.ID?
 }
 
 @Table struct Subscription: Identifiable {
@@ -77,7 +86,7 @@ func appDatabase() throws -> any DatabaseWriter {
             """
                 CREATE TABLE "instances" (
                     "id" TEXT PRIMARY KEY NOT NULL ON CONFLICT REPLACE DEFAULT (uuid()),
-                    "schema" TEXT NOT NULL,
+                    "scheme" TEXT NOT NULL,
                     "host" TEXT NOT NULL UNIQUE,
                     "name" TEXT,
                     "avatarID" TEXT REFERENCES "peertubeImages"("id")
@@ -115,7 +124,7 @@ func appDatabase() throws -> any DatabaseWriter {
         try #sql(
             """
                 CREATE TABLE "videoChannels" (
-                    "id" TEXT PRIMARY KEY NOT NULL ON CONFLICT REPLACE DEFAULT (uuid()),
+                    "id" TEXT PRIMARY KEY NOT NULL UNIQUE,
                     "name" TEXT NOT NULL,
                     "instanceID" TEXT NOT NULL REFERENCES "instances"("id") ON DELETE CASCADE,
                     "avatarID" TEXT REFERENCES "peertubeImages"("id")
@@ -130,7 +139,14 @@ func appDatabase() throws -> any DatabaseWriter {
                 CREATE TABLE "videos" (
                     "id" TEXT PRIMARY KEY NOT NULL,
                     "channelID" TEXT NOT NULL REFERENCES "videoChannels"("id") ON DELETE CASCADE,
-                    "instanceID" TEXT NOT NULL REFERENCES "instances"("id") ON DELETE CASCADE
+                    "instanceID" TEXT NOT NULL REFERENCES "instances"("id") ON DELETE CASCADE,
+                    "name" TEXT NOT NULL,
+                    "publishDate" TEXT NOT NULL,
+                    "views" INTEGER NOT NULL DEFAULT 0,
+                    "comments" INTEGER NOT NULL DEFAULT 0,
+                    "likes" INTEGER NOT NULL DEFAULT 0,
+                    "dislikes" INTEGER NOT NULL DEFAULT 0,
+                    "thumbnailID" TEXT REFERENCES "peertubeImages"("id")
                 ) STRICT
             """
         )
@@ -199,15 +215,15 @@ extension DatabaseWriter {
     func seed() throws {
         try write { db in
             try db.seed {
-                Instance(id: UUID(1), schema: "https", host: "peertube.wtf")
-                Instance(id: UUID(2), schema: "https", host: "ard.de")
+                Instance(id: UUID(1), scheme: "https", host: "peertube.wtf")
+                Instance(id: UUID(2), scheme: "https", host: "ard.de")
 
-                VideoChannel(id: UUID(1), name: "Gronkh", instanceID: UUID(1))
-                VideoChannel(id: UUID(2), name: "ARD", instanceID: UUID(2))
-                VideoChannel(id: UUID(3), name: "Collective Change", instanceID: UUID(1))
+                VideoChannel(id: "peertube.wtf-1", name: "Gronkh", instanceID: UUID(1))
+                VideoChannel(id: "ard.de-1", name: "ARD", instanceID: UUID(2))
+                VideoChannel(id: "peertube.wtf-2", name: "Collective Change", instanceID: UUID(1))
 
-                Subscription.Draft(channelID: UUID(1), createdAt: .distantPast)
-                Subscription.Draft(channelID: UUID(3), createdAt: .now)
+                Subscription.Draft(channelID: "peertube.wtf-1", createdAt: .distantPast)
+                Subscription.Draft(channelID: "peertube.wtf-2", createdAt: .now)
             }
         }
     }
