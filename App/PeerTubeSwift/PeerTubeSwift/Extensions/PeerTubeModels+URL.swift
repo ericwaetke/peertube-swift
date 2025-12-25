@@ -161,17 +161,3 @@ import Foundation
 //		return instanceURL.appendingPathComponent(avatarPath)
 //	}
 //}
-
-// MARK: - AppState Provider
-
-/// Singleton to provide access to AppState from extensions
-class AppStateProvider {
-	static let shared = AppStateProvider()
-	weak var appState: AppState?
-
-	private init() {}
-
-	func setAppState(_ appState: AppState) {
-		self.appState = appState
-	}
-}
