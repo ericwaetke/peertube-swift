@@ -7,6 +7,7 @@
 
 import SwiftUI
 import TubeSDK
+import ComposableArchitecture
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState: AppState
@@ -19,7 +20,9 @@ struct ContentView: View {
         @Bindable var appState = appState
         TabView(selection: $appState.selectedTab) {
             Tab(AppState.Tab.browse.rawValue, systemImage: AppState.Tab.browse.systemImage, value: AppState.Tab.browse) {
-                Explore()
+                Explore(store: Store(initialState: ExploreFeature.State()) {
+                    ExploreFeature()
+                  })
             }
             
             // Subscriptions Tab

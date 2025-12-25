@@ -10,7 +10,19 @@ import SwiftUI
 import TubeSDK
 
 struct VideoCard: View {
-    let row: Explore.Row
+    let row: VideoRow
+    let onVideoTap: () -> Void
+    let openChannel: () -> Void
+    
+    init(
+        row: VideoRow,
+        onVideoTap: @escaping () -> Void,
+        openChannel: @escaping () -> Void
+    ) {
+        self.row = row
+        self.onVideoTap = onVideoTap
+        self.openChannel = openChannel
+    }
     
 //    @FetchOne
 //    var channel: VideoChannel?
@@ -21,8 +33,8 @@ struct VideoCard: View {
     
     var body: some View {
         VStack {
-            if let thumbnail = row.thumbnail,
-                let url = URL(string: thumbnail.url) {
+            if let thumbnail = row.video.thumbnailUrl,
+                let url = URL(string: thumbnail) {
                 ZStack(alignment: .topLeading) {
                     AsyncImage(url: url) { image in
                         image.resizable()
@@ -71,22 +83,23 @@ struct VideoCard: View {
                 .clipShape(.rect(cornerRadius: 8))
             }
             HStack (alignment: .top) {
-//                if let avatars = video.channel?.avatars,
-//                   let avatar = avatars.first,
-//                   let fileUrl = avatar.fileUrl,
-//                   let url = URL(string: fileUrl) {
-//                    AsyncImage(url: url) { image in
-//                        image.resizable()
-//                    } placeholder: {
-//                        Color.secondary
-//                    }
-//                    .frame(width: 48, height: 48)
-//                    .clipShape(.circle)
-//                } else {
-//                    Color.secondary
-//                        .frame(width: 48, height: 48)
-//                        .clipShape(.circle)
-//                }
+                if let avatar = row.channel?.avatarUrl,
+                   let url = URL(string: avatar) {
+                    AsyncImage(url: url) { image in
+                        image.resizable()
+                    } placeholder: {
+                        Color.secondary
+                    }
+                    .frame(width: 48, height: 48)
+                    .clipShape(.circle)
+                    .onTapGesture {
+                        openChannel()
+                    }
+                } else {
+                    Color.secondary
+                        .frame(width: 48, height: 48)
+                        .clipShape(.circle)
+                }
                 VStack (alignment: .leading) {
                     Text(row.video.name)
                         .fontWeight(.bold)
@@ -104,14 +117,8 @@ struct VideoCard: View {
                 Image(systemName: "ellipsis.circle")
             }
         }
-        .task {
-//            await withErrorReporting {
-//                try await $channel.load(
-//                    VideoChannel
-//                        .where { $0.name == video.channelID }
-//                )
-//                .task
-//            }
+        .onTapGesture {
+            onVideoTap()
         }
     }
 }

@@ -10,6 +10,7 @@
 		F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F627376B2EF9A871001DAA70 /* TubeSDK */; };
 		F6BFCE672EFAEB890043499D /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE662EFAEB890043499D /* SQLiteData */; };
 		F6BFCE692EFAEB890043499D /* SQLiteDataTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE682EFAEB890043499D /* SQLiteDataTestSupport */; };
+		F6DCA01C2EFD99C000A39CED /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +75,7 @@
 			files = (
 				F6BFCE672EFAEB890043499D /* SQLiteData in Frameworks */,
 				F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */,
+				F6DCA01C2EFD99C000A39CED /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -146,6 +148,7 @@
 			packageProductDependencies = (
 				F627376B2EF9A871001DAA70 /* TubeSDK */,
 				F6BFCE662EFAEB890043499D /* SQLiteData */,
+				F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */,
 			);
 			productName = PeerTubeSwift;
 			productReference = F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */;
@@ -232,6 +235,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */,
+				F6DCA01A2EFD99C000A39CED /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F67428E22EF4AFC6000600DB /* Products */;
@@ -334,7 +338,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -369,7 +373,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -634,6 +638,14 @@
 				minimumVersion = 1.4.1;
 			};
 		};
+		F6DCA01A2EFD99C000A39CED /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.23.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -650,6 +662,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */;
 			productName = SQLiteDataTestSupport;
+		};
+		F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F6DCA01A2EFD99C000A39CED /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

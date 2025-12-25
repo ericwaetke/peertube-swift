@@ -14,7 +14,7 @@ import SQLiteData
     var name: String
 
     var instanceID: Instance.ID
-    var avatarID: PeertubeImage.ID?
+    var avatarUrl: String?
 }
 
 @Table struct VideoChannel: Identifiable, Hashable {
@@ -22,23 +22,17 @@ import SQLiteData
     let id: String
     var name: String
 
-    var avatarID: PeertubeImage.ID?
+    var avatarUrl: String?
     var instanceID: Instance.ID
 }
 
-@Table struct Instance: Identifiable {
+@Table struct Instance: Identifiable, Equatable {
     let id: UUID
     var scheme: String
     var host: String
     var name: String?
 
-    var avatarID: PeertubeImage.ID?
-}
-
-@Table struct PeertubeImage: Identifiable, Hashable {
-    let id: UUID
-    let instanceID: Instance.ID
-    var url: String
+    var avatarUrl: String?
 }
 
 //@Table struct Comment: Identifiable {
@@ -63,7 +57,7 @@ import SQLiteData
     var comments: Int = 0
     var likes: Int = 0
     var dislikes: Int = 0
-    var thumbnailID: PeertubeImage.ID?
+    var thumbnailUrl: String?
 }
 
 @Table struct Subscription: Identifiable {
@@ -90,18 +84,6 @@ func appDatabase() throws -> any DatabaseWriter {
                     "host" TEXT NOT NULL UNIQUE,
                     "name" TEXT,
                     "avatarID" TEXT REFERENCES "peertubeImages"("id")
-                ) STRICT
-            """
-        )
-        .execute(db)
-
-        // Create images (depends on instances)
-        try #sql(
-            """
-                CREATE TABLE "peertubeImages" (
-                    "id" TEXT PRIMARY KEY NOT NULL ON CONFLICT REPLACE DEFAULT (uuid()),
-                    "instanceID" TEXT NOT NULL REFERENCES "instances"("id") ON DELETE CASCADE,
-                    "url" TEXT NOT NULL UNIQUE
                 ) STRICT
             """
         )
@@ -224,6 +206,14 @@ extension DatabaseWriter {
 
                 Subscription.Draft(channelID: "peertube.wtf-1", createdAt: .distantPast)
                 Subscription.Draft(channelID: "peertube.wtf-2", createdAt: .now)
+                
+                Video(
+                    id: UUID(1),
+                    channelID: "peertube.wtf-1",
+                    instanceID: UUID(1),
+                    name: "Minecraft Let’s Play #011",
+                    publishDate: .now
+                )
             }
         }
     }
