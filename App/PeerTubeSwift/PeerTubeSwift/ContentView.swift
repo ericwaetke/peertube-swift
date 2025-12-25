@@ -28,7 +28,9 @@ struct ContentView: View {
             // Subscriptions Tab
             Tab(AppState.Tab.subscriptions.rawValue, systemImage: AppState.Tab.subscriptions.systemImage, value: AppState.Tab.subscriptions) {
                 NavigationStack {
-                    Subscriptions()
+                    Subscriptions(store: Store(initialState: SubscriptionFeature.State()) {
+                        SubscriptionFeature()
+                    })
                 }
             }
             
