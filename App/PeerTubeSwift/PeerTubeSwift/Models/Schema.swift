@@ -60,7 +60,7 @@ import SQLiteData
     var thumbnailUrl: String?
 }
 
-@Table struct Subscription: Identifiable {
+@Table struct PeertubeSubscription: Identifiable {
     let id: UUID
     let channelID: VideoChannel.ID
 
@@ -83,7 +83,7 @@ func appDatabase() throws -> any DatabaseWriter {
                     "scheme" TEXT NOT NULL,
                     "host" TEXT NOT NULL UNIQUE,
                     "name" TEXT,
-                    "avatarID" TEXT REFERENCES "peertubeImages"("id")
+                    "avatarUrl" TEXT
                 ) STRICT
             """
         )
@@ -96,7 +96,7 @@ func appDatabase() throws -> any DatabaseWriter {
                     "id" TEXT PRIMARY KEY NOT NULL ON CONFLICT REPLACE DEFAULT (uuid()),
                     "name" TEXT NOT NULL,
                     "instanceID" TEXT NOT NULL REFERENCES "instances"("id") ON DELETE CASCADE,
-                    "avatarID" TEXT REFERENCES "peertubeImages"("id")
+                    "avatarUrl" TEXT
                 ) STRICT
             """
         )
@@ -109,7 +109,7 @@ func appDatabase() throws -> any DatabaseWriter {
                     "id" TEXT PRIMARY KEY NOT NULL UNIQUE,
                     "name" TEXT NOT NULL,
                     "instanceID" TEXT NOT NULL REFERENCES "instances"("id") ON DELETE CASCADE,
-                    "avatarID" TEXT REFERENCES "peertubeImages"("id")
+                    "avatarUrl" TEXT
                 ) STRICT
             """
         )
@@ -128,7 +128,7 @@ func appDatabase() throws -> any DatabaseWriter {
                     "comments" INTEGER NOT NULL DEFAULT 0,
                     "likes" INTEGER NOT NULL DEFAULT 0,
                     "dislikes" INTEGER NOT NULL DEFAULT 0,
-                    "thumbnailID" TEXT REFERENCES "peertubeImages"("id")
+                    "thumbnailUrl" TEXT
                 ) STRICT
             """
         )
@@ -137,7 +137,7 @@ func appDatabase() throws -> any DatabaseWriter {
         // Create subscriptions (depends on channels)
         try #sql(
             """
-                CREATE TABLE "subscriptions" (
+                CREATE TABLE "peertubeSubscriptions" (
                     "id" TEXT PRIMARY KEY NOT NULL ON CONFLICT REPLACE DEFAULT (uuid()),
                     "channelID" TEXT NOT NULL UNIQUE REFERENCES "videoChannels"("id") ON DELETE CASCADE,
                     "createdAt" TEXT NOT NULL DEFAULT current_timestamp
@@ -147,12 +147,6 @@ func appDatabase() throws -> any DatabaseWriter {
         .execute(db)
 
         // Create indexes for better performance
-        try #sql(
-            """
-                CREATE INDEX "index_peertubeImages_on_instanceID" ON "peertubeImages"("instanceID")
-            """
-        )
-        .execute(db)
 
         try #sql(
             """
@@ -177,7 +171,7 @@ func appDatabase() throws -> any DatabaseWriter {
 
         try #sql(
             """
-                CREATE INDEX "index_subscriptions_on_channelID" ON "subscriptions"("channelID")
+                CREATE INDEX "index_subscriptions_on_channelID" ON "peertubeSubscriptions"("channelID")
             """
         )
         .execute(db)
@@ -200,13 +194,13 @@ extension DatabaseWriter {
                 Instance(id: UUID(1), scheme: "https", host: "peertube.wtf")
                 Instance(id: UUID(2), scheme: "https", host: "ard.de")
 
-                VideoChannel(id: "peertube.wtf-1", name: "Gronkh", instanceID: UUID(1))
+                VideoChannel(id: "peertube.wtf-1", name: "Gronkh", avatarUrl: "https://yt3.googleusercontent.com/ytc/AIdro_ko2x8r12BwkrHwYRNEVLUwCkd1MsWA496y7Pr8wX-3c6Y=s160-c-k-c0x00ffffff-no-rj", instanceID: UUID(1))
                 VideoChannel(id: "ard.de-1", name: "ARD", instanceID: UUID(2))
                 VideoChannel(id: "peertube.wtf-2", name: "Collective Change", instanceID: UUID(1))
 
-                Subscription.Draft(channelID: "peertube.wtf-1", createdAt: .distantPast)
-                Subscription.Draft(channelID: "peertube.wtf-2", createdAt: .now)
-                
+                PeertubeSubscription.Draft(channelID: "peertube.wtf-1", createdAt: .distantPast)
+                PeertubeSubscription.Draft(channelID: "peertube.wtf-2", createdAt: .now)
+
                 Video(
                     id: UUID(1),
                     channelID: "peertube.wtf-1",

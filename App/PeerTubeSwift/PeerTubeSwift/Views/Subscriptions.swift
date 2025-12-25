@@ -9,11 +9,36 @@ import ComposableArchitecture
 import SQLiteData
 import SwiftUI
 
+@Selection
+struct SubRecord {
+    let subscription: PeertubeSubscription
+    let channel: VideoChannel?
+}
+
+extension SubRecord: Identifiable {
+    var id: UUID {
+        subscription.id
+    }
+}
+
 @Reducer
 struct SubscriptionFeature {
+    
     @ObservableState
     struct State {
-        @FetchAll(animation: .default) var subscriptions: [Subscription]
+        @FetchAll(
+            PeertubeSubscription
+                .group(by: \.id)
+                .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
+                .order(by: \.createdAt)
+                .select {
+                    SubRecord.Columns(
+                        subscription: $0,
+                        channel: $1
+                    )
+                }
+        )
+        var records: [SubRecord]
     }
     
     enum Action {
@@ -32,17 +57,17 @@ struct SubscriptionFeature {
                                 .insert { VideoChannel(id: "peertube.wtf-1", name: "Gronkh", instanceID: UUID(1)) }
                                 .execute(db)
                             
-                            try Subscription
-                                .insert { Subscription.Draft(channelID: "peertube.wtf-2", createdAt: .now) }
+                            try PeertubeSubscription
+                                .insert { PeertubeSubscription.Draft(channelID: "peertube.wtf-2", createdAt: .now) }
                                 .execute(db)
                         }
                     }
                 }
             case .listElementDeleteSwiped(offsets: let offsets):
-                return .run { [subscriptions = state.subscriptions] send in
+                return .run { [subscriptions = state.records] send in
                     withErrorReporting {
                         try database.write { db in
-                            try Subscription.find(offsets.map { subscriptions[$0].id })
+                            try PeertubeSubscription.find(offsets.map { subscriptions[$0].id })
                                 .delete()
                                 .execute(db)
                         }
@@ -61,7 +86,7 @@ struct Subscriptions: View {
     
     var body: some View {
         VStack {
-            if !self.store.$subscriptions.isLoading, self.store.subscriptions.isEmpty {
+            if !self.store.$records.isLoading, self.store.records.isEmpty {
                 ContentUnavailableView {
                     Label("You are not subscribed to anyone", systemImage: "person.crop.square.on.square.angled.fill")
                 } description: {
@@ -71,8 +96,25 @@ struct Subscriptions: View {
                 }
             } else {
                 List {
-                    ForEach(self.store.subscriptions) { subscription in
-                        Text(subscription.id.description)
+                    ForEach(self.store.records) { row in
+                        HStack {
+                            if let avatarUrlString = row.channel?.avatarUrl,
+                               let avatarUrl = URL(string: avatarUrlString) {
+                                AsyncImage(url: avatarUrl) { image in
+                                    image.resizable()
+                                } placeholder: {
+                                    Color.secondary
+                                }
+                                .frame(width: 36, height: 36)
+                                .clipShape(.circle)
+                            } else {
+                                Color.secondary
+                                    .frame(width: 36, height: 36)
+                                    .clipShape(.circle)
+                            }
+                            
+                            Text(row.channel?.name ?? "Channel Name Not Available")
+                        }
                     }
                     .onDelete { offsets in
                         self.store.send(.listElementDeleteSwiped(offsets: offsets))
@@ -80,6 +122,7 @@ struct Subscriptions: View {
                 }
             }
         }
+        .navigationTitle("Subscriptions")
     }
 }
 
@@ -91,6 +134,6 @@ struct Subscriptions: View {
     NavigationStack {
         Subscriptions(store: Store(initialState: SubscriptionFeature.State()) {
             SubscriptionFeature()
-          })
+        })
     }
 }
