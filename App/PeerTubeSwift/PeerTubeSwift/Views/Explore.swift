@@ -5,132 +5,168 @@
 //  Created by Eric Wätke on 22.12.25.
 //
 
+import ComposableArchitecture
 import SQLiteData
 import SwiftUI
 import TubeSDK
 
-struct Explore: View {
-    @Environment(AppState.self) private var appState: AppState
-    
-    @State var loading = false
-    
-    @FetchAll var instances: [Instance]
-    
-    @Selection struct Row: Hashable {
-        public static func == (lhs: Explore.Row, rhs: Explore.Row) -> Bool {
-            return lhs.video.id == rhs.video.id
-        }
-        
-        let video: Video
-        let thumbnail: PeertubeImage?
-        let channel: VideoChannel?
+@Selection struct VideoRow: Hashable, Equatable {
+    public static func == (lhs: VideoRow, rhs: VideoRow) -> Bool {
+        return lhs.video.id == rhs.video.id
     }
     
-    @FetchAll(
-        #sql(
+    let video: Video
+    let channel: VideoChannel?
+}
+
+@Reducer
+struct ExploreFeature {
+    @ObservableState
+    struct State: Equatable {
+        var clients: [TubeSDKClient] = []
+        var isLoadingVideos: Bool = false
+        var filter: FeedFilter = .all
+        var order: FeedOrder = .descending
+        
+        @FetchAll var instances: [Instance]
+        
+        @FetchAll(
+            #sql(
             """
             SELECT 
-                \(Video.columns),
-                \(PeertubeImage.columns),
-                \(VideoChannel.columns)
+              \(Video.columns),
+              \(VideoChannel.columns),
             FROM \(Video.self)
-            LEFT JOIN \(PeertubeImage.self) ON \(Video.thumbnailID) = \(PeertubeImage.id)
             LEFT JOIN \(VideoChannel.self) ON \(Video.channelID) = \(VideoChannel.id)
             """
+            )
         )
-    )
-    var feed: [Row]
+        var feed: [VideoRow]
+    }
+    
+    enum Action {
+        case videoTapped(row: VideoRow)
+        case videoOverflowMenuTapped(row: VideoRow)
+        case initialScreenLoad
+        case pulledToRefresh
+        case loadVideos
+        case finishLoading
+        case channelTapped(row: VideoRow)
+        case instanceTapped
+    }
+    
+    enum FeedFilter {
+        case all
+    }
+
+    enum FeedOrder {
+        case ascending
+        case descending
+    }
     
     @Dependency(\.defaultDatabase) var database
     
-    func getVideoFeed() async throws {
-        let clients = instances.compactMap { appState.instances[$0.host] }
-        
-        // Get Videos from Peertube
-        for client in clients {
-            let videos = try await client.getVideos()
-            
-            // Add Videos to SQLite
-            
-            for peertubeVideo in videos {
-                guard let channel = peertubeVideo.channel,
-                      let videoId = peertubeVideo.uuid,
-                      let videoName = peertubeVideo.name,
-                      let publishedAt = peertubeVideo.publishedAt,
-                      let channelId = channel.id,
-                      let channelDisplayName = channel.displayName
-                else {
-                    print("Error adding video")
-                    continue
-                }
-                
-                let instance = try await database.read { db in
-                    try Instance
-                        .where { $0.host == client.instance.host }
-                        .limit(1)
-                        .fetchOne(db)
-                }
-                
-                guard let instance = instance else {
-                    print("instance not found in db")
-                    continue
-                }
-                
-                await withErrorReporting {
-                    try await database.write { db in
-                        var thumbnailId: UUID?
+    var body: some ReducerOf<Self> {
+        Reduce { state, action in
+            switch action {
+            case .videoTapped(row: let row):
+                return .none
+            case .videoOverflowMenuTapped(row: let row):
+                return .none
+            case .initialScreenLoad:
+                state.isLoadingVideos = true
+                return .send(.loadVideos)
+            case .loadVideos:
+                return .run { [clients = state.clients, instances = state.instances] send in
+                    // Get Videos from Peertube
+                    for client in clients {
+                        let videos = try await client.getVideos()
                         
-                        if let thumbnailPath = peertubeVideo.thumbnailPath,
-                           let thumbnailURL = try? client.getImageUrl(path: thumbnailPath)
-                        {
-                            thumbnailId = try PeertubeImage
-                                .insert {
-                                    PeertubeImage.Draft(
-                                        instanceID: instance.id, url: thumbnailURL.absoluteString)
-                                } onConflictDoUpdate: { updates, excluded in
-                                    // Update the URL field if a conflict occurs
-                                    updates.url = excluded.url
+                        // Add Videos to SQLite
+                        for peertubeVideo in videos {
+                            guard let channel = peertubeVideo.channel,
+                                  let videoId = peertubeVideo.uuid,
+                                  let videoName = peertubeVideo.name,
+                                  let publishedAt = peertubeVideo.publishedAt,
+                                  let channelId = channel.id,
+                                  let channelDisplayName = channel.displayName
+                            else {
+                                print("Error adding video")
+                                continue
+                            }
+                            
+                            let instance = instances.first { $0.host == client.instance.host }
+                            guard let instance = instance else {
+                                print("instance not found in db")
+                                continue
+                            }
+                            
+                            await withErrorReporting {
+                                try await database.write { db in
+                                    let avatarUrl: String? = channel.avatars?.first?.fileUrl
+                                    
+                                    try VideoChannel
+                                        .upsert {
+                                            VideoChannel(
+                                                id: "\(instance.host)-\(channelId)",
+                                                name: channelDisplayName,
+                                                avatarUrl: avatarUrl,
+                                                instanceID: instance.id,
+                                            )
+                                        }
+                                        .execute(db)
+                                    
+                                    let thumbnailUrl: String? = nil
+                                    if let thumbnailPath = peertubeVideo.thumbnailPath {
+                                        thumbnailUrl = try? client.getImageUrl(path: thumbnailPath)
+                                    }
+                                    
+                                    try Video
+                                        .upsert {
+                                            Video(
+                                                id: videoId,
+                                                channelID: "\(instance.host)-\(channelId)",
+                                                instanceID: instance.id,
+                                                name: videoName,
+                                                publishDate: publishedAt,
+                                                thumbnailUrl: thumbnailUrl
+                                            )
+                                        }
+                                        .execute(db)
                                 }
-                                .returning(\.id)
-                                .fetchOne(db)
+                            }
                         }
-                        
-                        try VideoChannel
-                            .insert {
-                                VideoChannel(
-                                    id: "\(instance.host)-\(channelId)", name: channelDisplayName,
-                                    instanceID: instance.id)
-                            }
-                            .execute(db)
-                        
-                        try Video
-                            .upsert {
-                                Video(
-                                    id: videoId,
-                                    channelID: "\(instance.host)-\(channelId)",
-                                    instanceID: instance.id,
-                                    name: videoName,
-                                    publishDate: publishedAt,
-                                    thumbnailID: thumbnailId
-                                )
-                            }
-                            .execute(db)
                     }
+                    
+                    await send(.finishLoading)
                 }
+            case .finishLoading:
+                state.isLoadingVideos = false
+                return .none
+            case .pulledToRefresh:
+                state.isLoadingVideos = true
+                return .send(.loadVideos)
+            case .channelTapped(row: let row):
+                return .none
+            case .instanceTapped:
+                return .none
             }
         }
-        
-        return
     }
+}
+
+struct Explore: View {
+    @Environment(AppState.self) private var appState: AppState
+    let store: StoreOf<ExploreFeature>
     
     var body: some View {
         @Bindable var appState = appState
         
         NavigationStack(path: $appState.navigationPath) {
             ZStack {
-                if loading {
+                if self.store.isLoadingVideos {
                     ProgressView()
-                } else if feed.isEmpty {
+                } else if self.store.feed.isEmpty {
                     ContentUnavailableView {
                         Label("Your Feed is empty", systemImage: "video")
                     } description: {
@@ -141,15 +177,12 @@ struct Explore: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading) {
-                            ForEach(feed, id: \.self) { row in
-                                VideoCard(row: row)
-                                    .onTapGesture {
-                                        //                                        guard let videoId = pair.video.uuid?.uuidString else {
-                                        //                                            print("Couldnt get video id")
-                                        //                                            return
-                                        //                                        }
-                                        //                                        appState.navigateTo(.videoDetail(host: pair.host, videoId: videoId))
-                                    }
+                            ForEach(self.store.feed, id: \.self) { row in
+                                VideoCard(row: row) {
+                                    self.store.send(.videoTapped(row: row))
+                                } openChannel: {
+                                    self.store.send(.channelTapped(row: row))
+                                }
                             }
                         }
                         .padding()
@@ -167,35 +200,22 @@ struct Explore: View {
                 
             }
             .task {
-                await withErrorReporting {
-                    try await appState.addInstance(scheme: "https", host: "peertube.wtf")
-                    try await appState.addInstance(scheme: "https", host: "peertube.wtf")
-                }
-                
-                do {
-                    try await getVideoFeed()
-                } catch {
-                    print("Error getting video feed")
-                    print(error)
-                }
+                self.store.send(.initialScreenLoad)
             }
             .refreshable {
-                loading = true
-                do {
-                    try await getVideoFeed()
-                    loading = false
-                    print("Finished loading")
-                } catch {
-                    print("Error getting videos")
-                    print(error)
-                    loading = false
-                }
+                self.store.send(.pulledToRefresh)
             }
         }
     }
 }
 
 #Preview {
-    //    Explore()
-    //        .environment(AppState.example)
+    //    let _ = prepareDependencies {
+    //        try! $0.bootstrapDatabase()
+    //        try! $0.defaultDatabase.seed()
+    //    }
+    //    NavigationStack {
+    //        Explore()
+    //            .environment(AppState())
+    //    }
 }
