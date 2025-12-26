@@ -14,7 +14,7 @@ import TubeSDK
     public static func == (lhs: VideoRow, rhs: VideoRow) -> Bool {
         return lhs.video.id == rhs.video.id
     }
-    
+
     let video: Video
     let channel: VideoChannel?
 }
@@ -27,23 +27,23 @@ struct ExploreFeature {
         var isLoadingVideos: Bool = false
         var filter: FeedFilter = .all
         var order: FeedOrder = .descending
-        
+
         @FetchAll var instances: [Instance] = []
-        
+
         @FetchAll(
             #sql(
-            """
-            SELECT 
-              \(Video.columns),
-              \(VideoChannel.columns),
-            FROM \(Video.self)
-            LEFT JOIN \(VideoChannel.self) ON \(Video.channelID) = \(VideoChannel.id)
-            """
+                """
+                SELECT
+                  \(Video.columns),
+                  \(VideoChannel.columns)
+                FROM \(Video.self)
+                LEFT JOIN \(VideoChannel.self) ON \(Video.channelID) = \(VideoChannel.id)
+                """
             )
         )
         var feed: [VideoRow] = []
     }
-    
+
     enum Action {
         case videoTapped(row: VideoRow)
         case videoOverflowMenuTapped(row: VideoRow)
@@ -55,7 +55,7 @@ struct ExploreFeature {
         case instanceTapped
         case addInstanceButtonTapped
     }
-    
+
     enum FeedFilter {
         case all
     }
@@ -64,47 +64,47 @@ struct ExploreFeature {
         case ascending
         case descending
     }
-    
+
     @Dependency(\.defaultDatabase) var database
-    
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .videoTapped(row: let row):
+            case .videoTapped(let row):
                 return .none
-            case .videoOverflowMenuTapped(row: let row):
+            case .videoOverflowMenuTapped(let row):
                 return .none
             case .initialScreenLoad:
                 return .send(.loadVideos)
             case .loadVideos:
-                state.isLoadingVideos = true
+//                state.isLoadingVideos = true
                 return .run { [clients = state.clients, instances = state.instances] send in
                     // Get Videos from Peertube
-                    for client in clients {
+                    for (clientIndex, client) in clients.enumerated() {
                         let videos = try await client.getVideos()
-                        
-                        for peertubeVideo in videos {
+
+                        for (videoIndex, peertubeVideo) in videos.enumerated() {
                             guard let channel = peertubeVideo.channel,
-                                  let videoId = peertubeVideo.uuid,
-                                  let videoName = peertubeVideo.name,
-                                  let publishedAt = peertubeVideo.publishedAt,
-                                  let channelId = channel.id,
-                                  let channelDisplayName = channel.displayName
+                                let videoId = peertubeVideo.uuid,
+                                let videoName = peertubeVideo.name,
+                                let publishedAt = peertubeVideo.publishedAt,
+                                let channelId = channel.id,
+                                let channelDisplayName = channel.displayName
                             else {
                                 print("Error adding video")
                                 continue
                             }
-                            
+
                             let instance = instances.first { $0.host == client.instance.host }
                             guard let instance = instance else {
                                 print("instance not found in db")
                                 continue
                             }
-                            
+
                             await withErrorReporting {
                                 try await database.write { db in
                                     let avatarUrl: String? = channel.avatars?.first?.fileUrl
-                                    
+
                                     try VideoChannel
                                         .upsert {
                                             VideoChannel(
@@ -115,16 +115,18 @@ struct ExploreFeature {
                                             )
                                         }
                                         .execute(db)
-                                    
+
                                     var thumbnailUrl: String? = nil
                                     if let thumbnailPath = peertubeVideo.thumbnailPath {
                                         do {
-                                            thumbnailUrl = try client.getImageUrl(path: thumbnailPath).absoluteString
+                                            thumbnailUrl = try client.getImageUrl(
+                                                path: thumbnailPath
+                                            ).absoluteString
                                         } catch {
                                             print("could not get thumbnail url")
                                         }
                                     }
-                                    
+
                                     try Video
                                         .upsert {
                                             Video(
@@ -139,17 +141,18 @@ struct ExploreFeature {
                                         .execute(db)
                                 }
                             }
+//                            if clientIndex + 1 == clients.count && videoIndex + 1 == videos.count {
+//                                await send(.finishLoading)
+//                            }
                         }
                     }
-                    
-                    await send(.finishLoading)
                 }
             case .finishLoading:
                 state.isLoadingVideos = false
                 return .none
             case .pulledToRefresh:
                 return .send(.loadVideos)
-            case .channelTapped(row: let row):
+            case .channelTapped(let row):
                 return .none
             case .instanceTapped:
                 return .none
@@ -163,16 +166,16 @@ struct ExploreFeature {
 struct Explore: View {
     @Environment(AppState.self) private var appState: AppState
     let store: StoreOf<ExploreFeature>
-    
+
     var body: some View {
         @Bindable var appState = appState
-        
+
         NavigationStack(path: $appState.navigationPath) {
             ZStack {
                 if self.store.isLoadingVideos {
                     ProgressView()
                 } else if self.store.feed.isEmpty {
-                    if (self.store.instances.isEmpty) {
+                    if self.store.instances.isEmpty {
                         ContentUnavailableView {
                             Label("Your Feed is empty", systemImage: "video")
                         } description: {
@@ -184,7 +187,9 @@ struct Explore: View {
                         ContentUnavailableView {
                             Label("Your Feed is empty", systemImage: "video")
                         } description: {
-                           Text("You have instances added, but they dont seem to have any videos right now")
+                            Text(
+                                "You have instances added, but they dont seem to have any videos right now"
+                            )
                         }
 
                     }
@@ -206,12 +211,12 @@ struct Explore: View {
             .navigationTitle("Explore")
             .navigationDestination(for: NavigationDestination.self) { destination in
                 switch destination {
-                case .videoDetail(host: let host, videoId: let videoId):
+                case .videoDetail(let host, let videoId):
                     VideoDetails(host: host, videoId: videoId)
                 default:
                     Text("View not implemented")
                 }
-                
+
             }
             .task {
                 self.store.send(.initialScreenLoad)
@@ -224,14 +229,16 @@ struct Explore: View {
 }
 
 #Preview {
-        let _ = prepareDependencies {
-            try! $0.bootstrapDatabase()
-            try! $0.defaultDatabase.seed()
-        }
-        NavigationStack {
-            Explore(store: Store(initialState: ExploreFeature.State()) {
+    let _ = prepareDependencies {
+        try! $0.bootstrapDatabase()
+        try! $0.defaultDatabase.seed()
+    }
+    NavigationStack {
+        Explore(
+            store: Store(initialState: ExploreFeature.State()) {
                 ExploreFeature()
-              })
-                .environment(AppState())
-        }
+            }
+        )
+        .environment(AppState())
+    }
 }

@@ -205,8 +205,9 @@ extension DatabaseWriter {
                     id: UUID(1),
                     channelID: "peertube.wtf-1",
                     instanceID: UUID(1),
-                    name: "Minecraft Let’s Play #011",
-                    publishDate: .now
+                    name: "Minecraft Let’s Play #001",
+                    publishDate: .now,
+                    thumbnailUrl: "https://i.ytimg.com/vi/DM52HxaLK-Y/hqdefault.jpg?sqp=-oaymwEXCOADEI4CSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLCYG-ebPaEOzdf_cIFY7tdd2oD5qg&days_since_epoch=20146"
                 )
             }
         }
