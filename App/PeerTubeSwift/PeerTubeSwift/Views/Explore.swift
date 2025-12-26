@@ -80,63 +80,67 @@ struct ExploreFeature {
                 state.isLoadingVideos = true
                 return .run { [clients = state.clients, instances = state.instances] send in
                     // Get Videos from Peertube
-//                    for client in clients {
-//                        let videos = try await client.getVideos()
-//                        
-//                        for peertubeVideo in videos {
-//                            guard let channel = peertubeVideo.channel,
-//                                  let videoId = peertubeVideo.uuid,
-//                                  let videoName = peertubeVideo.name,
-//                                  let publishedAt = peertubeVideo.publishedAt,
-//                                  let channelId = channel.id,
-//                                  let channelDisplayName = channel.displayName
-//                            else {
-//                                print("Error adding video")
-//                                continue
-//                            }
-//                            
-//                            let instance = instances.first { $0.host == client.instance.host }
-//                            guard let instance = instance else {
-//                                print("instance not found in db")
-//                                continue
-//                            }
-//                            
-//                            await withErrorReporting {
-//                                try await database.write { db in
-//                                    let avatarUrl: String? = channel.avatars?.first?.fileUrl
-//                                    
-//                                    try VideoChannel
-//                                        .upsert {
-//                                            VideoChannel(
-//                                                id: "\(instance.host)-\(channelId)",
-//                                                name: channelDisplayName,
-//                                                avatarUrl: avatarUrl,
-//                                                instanceID: instance.id,
-//                                            )
-//                                        }
-//                                        .execute(db)
-//                                    
-//                                    let thumbnailUrl: String? = nil
-//                                    if let thumbnailPath = peertubeVideo.thumbnailPath {
-//                                        thumbnailUrl = try? client.getImageUrl(path: thumbnailPath)
-//                                    }
-//                                    
-//                                    try Video
-//                                        .upsert {
-//                                            Video(
-//                                                id: videoId,
-//                                                channelID: "\(instance.host)-\(channelId)",
-//                                                instanceID: instance.id,
-//                                                name: videoName,
-//                                                publishDate: publishedAt,
-//                                                thumbnailUrl: thumbnailUrl
-//                                            )
-//                                        }
-//                                        .execute(db)
-//                                }
-//                            }
-//                        }
-//                    }
+                    for client in clients {
+                        let videos = try await client.getVideos()
+                        
+                        for peertubeVideo in videos {
+                            guard let channel = peertubeVideo.channel,
+                                  let videoId = peertubeVideo.uuid,
+                                  let videoName = peertubeVideo.name,
+                                  let publishedAt = peertubeVideo.publishedAt,
+                                  let channelId = channel.id,
+                                  let channelDisplayName = channel.displayName
+                            else {
+                                print("Error adding video")
+                                continue
+                            }
+                            
+                            let instance = instances.first { $0.host == client.instance.host }
+                            guard let instance = instance else {
+                                print("instance not found in db")
+                                continue
+                            }
+                            
+                            await withErrorReporting {
+                                try await database.write { db in
+                                    let avatarUrl: String? = channel.avatars?.first?.fileUrl
+                                    
+                                    try VideoChannel
+                                        .upsert {
+                                            VideoChannel(
+                                                id: "\(instance.host)-\(channelId)",
+                                                name: channelDisplayName,
+                                                avatarUrl: avatarUrl,
+                                                instanceID: instance.id,
+                                            )
+                                        }
+                                        .execute(db)
+                                    
+                                    var thumbnailUrl: String? = nil
+                                    if let thumbnailPath = peertubeVideo.thumbnailPath {
+                                        do {
+                                            thumbnailUrl = try client.getImageUrl(path: thumbnailPath).absoluteString
+                                        } catch {
+                                            print("could not get thumbnail url")
+                                        }
+                                    }
+                                    
+                                    try Video
+                                        .upsert {
+                                            Video(
+                                                id: videoId,
+                                                channelID: "\(instance.host)-\(channelId)",
+                                                instanceID: instance.id,
+                                                name: videoName,
+                                                publishDate: publishedAt,
+                                                thumbnailUrl: thumbnailUrl
+                                            )
+                                        }
+                                        .execute(db)
+                                }
+                            }
+                        }
+                    }
                     
                     await send(.finishLoading)
                 }
@@ -168,12 +172,21 @@ struct Explore: View {
                 if self.store.isLoadingVideos {
                     ProgressView()
                 } else if self.store.feed.isEmpty {
-                    ContentUnavailableView {
-                        Label("Your Feed is empty", systemImage: "video")
-                    } description: {
-                        Button("Add an Instance to get their latest videos") {
-                            self.store.send(.addInstanceButtonTapped)
+                    if (self.store.instances.isEmpty) {
+                        ContentUnavailableView {
+                            Label("Your Feed is empty", systemImage: "video")
+                        } description: {
+                            Button("Add an Instance to get their latest videos") {
+                                self.store.send(.addInstanceButtonTapped)
+                            }
                         }
+                    } else {
+                        ContentUnavailableView {
+                            Label("Your Feed is empty", systemImage: "video")
+                        } description: {
+                           Text("You have instances added, but they dont seem to have any videos right now")
+                        }
+
                     }
                 } else {
                     ScrollView {
