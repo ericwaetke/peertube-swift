@@ -9,7 +9,7 @@ import SwiftUI
 import TubeSDK
 import ComposableArchitecture
 
-struct ContentView: View {
+struct ContentViewOld: View {
     @Environment(AppState.self) private var appState: AppState
     @StateObject private var networkMonitor = NetworkMonitor()
     
@@ -112,6 +112,6 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentViewOld()
         .environment(AppState())
 }
