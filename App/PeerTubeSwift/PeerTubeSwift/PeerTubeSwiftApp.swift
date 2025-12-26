@@ -24,7 +24,7 @@ struct PeerTubeSwiftApp: App {
 
 	var body: some Scene {
 		WindowGroup {
-			ContentView()
+			ContentViewOld()
 				.environment(appState)
 		}
 	}
