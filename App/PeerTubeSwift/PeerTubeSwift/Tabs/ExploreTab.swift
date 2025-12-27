@@ -94,15 +94,24 @@ struct ExploreTab: View {
                 }
                 
                 NavigationLink(
-                  "Newest",
-                  state: ExploreTabFeature.Path.State.oldExplore(ExploreFeature.State())
+                    "Newest",
+                    state: ExploreTabFeature.Path.State.oldExplore(ExploreFeature.State())
                 )
                 NavigationLink(
-                  "Trending",
-                  state: ExploreTabFeature.Path.State.screenB(ScreenB.State())
+                    "Trending",
+                    state: ExploreTabFeature.Path.State.screenB(ScreenB.State())
                 )
             }
             .navigationTitle("Explore")
+            .toolbar {
+                ToolbarItemGroup(placement: .secondaryAction) {
+                    Button {
+                        
+                    } label: {
+                        Label("Add Instance", systemImage: "plus")
+                    }
+                }
+            }
         } destination: { store in
             switch store.case {
             case let .oldExplore(store):
