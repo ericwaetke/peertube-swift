@@ -5,6 +5,7 @@
 //  Created by Eric Wätke on 18.12.25.
 //
 
+import ComposableArchitecture
 import Dependencies
 import Combine
 import SwiftUI
@@ -24,8 +25,11 @@ struct PeerTubeSwiftApp: App {
 
 	var body: some Scene {
 		WindowGroup {
-			ContentViewOld()
-				.environment(appState)
+            ContentView(store: Store(initialState: AppFeature.State(), reducer: {
+                AppFeature()
+            }))
+//			ContentViewOld()
+//				.environment(appState)
 		}
 	}
 }

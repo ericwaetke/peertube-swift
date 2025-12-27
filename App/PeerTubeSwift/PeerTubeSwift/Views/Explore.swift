@@ -164,13 +164,13 @@ struct ExploreFeature {
 }
 
 struct Explore: View {
-    @Environment(AppState.self) private var appState: AppState
+//    @Environment(AppState.self) private var appState: AppState
     let store: StoreOf<ExploreFeature>
 
     var body: some View {
-        @Bindable var appState = appState
+//        @Bindable var appState = appState
 
-        NavigationStack(path: $appState.navigationPath) {
+        NavigationStack() {
             ZStack {
                 if self.store.isLoadingVideos {
                     ProgressView()
