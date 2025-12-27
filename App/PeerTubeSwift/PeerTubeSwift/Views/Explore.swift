@@ -170,7 +170,6 @@ struct Explore: View {
     var body: some View {
 //        @Bindable var appState = appState
 
-        NavigationStack() {
             ZStack {
                 if self.store.isLoadingVideos {
                     ProgressView()
@@ -224,7 +223,7 @@ struct Explore: View {
             .refreshable {
                 self.store.send(.pulledToRefresh)
             }
-        }
+        
     }
 }
 
