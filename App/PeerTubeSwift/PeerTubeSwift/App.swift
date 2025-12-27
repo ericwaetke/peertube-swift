@@ -12,7 +12,7 @@ import SwiftUI
 struct AppFeature {
     @ObservableState
     struct State {
-        var selectedTab: TubeTab = .feed
+        var selectedTab: TubeTab = .explore
         
         var feedTab = FeedTabFeature.State()
         var exploreTab = ExploreTabFeature.State()
