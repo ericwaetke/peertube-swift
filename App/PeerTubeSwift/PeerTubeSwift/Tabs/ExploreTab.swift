@@ -39,6 +39,7 @@ struct ExploreTabFeature {
             case .addInstance:
                 return .none
             case .saveNewInstance:
+                state.addInstance = nil
                 return .none
                 
             case let .path(action):
@@ -145,7 +146,7 @@ struct ExploreTab: View {
                         Button("Save") {
                             self.store.send(.saveNewInstance)
                         }
-                        .disabled(true)
+                        .disabled(!store.state.readyToSaveInstance)
                     }
                 }
             }
