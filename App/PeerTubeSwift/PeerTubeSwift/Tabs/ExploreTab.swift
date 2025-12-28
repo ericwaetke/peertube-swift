@@ -5,10 +5,12 @@
 //  Created by Eric Wätke on 26.12.25.
 //
 
+import Dependencies
 import SQLiteData
 import ComposableArchitecture
 import SwiftUI
 import TubeSDK
+import WebURL
 
 @Reducer
 struct ExploreTabFeature {
@@ -31,7 +33,7 @@ struct ExploreTabFeature {
         case path(StackActionOf<Path>)
         case addInstanceButtonPressed
         case addInstance(PresentationAction<InstanceManagerFeature.Action>)
-        case saveNewInstance
+        
     }
     
     var body: some ReducerOf<Self> {
@@ -40,10 +42,29 @@ struct ExploreTabFeature {
             case .addInstanceButtonPressed:
                 state.addInstance = InstanceManagerFeature.State()
                 return .none
+            case let .addInstance(.presented(.delegate(delegate))):
+                switch delegate {
+                case let .saveNewInstance(url):
+                    state.addInstance = nil
+                    
+                    return .run { send in
+                        @Dependency(\.defaultDatabase) var database
+                        
+                        //                    TODO: Add Proper error handeling
+                        guard let host = url.host else {
+                            return
+                        }
+                        withErrorReporting {
+                            try database.write { db in
+                                try Instance.insert {
+                                    Instance.Draft(scheme: url.scheme, host: host.serialized)
+                                }
+                                .execute(db)
+                            }
+                        }
+                    }
+                }
             case .addInstance:
-                return .none
-            case .saveNewInstance:
-                state.addInstance = nil
                 return .none
                 
             case let .path(action):
@@ -101,10 +122,10 @@ struct ExploreTab: View {
                                         }
                                         Text(instance.host)
                                     }
-//                                    TODO: For whatever reason, this highlightes the entire section, not just the instance
-//                                    .contextMenu {
-//                                        Button("Delete") {}
-//                                    }
+                                    //                                    TODO: For whatever reason, this highlightes the entire section, not just the instance
+                                    //                                    .contextMenu {
+                                    //                                        Button("Delete") {}
+                                    //                                    }
                                 }
                             }
                         }
@@ -137,10 +158,10 @@ struct ExploreTab: View {
                     "Newest",
                     state: ExploreTabFeature.Path.State.oldExplore(ExploreFeature.State())
                 )
-//                NavigationLink(
-//                    "Trending",
-//                    state: ExploreTabFeature.Path.State.screenB(ScreenB.State())
-//                )
+                //                NavigationLink(
+                //                    "Trending",
+                //                    state: ExploreTabFeature.Path.State.screenB(ScreenB.State())
+                //                )
             }
             .navigationTitle("Explore")
             .toolbar {
@@ -158,23 +179,26 @@ struct ExploreTab: View {
                 Explore(store: store)
             case let .videoDetail(store):
                 VideoDetails(store: store)
-//            case let .screenB(store):
-//                ScreenBView(store: store)
+                //            case let .screenB(store):
+                //                ScreenBView(store: store)
             }
         }
         .sheet(item: $store.scope(state: \.addInstance, action: \.addInstance)) { store in
             NavigationStack {
                 InstanceManager(store: store)
-                .navigationTitle("Add new Instance")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem {
-                        Button("Save") {
-                            self.store.send(.saveNewInstance)
+                    .navigationTitle("Add new Instance")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem {
+                            Button("Save") {
+                                guard let url = store.state.instanceUrl else { return }
+                                
+                                store.send(.delegate(.saveNewInstance(url: url)))
+//                                parentStore.send(.saveNewInstance(scheme: scheme, host: host))
+                            }
+                            .disabled(!store.state.readyToSaveInstance)
                         }
-                        .disabled(!store.state.readyToSaveInstance)
                     }
-                }
             }
         }
     }

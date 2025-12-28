@@ -24,11 +24,17 @@ struct InstanceManagerFeature {
     enum Action {
         case instanceUrlChanged(String)
         case attemptConnectionButtonPressed
+        case delegate(Delegate)
         case textFieldSubmitButtonPressed
         
         case testConnection
         case connectionResponse(Result<String, NetworkError>)
         case setInstanceUrl(WebURL)
+        
+        @CasePathable
+        enum Delegate {
+            case saveNewInstance(url: WebURL)
+        }
     }
     
     var body: some ReducerOf<Self> {
@@ -46,6 +52,9 @@ struct InstanceManagerFeature {
                 return .send(.testConnection)
             case .textFieldSubmitButtonPressed:
                 return .send(.testConnection)
+                
+            case .delegate(_):
+                return .none
                 
             case .testConnection:
                 state.tryingInstanceConnection = true
