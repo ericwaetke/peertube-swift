@@ -26,7 +26,7 @@ import SQLiteData
     var instanceID: Instance.ID
 }
 
-@Table struct Instance: Identifiable, Equatable {
+@Table struct Instance: Identifiable, Equatable, Hashable {
     let id: UUID
     var scheme: String
     var host: String
