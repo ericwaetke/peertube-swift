@@ -101,8 +101,10 @@ struct VideoDetailsFeature {
                 return .send(.loadInstance)
             case let .loadVideo(videoDetails):
                 state.videoDetails = videoDetails
-                if let quality = videoDetails.streamingPlaylists?.first?.files?.first {
-                    state.selectedQuality = quality
+                if state.selectedQuality == nil {
+                    if let quality = videoDetails.streamingPlaylists?.first?.files?.first {
+                        state.selectedQuality = quality
+                    }
                 }
                 return .send(.loadChannel(videoDetails))
             case .loadInstance:
@@ -139,11 +141,6 @@ struct VideoDetailsFeature {
                           let channelDetails = videoDetails.channel,
                           let channelId = channelDetails.id,
                           let channelName = channelDetails.displayName else {
-                        print("Couldnt finish loading channel.")
-                        print("Instance ID Input: \(String(describing: instance?.id))")
-                        print("channelDetails Input: \(String(describing: videoDetails.channel))")
-                        print("channel ID Input: \(String(describing: videoDetails.channel?.id))")
-                        print("channel name Input: \(String(describing: videoDetails.channel?.displayName))")
                         return
                     }
                     
@@ -216,6 +213,23 @@ struct VideoDetailsFeature {
     }
 }
 
+func getAudioStream(quality: TubeSDK.VideoFile, videoDetails: TubeSDK.VideoDetails) -> URL? {
+    if let hasAudio = quality.hasAudio {
+        if !hasAudio {
+            if let streamingPlaylists = videoDetails.streamingPlaylists,
+               let firstPlaylist = streamingPlaylists.first,
+               let playlistFiles = firstPlaylist.files,
+               let tempAudioStream = playlistFiles.first(where: { $0.hasAudio == true }),
+               let tempAudioStreamUrlString = tempAudioStream.fileUrl,
+               let tempAudioStreamUrl = URL(string: tempAudioStreamUrlString) {
+                return tempAudioStreamUrl
+            }
+        }
+    }
+    
+    return nil
+}
+
 struct VideoDetails: View {
     @Bindable var store: StoreOf<VideoDetailsFeature>
     
@@ -226,9 +240,13 @@ struct VideoDetails: View {
             if let videoDetails = self.store.state.videoDetails {
                 ScrollView {
                     VStack (spacing: 16) {
-                        if let urlString = self.store.state.selectedQuality?.playlistUrl,
+                        if let quality = self.store.state.selectedQuality,
+                           let urlString = quality.playlistUrl,
                            let url = URL(string: urlString){
-                            VideoPlayerView(videoURL: url)
+                            VideoPlayerView(
+                                videoURL: url,
+                                sidecarAudioUrl: getAudioStream(quality: quality, videoDetails: videoDetails)
+                            )
                                 .frame(
                                     minWidth: 0,
                                     maxWidth: .infinity,
@@ -303,10 +321,11 @@ struct VideoDetails: View {
                                                             self.store.send(.newResolutionSelected(quality))
 //                                                        }
                                                     } label: {
+                                                        let string = "\(resolution) (A: \((quality.hasAudio ?? false) ? "✓" : "×"), V: \((quality.hasVideo ?? false) ? "✓" : "×")"
                                                         if self.store.state.selectedQuality == quality {
-                                                            Label(resolution, systemImage: "checkmark")
+                                                            Label(string, systemImage: "checkmark")
                                                         } else {
-                                                            Text(resolution)
+                                                            Text(string)
                                                         }
                                                     }
                                                 }

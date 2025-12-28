@@ -98,7 +98,7 @@ func appDatabase() throws -> any DatabaseWriter {
         try #sql(
             """
                 CREATE TABLE "accounts" (
-                    "id" TEXT PRIMARY KEY NOT NULL ON CONFLICT REPLACE DEFAULT (uuid()),
+                    "id" TEXT PRIMARY KEY NOT NULL,
                     "name" TEXT NOT NULL,
                     "instanceID" TEXT NOT NULL REFERENCES "instances"("host") ON DELETE CASCADE,
                     "avatarUrl" TEXT
