@@ -17,6 +17,7 @@ import TubeSDK
 
     let video: Video
     let channel: VideoChannel?
+    let instance: Instance?
 }
 
 @Reducer
@@ -35,9 +36,11 @@ struct ExploreFeature {
                 """
                 SELECT
                   \(Video.columns),
-                  \(VideoChannel.columns)
+                  \(VideoChannel.columns),
+                    \(Instance.columns)
                 FROM \(Video.self)
                 LEFT JOIN \(VideoChannel.self) ON \(Video.channelID) = \(VideoChannel.id)
+                LEFT JOIN \(Instance.self) ON \(Video.instanceID) = \(Instance.id)
                 """
             )
         )
@@ -47,7 +50,7 @@ struct ExploreFeature {
     enum Action {
         case addClient(TubeSDKClient)
         case videoTapped(row: VideoRow)
-        case videoOverflowMenuTapped(row: VideoRow)
+        case videoOverflowMenuTapped(row: VideoRow, host: String, client: TubeSDKClient)
         case initialScreenLoad
         case pulledToRefresh
         case loadClients
@@ -222,15 +225,15 @@ struct Explore: View {
                 }
             }
             .navigationTitle("Explore")
-            .navigationDestination(for: NavigationDestination.self) { destination in
-                switch destination {
-                case .videoDetail(let host, let videoId):
-                    VideoDetails(host: host, videoId: videoId)
-                default:
-                    Text("View not implemented")
-                }
-
-            }
+//            .navigationDestination(for: NavigationDestination.self) { destination in
+//                switch destination {
+//                case .videoDetail(let host, let videoId):
+//                    VideoDetails(host: host, videoId: videoId)
+//                default:
+//                    Text("View not implemented")
+//                }
+//
+//            }
             .task {
                 self.store.send(.initialScreenLoad)
             }
