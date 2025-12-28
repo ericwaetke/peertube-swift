@@ -127,7 +127,7 @@ final class AppState {
         withErrorReporting {
             try database.write { db in
                 try Instance
-                    .insert { Instance.Draft(scheme: scheme, host: host) }
+                    .insert { Instance(host: host, scheme: scheme) }
                     .execute(db)
             }
         }

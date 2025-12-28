@@ -5,9 +5,36 @@
 //  Created by Eric Wätke on 22.12.25.
 //
 
+import Dependencies
+import SQLiteData
 import ComposableArchitecture
 import SwiftUI
 import TubeSDK
+
+func test() async throws {
+    @Dependency(\.defaultDatabase) var database
+    
+    let host = ""
+    let channelId = ""
+    let subscriptionState = false
+    
+    await withErrorReporting {
+        if (subscriptionState) {
+            try await database.write { db in
+                try PeertubeSubscription
+                    .delete()
+                    .where { $0.channelID ==  "\(host)-\(channelId)"}
+                    .execute(db)
+            }
+        } else {
+            try await database.write { db in
+                try PeertubeSubscription
+                    .insert { PeertubeSubscription.Draft(channelID: "\(host)-\(channelId)", createdAt: .now) }
+                    .execute(db)
+            }
+        }
+    }
+}
 
 @Reducer
 struct VideoDetailsFeature {
@@ -16,6 +43,8 @@ struct VideoDetailsFeature {
         let host: String
         let videoId: String
         let client: TubeSDKClient
+        var videoChannel: VideoChannel?
+        var instance: Instance?
         
         var hasDisliked = false
         var hasLiked = false
@@ -23,6 +52,9 @@ struct VideoDetailsFeature {
         
         var descriptionVisible = true
         var commentsVisible = true
+        
+        //        TODO: Fetch from DB
+        var isSubscribedToChannel = false
     }
     
     enum Action {
@@ -33,7 +65,16 @@ struct VideoDetailsFeature {
         case commentsVisibleChanged(Bool)
         
         case loadVideo(TubeSDK.VideoDetails)
+        case loadChannel(TubeSDK.VideoDetails)
+        case loadInstance
+        case instanceLoaded(Instance)
+        case saveChannel(VideoChannel)
+        
         case screenLoaded
+        case subscribeButtonTapped
+        case changeSubscriptionState(Bool)
+        case channelTapped
+        case instanceTapped
     }
     
     var body: some ReducerOf<Self> {
@@ -54,12 +95,112 @@ struct VideoDetailsFeature {
                 state.commentsVisible.toggle()
                 return .none
             case .screenLoaded:
+                return .send(.loadInstance)
+            case let .loadVideo(videoDetails):
+                state.videoDetails = videoDetails
+                return .send(.loadChannel(videoDetails))
+            case .loadInstance:
+                return .run { [host = state.host] send in
+                    @Dependency(\.defaultDatabase) var database
+                    
+                    await withErrorReporting {
+                        let instance = try await database.write { db in
+                            return try Instance
+                                .upsert {
+                                    Instance(host: host, scheme: "https://")
+                                }
+                                .returning(\.self)
+                                .fetchOne(db)
+                        }
+                        
+                        if let instance = instance {
+                            await send(.instanceLoaded(instance))
+                        }
+                    }
+                }
+            case let .instanceLoaded(instance):
+                state.instance = instance
                 return .run { [client = state.client, videoId = state.videoId] send in
+                    print("running side-effect screen loaded")
                     let videoDetails = try await client.getVideo(host: client.instance.host, id: videoId)
                     await send(.loadVideo(videoDetails))
                 }
-            case let .loadVideo(videoDetails):
-                state.videoDetails = videoDetails
+            case let .loadChannel(videoDetails):
+                return .run { [videoDetails = videoDetails, host = state.host, instance = state.instance] send in
+                    @Dependency(\.defaultDatabase) var database
+                    
+                    guard let instanceId = instance?.id,
+                          let channelDetails = videoDetails.channel,
+                          let channelId = channelDetails.id,
+                          let channelName = channelDetails.displayName else {
+                        print("Couldnt finish loading channel.")
+                        print("Instance ID Input: \(String(describing: instance?.id))")
+                        print("channelDetails Input: \(String(describing: videoDetails.channel))")
+                        print("channel ID Input: \(String(describing: videoDetails.channel?.id))")
+                        print("channel name Input: \(String(describing: videoDetails.channel?.displayName))")
+                        return
+                    }
+                    
+                    let channel = withErrorReporting {
+                        return try database.write { db in
+                            return try VideoChannel
+                                .upsert {
+                                    VideoChannel(
+                                        id: "\(host)-\(channelId)",
+                                        name: channelName,
+                                        avatarUrl: channelDetails.avatars?.first?.fileUrl,
+                                        instanceID: instanceId
+                                    )
+                                }
+                                .returning(\.self)
+                                .fetchOne(db)
+                        }
+                    }
+                    if let channel = channel {
+                        await send(.saveChannel(channel))
+                    }
+                }
+            case let .saveChannel(channel):
+                print(channel)
+                state.videoChannel = channel
+                return .none
+            case .subscribeButtonTapped:
+                let isSubscribed = state.isSubscribedToChannel
+                return .send(.changeSubscriptionState(!isSubscribed))
+            case let .changeSubscriptionState(newSubscriptionState):
+                state.isSubscribedToChannel = newSubscriptionState
+                return .run { [host = state.host, videoDetails = state.videoDetails, newSubscriptionState = newSubscriptionState] send in
+                    @Dependency(\.defaultDatabase) var database
+                    
+                    guard let videoDetails = videoDetails,
+                          let channel = videoDetails.channel,
+                          let peertubeChannelId = channel.id else {
+                        return
+                    }
+                    
+                    let channelId = "\(host)-\(peertubeChannelId)"
+                    print("changing subscription state of »\(channelId)«")
+                    
+                    await withErrorReporting {
+                        if (newSubscriptionState == true) {
+                            try await database.write { db in
+                                try PeertubeSubscription
+                                    .insert { PeertubeSubscription.Draft(channelID: channelId, createdAt: .now) }
+                                    .execute(db)
+                            }
+                        } else {
+                            try await database.write { db in
+                                try PeertubeSubscription
+                                    .where { $0.channelID ==  channelId}
+                                    .delete()
+                                    .execute(db)
+                            }
+                        }
+                    }
+                }
+            case .channelTapped:
+                return .none
+            case .instanceTapped:
                 return .none
             }
         }
@@ -88,7 +229,7 @@ struct VideoDetails: View {
                                     maxHeight: .infinity
                                 )
                                 .aspectRatio(16 / 9, contentMode: .fit)
-    //                            .padding(24)
+                            //                            .padding(24)
                         }
                         VStack (alignment: .leading, spacing: 16) {
                             VStack (alignment: .leading, spacing: 8) {
@@ -183,8 +324,8 @@ struct VideoDetails: View {
                                     }
                                 }
                                 Spacer()
-                                Button("Subscribe") {
-                                    
+                                Button(self.store.state.isSubscribedToChannel ? "Unsubscribe" : "Subscribe") {
+                                    self.store.send(.subscribeButtonTapped)
                                 }
                                 .apply {
                                     if #available(iOS 26.0, *) {
@@ -244,7 +385,7 @@ struct VideoDetails: View {
             }
         }
         .task {
-            self.store.send(.screenLoaded)
+            await self.store.send(.screenLoaded).finish()
         }
     }
 }
@@ -260,6 +401,11 @@ extension View {
 
 
 #Preview {
+    let _ = prepareDependencies {
+        try! $0.bootstrapDatabase()
+        try! $0.defaultDatabase.seed()
+    }
+    
     NavigationStack {
         VideoDetails(store: Store(initialState: VideoDetailsFeature.State(host: "peertube.wtf", videoId: "18QZB6GTN1DRd1LtkeQm22", client: try! TubeSDKClient(scheme: "https", host: "peertube.wtf"))) {
             VideoDetailsFeature()

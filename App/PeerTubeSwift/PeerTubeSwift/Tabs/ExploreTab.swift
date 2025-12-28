@@ -57,7 +57,7 @@ struct ExploreTabFeature {
                         withErrorReporting {
                             try database.write { db in
                                 try Instance.insert {
-                                    Instance.Draft(scheme: url.scheme, host: host.serialized)
+                                    Instance(host: host.serialized, scheme: url.scheme)
                                 }
                                 .execute(db)
                             }

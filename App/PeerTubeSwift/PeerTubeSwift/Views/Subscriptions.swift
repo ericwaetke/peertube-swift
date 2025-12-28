@@ -16,7 +16,7 @@ struct SubRecord {
 }
 
 extension SubRecord: Identifiable {
-    var id: UUID {
+    var id: String {
         subscription.id
     }
 }
@@ -50,19 +50,7 @@ struct SubscriptionFeature {
         Reduce { state, action in
             switch action {
             case .findChannelsButtonTapped:
-                return .run { send in
-                    withErrorReporting {
-                        try database.write { db in
-                            try VideoChannel
-                                .insert { VideoChannel(id: "peertube.wtf-1", name: "Gronkh", instanceID: UUID(1)) }
-                                .execute(db)
-                            
-                            try PeertubeSubscription
-                                .insert { PeertubeSubscription.Draft(channelID: "peertube.wtf-2", createdAt: .now) }
-                                .execute(db)
-                        }
-                    }
-                }
+                return .none
             case .listElementDeleteSwiped(offsets: let offsets):
                 return .run { [subscriptions = state.records] send in
                     withErrorReporting {
