@@ -12,7 +12,7 @@ import WebURL
 @Reducer
 struct InstanceManagerFeature {
     @ObservableState
-    struct State {
+    struct State: Equatable {
         var instanceUrlString: String = ""
         var instanceUrl: WebURL?
         var readyToSaveInstance: Bool = false
@@ -70,6 +70,9 @@ struct InstanceManagerFeature {
                     state.connectionError = error.localizedDescription
                 }
                 
+                return .none
+            case let .setInstanceUrl(url):
+                state.instanceUrl = url
                 return .none
             }
         }

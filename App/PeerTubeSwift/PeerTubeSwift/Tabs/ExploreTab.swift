@@ -19,15 +19,27 @@ struct ExploreTabFeature {
     @ObservableState
     struct State: Equatable {
         var path = StackState<Path.State>()
+        
+        @Presents var addInstance: InstanceManagerFeature.State?
     }
     
     enum Action {
         case path(StackActionOf<Path>)
+        case addInstanceButtonPressed
+        case addInstance(PresentationAction<InstanceManagerFeature.Action>)
+        case saveNewInstance
     }
     
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
+            case .addInstanceButtonPressed:
+                state.addInstance = InstanceManagerFeature.State()
+                return .none
+            case .addInstance:
+                return .none
+            case .saveNewInstance:
+                return .none
                 
             case let .path(action):
                 switch action {
@@ -40,6 +52,9 @@ struct ExploreTabFeature {
             }
         }
         .forEach(\.path, action: \.path)
+        .ifLet(\.$addInstance, action: \.addInstance) {
+            InstanceManagerFeature()
+        }
     }
 }
 extension ExploreTabFeature.Path.State: Equatable {}
@@ -106,7 +121,7 @@ struct ExploreTab: View {
             .toolbar {
                 ToolbarItemGroup(placement: .secondaryAction) {
                     Button {
-                        
+                        self.store.send(.addInstanceButtonPressed)
                     } label: {
                         Label("Add Instance", systemImage: "plus")
                     }
@@ -118,6 +133,21 @@ struct ExploreTab: View {
                 Explore(store: store)
             case let .screenB(store):
                 ScreenBView(store: store)
+            }
+        }
+        .sheet(item: $store.scope(state: \.addInstance, action: \.addInstance)) { store in
+            NavigationStack {
+                InstanceManager(store: store)
+                .navigationTitle("Add new Instance")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem {
+                        Button("Save") {
+                            self.store.send(.saveNewInstance)
+                        }
+                        .disabled(true)
+                    }
+                }
             }
         }
     }
