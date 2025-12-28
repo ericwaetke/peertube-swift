@@ -40,7 +40,7 @@ struct ExploreFeature {
                     \(Instance.columns)
                 FROM \(Video.self)
                 LEFT JOIN \(VideoChannel.self) ON \(Video.channelID) = \(VideoChannel.id)
-                LEFT JOIN \(Instance.self) ON \(Video.instanceID) = \(Instance.id)
+                LEFT JOIN \(Instance.self) ON \(Video.instanceID) = \(Instance.host)
                 """
             )
         )
@@ -228,8 +228,8 @@ struct Explore: View {
                 }
             }
             .navigationTitle("Explore")
-            .onAppear {
-                self.store.send(.initialScreenLoad)
+            .task {
+                await self.store.send(.initialScreenLoad).finish()
             }
             .refreshable {
                 self.store.send(.pulledToRefresh)
