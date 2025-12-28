@@ -45,6 +45,7 @@ struct VideoDetailsFeature {
         let client: TubeSDKClient
         var videoChannel: VideoChannel?
         var instance: Instance?
+        var selectedQuality: TubeSDK.VideoFile?
         
         var hasDisliked = false
         var hasLiked = false
@@ -75,6 +76,8 @@ struct VideoDetailsFeature {
         case changeSubscriptionState(Bool)
         case channelTapped
         case instanceTapped
+        
+        case newResolutionSelected(TubeSDK.VideoFile)
     }
     
     var body: some ReducerOf<Self> {
@@ -98,6 +101,9 @@ struct VideoDetailsFeature {
                 return .send(.loadInstance)
             case let .loadVideo(videoDetails):
                 state.videoDetails = videoDetails
+                if let quality = videoDetails.streamingPlaylists?.first?.files?.first {
+                    state.selectedQuality = quality
+                }
                 return .send(.loadChannel(videoDetails))
             case .loadInstance:
                 return .run { [host = state.host] send in
@@ -202,6 +208,9 @@ struct VideoDetailsFeature {
                 return .none
             case .instanceTapped:
                 return .none
+            case let .newResolutionSelected(resolution):
+                state.selectedQuality = resolution
+                return .none
             }
         }
     }
@@ -217,9 +226,7 @@ struct VideoDetails: View {
             if let videoDetails = self.store.state.videoDetails {
                 ScrollView {
                     VStack (spacing: 16) {
-                        if let streamingPlaylists = videoDetails.streamingPlaylists,
-                           let video = streamingPlaylists.first,
-                           let urlString = video.playlistUrl,
+                        if let urlString = self.store.state.selectedQuality?.playlistUrl,
                            let url = URL(string: urlString){
                             VideoPlayerView(videoURL: url)
                                 .frame(
@@ -229,7 +236,6 @@ struct VideoDetails: View {
                                     maxHeight: .infinity
                                 )
                                 .aspectRatio(16 / 9, contentMode: .fit)
-                            //                            .padding(24)
                         }
                         VStack (alignment: .leading, spacing: 16) {
                             VStack (alignment: .leading, spacing: 8) {
@@ -285,6 +291,44 @@ struct VideoDetails: View {
                                         } else {
                                             $0.buttonStyle(.automatic)
                                         }
+                                    }
+                                    
+                                    if let playlist = videoDetails.streamingPlaylists?.first,
+                                        let qualities = playlist.files {
+                                        Menu {
+                                            ForEach(qualities) { quality in
+                                                if let resolution = quality.resolution?.label {
+                                                    Button {
+//                                                        withAnimation {
+                                                            self.store.send(.newResolutionSelected(quality))
+//                                                        }
+                                                    } label: {
+                                                        if self.store.state.selectedQuality == quality {
+                                                            Label(resolution, systemImage: "checkmark")
+                                                        } else {
+                                                            Text(resolution)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } label: {
+                                            Label(self.store.state.selectedQuality?.resolution?.label ?? "Quality", systemImage: "gear")
+                                        }
+                                        .apply {
+                                            if #available(iOS 26.0, *) {
+                                                $0.buttonStyle(.glass)
+                                            } else {
+                                                $0.buttonStyle(.automatic)
+                                            }
+                                        }
+                                        
+//                                        Picker("Quality", selection: $store.selectedQuality.sending(\.changeSubscriptionState)) {
+//                                            ForEach(qualities) { quality in
+//                                                if let resolution = quality.resolution?.label {
+//                                                    Text(resolution).tag(quality)
+//                                                }
+//                                            }
+//                                        }
                                     }
                                     
                                     if let url = URL(string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)") {
