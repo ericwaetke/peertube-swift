@@ -45,10 +45,12 @@ struct ExploreFeature {
     }
 
     enum Action {
+        case addClient(TubeSDKClient)
         case videoTapped(row: VideoRow)
         case videoOverflowMenuTapped(row: VideoRow)
         case initialScreenLoad
         case pulledToRefresh
+        case loadClients
         case loadVideos
         case finishLoading
         case channelTapped(row: VideoRow)
@@ -70,12 +72,24 @@ struct ExploreFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
+            case let .addClient(client):
+                state.clients.append(client)
+                return .none
             case .videoTapped(let row):
                 return .none
             case .videoOverflowMenuTapped(let row):
                 return .none
             case .initialScreenLoad:
-                return .send(.loadVideos)
+                return .run { send in
+                    await send(.loadClients)
+                    await send(.loadVideos)
+                }
+            case .loadClients:
+                return .run { [instances = state.instances] send in
+                    for instance in instances {
+                        await send(.addClient(try TubeSDKClient(scheme: instance.scheme, host: instance.host)))
+                    }
+                }
             case .loadVideos:
 //                state.isLoadingVideos = true
                 return .run { [clients = state.clients, instances = state.instances] send in
