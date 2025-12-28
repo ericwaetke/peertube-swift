@@ -5,27 +5,75 @@
 //  Created by Eric Wätke on 22.12.25.
 //
 
+import ComposableArchitecture
 import SwiftUI
 import TubeSDK
 
+@Reducer
+struct VideoDetailsFeature {
+    @ObservableState
+    struct State: Equatable {
+        let host: String
+        let videoId: String
+        let client: TubeSDKClient
+        
+        var hasDisliked = false
+        var hasLiked = false
+        var videoDetails: TubeSDK.VideoDetails?
+        
+        var descriptionVisible = true
+        var commentsVisible = true
+    }
+    
+    enum Action {
+        case dislikeButtonTapped
+        case likeButtonTapped
+        
+        case descriptionVisibleChanged(Bool)
+        case commentsVisibleChanged(Bool)
+        
+        case loadVideo(TubeSDK.VideoDetails)
+        case screenLoaded
+    }
+    
+    var body: some ReducerOf<Self> {
+        Reduce { state, action in
+            switch action {
+            case .dislikeButtonTapped:
+                state.hasLiked = false
+                state.hasDisliked = true
+                return .none
+            case .likeButtonTapped:
+                state.hasLiked = true
+                state.hasDisliked = false
+                return .none
+            case .descriptionVisibleChanged(_):
+                state.descriptionVisible.toggle()
+                return .none
+            case .commentsVisibleChanged(_):
+                state.commentsVisible.toggle()
+                return .none
+            case .screenLoaded:
+                return .run { [client = state.client, videoId = state.videoId] send in
+                    let videoDetails = try await client.getVideo(host: client.instance.host, id: videoId)
+                    await send(.loadVideo(videoDetails))
+                }
+            case let .loadVideo(videoDetails):
+                state.videoDetails = videoDetails
+                return .none
+            }
+        }
+    }
+}
+
 struct VideoDetails: View {
-    @Environment(AppState.self) private var appState: AppState
-    let host: String
-    let videoId: String
-    
-    @State var videoDetails: TubeSDK.VideoDetails?
-    
-    @State var hasLiked = false
-    @State var hasDisliked = false
+    @Bindable var store: StoreOf<VideoDetailsFeature>
     
     let formatter = RelativeDateTimeFormatter()
     
-    @State private var showDescription: Bool = true
-    @State private var showComments: Bool = true
-    
     var body: some View {
         ZStack {
-            if let videoDetails = videoDetails {
+            if let videoDetails = self.store.state.videoDetails {
                 ScrollView {
                     VStack (spacing: 16) {
                         if let streamingPlaylists = videoDetails.streamingPlaylists,
@@ -65,16 +113,14 @@ struct VideoDetails: View {
                                let dislikes = videoDetails.dislikes {
                                 HStack {
                                     Button {
-                                        print("added like")
-                                        hasLiked = true
-                                        hasDisliked = false
+                                        self.store.send(.likeButtonTapped)
                                     } label: {
                                         HStack {
                                             Image(systemName: "hand.thumbsup")
                                             Text(likes.formatted())
                                         }
                                     }
-                                    .tint(hasLiked ? .blue : .primary)
+                                    .tint(self.store.state.hasLiked ? .blue : .primary)
                                     .apply {
                                         if #available(iOS 26.0, *) {
                                             $0.buttonStyle(.glass)
@@ -84,16 +130,14 @@ struct VideoDetails: View {
                                     }
                                     
                                     Button {
-                                        print("added dislike")
-                                        hasLiked = false
-                                        hasDisliked = true
+                                        self.store.send(.dislikeButtonTapped)
                                     } label: {
                                         HStack {
                                             Image(systemName: "hand.thumbsdown")
                                             Text(dislikes.formatted())
                                         }
                                     }
-                                    .tint(hasDisliked ? .blue : .primary)
+                                    .tint(self.store.state.hasDisliked ? .blue : .primary)
                                     .apply {
                                         if #available(iOS 26.0, *) {
                                             $0.buttonStyle(.glass)
@@ -102,23 +146,7 @@ struct VideoDetails: View {
                                         }
                                     }
                                     
-//                                    Button {
-//                                        
-//                                    } label: {
-//                                        HStack {
-//                                            Image(systemName: "square.and.arrow.up")
-//                                            Text("Share")
-//                                        }
-//                                    }
-//                                    .tint(hasDisliked ? .blue : .primary)
-//                                    .apply {
-//                                        if #available(iOS 26.0, *) {
-//                                            $0.buttonStyle(.glass)
-//                                        } else {
-//                                            $0.buttonStyle(.automatic)
-//                                        }
-//                                    }
-                                    if let url = URL(string: "https://\(host)/w/\(videoId)") {
+                                    if let url = URL(string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)") {
                                         ShareLink(item: url)
                                     }
                                 }
@@ -173,7 +201,7 @@ struct VideoDetails: View {
                             
                             if let description = videoDetails.description {
                                 Divider()
-                                DisclosureGroup(isExpanded: $showDescription) {
+                                DisclosureGroup(isExpanded: $store.descriptionVisible.sending(\.descriptionVisibleChanged)) {
                                     // TODO: don’t do this, ugh … can’t get it to work differently right now though
                                     HStack {
                                         Text(description)
@@ -191,7 +219,7 @@ struct VideoDetails: View {
                             
                             VStack (alignment: .leading) {
                                 if let commentCount = videoDetails.comments {
-                                    DisclosureGroup(isExpanded: $showComments) {
+                                    DisclosureGroup(isExpanded: $store.commentsVisible.sending(\.commentsVisibleChanged)) {
                                     } label: {
                                         HStack {
                                             Text("Comments")
@@ -215,12 +243,8 @@ struct VideoDetails: View {
                 ProgressView()
             }
         }
-//        .navigationTitle(videoDetails?.name ?? "Unknown Video")
-        .onAppear {
-//            if (videoDetails != nil) {return}
-            Task {
-//                videoDetails = try await appState.client.getVideo(host: host, id: videoId)
-            }
+        .task {
+            self.store.send(.screenLoaded)
         }
     }
 }
@@ -237,7 +261,8 @@ extension View {
 
 #Preview {
     NavigationStack {
-        VideoDetails(host: "peertube.wtf", videoId: "18QZB6GTN1DRd1LtkeQm22")
-            .environment(AppState())
+        VideoDetails(store: Store(initialState: VideoDetailsFeature.State(host: "peertube.wtf", videoId: "18QZB6GTN1DRd1LtkeQm22", client: try! TubeSDKClient(scheme: "https", host: "peertube.wtf"))) {
+            VideoDetailsFeature()
+        })
     }
 }

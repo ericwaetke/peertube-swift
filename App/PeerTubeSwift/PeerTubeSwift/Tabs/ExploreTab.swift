@@ -8,13 +8,14 @@
 import SQLiteData
 import ComposableArchitecture
 import SwiftUI
+import TubeSDK
 
 @Reducer
 struct ExploreTabFeature {
     @Reducer
     enum Path {
         case oldExplore(ExploreFeature)
-        case screenB(ScreenB)
+        case videoDetail(VideoDetailsFeature)
     }
     
     @ObservableState
@@ -47,8 +48,13 @@ struct ExploreTabFeature {
                 
             case let .path(action):
                 switch action {
-                    //                case .element(id: _, action: .exploreFeature(. …)):
-                    //                    return .none
+                case let .element(id: _, action: .oldExplore(.videoTapped(row: row))):
+                    guard let instance = row.instance,
+                          let client = try? TubeSDKClient(scheme: instance.scheme, host: instance.host) else {
+                        return .none
+                    }
+                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString, client: client)))
+                    return .none
                     
                 default:
                     return .none
@@ -131,10 +137,10 @@ struct ExploreTab: View {
                     "Newest",
                     state: ExploreTabFeature.Path.State.oldExplore(ExploreFeature.State())
                 )
-                NavigationLink(
-                    "Trending",
-                    state: ExploreTabFeature.Path.State.screenB(ScreenB.State())
-                )
+//                NavigationLink(
+//                    "Trending",
+//                    state: ExploreTabFeature.Path.State.screenB(ScreenB.State())
+//                )
             }
             .navigationTitle("Explore")
             .toolbar {
@@ -150,8 +156,10 @@ struct ExploreTab: View {
             switch store.case {
             case let .oldExplore(store):
                 Explore(store: store)
-            case let .screenB(store):
-                ScreenBView(store: store)
+            case let .videoDetail(store):
+                VideoDetails(store: store)
+//            case let .screenB(store):
+//                ScreenBView(store: store)
             }
         }
         .sheet(item: $store.scope(state: \.addInstance, action: \.addInstance)) { store in
