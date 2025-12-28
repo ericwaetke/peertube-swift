@@ -22,6 +22,7 @@ struct ExploreTabFeature {
         var path = StackState<Path.State>()
         
         @Presents var addInstance: InstanceManagerFeature.State?
+        
         @FetchAll var instances: [Instance] = []
     }
     
