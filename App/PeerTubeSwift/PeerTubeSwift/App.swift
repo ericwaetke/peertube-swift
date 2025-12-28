@@ -5,6 +5,7 @@
 //  Created by Eric Wätke on 26.12.25.
 //
 
+import SQLiteData
 import ComposableArchitecture
 import SwiftUI
 
@@ -97,6 +98,10 @@ struct ContentView: View {
 }
 
 #Preview {
+    let _ = prepareDependencies {
+        try! $0.bootstrapDatabase()
+        try! $0.defaultDatabase.seed()
+    }
     ContentView(store: Store(initialState: AppFeature.State()) {
         AppFeature()
     })

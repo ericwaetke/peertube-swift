@@ -87,7 +87,9 @@ struct ExploreFeature {
             case .loadClients:
                 return .run { [instances = state.instances] send in
                     for instance in instances {
-                        await send(.addClient(try TubeSDKClient(scheme: instance.scheme, host: instance.host)))
+                        await withErrorReporting {
+                            await send(.addClient(try TubeSDKClient(scheme: instance.scheme, host: instance.host)))
+                        }
                     }
                 }
             case .loadVideos:

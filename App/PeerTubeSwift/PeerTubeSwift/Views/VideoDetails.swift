@@ -107,7 +107,7 @@ struct VideoDetailsFeature {
                         let instance = try await database.write { db in
                             return try Instance
                                 .upsert {
-                                    Instance(host: host, scheme: "https://")
+                                    Instance(host: host, scheme: "https")
                                 }
                                 .returning(\.self)
                                 .fetchOne(db)
