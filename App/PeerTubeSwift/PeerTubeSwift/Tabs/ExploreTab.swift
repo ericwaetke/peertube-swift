@@ -5,6 +5,7 @@
 //  Created by Eric Wätke on 26.12.25.
 //
 
+import SQLiteData
 import ComposableArchitecture
 import SwiftUI
 
@@ -21,6 +22,7 @@ struct ExploreTabFeature {
         var path = StackState<Path.State>()
         
         @Presents var addInstance: InstanceManagerFeature.State?
+        @FetchAll var instances: [Instance] = []
     }
     
     enum Action {
@@ -74,12 +76,12 @@ struct ExploreTab: View {
                             .padding(.horizontal, 16)
                         ScrollView(.horizontal) {
                             HStack {
-                                ForEach(0...12, id: \.self) { i in
+                                ForEach(self.store.state.instances) { instance in
                                     VStack(alignment: .leading) {
                                         Color.secondary
                                             .frame(width: 128, height: 128)
                                             .clipShape(.rect(cornerRadius: 8))
-                                        Text("Instance \(i)")
+                                        Text(instance.host)
                                     }
                                 }
                             }
