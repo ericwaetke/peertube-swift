@@ -1,5 +1,5 @@
 {
-  "originHash" : "79aedfaa97b4492b1f104efa1d6baa4617d637a3e4bac650c7ab43a898f1abb6",
+  "originHash" : "4b9262f8410e36e584ba50ace12f2c7f7c9d211fbb50dc271901f611f3028ddd",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -152,6 +152,24 @@
       "state" : {
         "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
         "version" : "602.0.0"
+      }
+    },
+    {
+      "identity" : "swift-system",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-system.git",
+      "state" : {
+        "revision" : "395a77f0aa927f0ff73941d7ac35f2b46d47c9db",
+        "version" : "1.6.3"
+      }
+    },
+    {
+      "identity" : "swift-url",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/karwa/swift-url",
+      "state" : {
+        "revision" : "9306a962396a50d7d88e924afcd7ec67226763db",
+        "version" : "0.4.2"
       }
     },
     {
