@@ -83,10 +83,7 @@ struct ExploreFeature {
             case .videoOverflowMenuTapped(let row):
                 return .none
             case .initialScreenLoad:
-                return .run { send in
-                    await send(.loadClients)
-                    await send(.loadVideos)
-                }
+                return .send(.loadVideos)
             case .loadClients:
                 return .run { [instances = state.instances] send in
                     for instance in instances {
@@ -96,6 +93,7 @@ struct ExploreFeature {
             case .loadVideos:
 //                state.isLoadingVideos = true
                 return .run { [clients = state.clients, instances = state.instances] send in
+                    await send(.loadClients)
                     // Get Videos from Peertube
                     for (clientIndex, client) in clients.enumerated() {
                         let videos = try await client.getVideos()
@@ -203,9 +201,14 @@ struct Explore: View {
                         ContentUnavailableView {
                             Label("Your Feed is empty", systemImage: "video")
                         } description: {
-                            Text(
-                                "You have instances added, but they dont seem to have any videos right now"
-                            )
+                            VStack {
+                                Text(
+                                    "You have instances added, but they dont seem to have any videos right now"
+                                )
+                                Button("Reload") {
+                                    self.store.send(.pulledToRefresh)
+                                }
+                            }
                         }
 
                     }
@@ -225,16 +228,7 @@ struct Explore: View {
                 }
             }
             .navigationTitle("Explore")
-//            .navigationDestination(for: NavigationDestination.self) { destination in
-//                switch destination {
-//                case .videoDetail(let host, let videoId):
-//                    VideoDetails(host: host, videoId: videoId)
-//                default:
-//                    Text("View not implemented")
-//                }
-//
-//            }
-            .task {
+            .onAppear {
                 self.store.send(.initialScreenLoad)
             }
             .refreshable {
