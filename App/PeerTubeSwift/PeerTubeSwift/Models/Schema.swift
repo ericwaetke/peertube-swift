@@ -192,7 +192,7 @@ extension DatabaseWriter {
         try write { db in
             try db.seed {
                 Instance(id: UUID(1), scheme: "https", host: "peertube.wtf")
-                Instance(id: UUID(2), scheme: "https", host: "ard.de")
+                Instance(id: UUID(2), scheme: "https", host: "ard.de", avatarUrl: "https://yt3.googleusercontent.com/ytc/AIdro_nkghDj-XHzlJ0CCE1q4BXzL01ufINgm9KUiqfhaWTBjUnZ=s160-c-k-c0x00ffffff-no-rj")
 
                 VideoChannel(id: "peertube.wtf-1", name: "Gronkh", avatarUrl: "https://yt3.googleusercontent.com/ytc/AIdro_ko2x8r12BwkrHwYRNEVLUwCkd1MsWA496y7Pr8wX-3c6Y=s160-c-k-c0x00ffffff-no-rj", instanceID: UUID(1))
                 VideoChannel(id: "ard.de-1", name: "ARD", instanceID: UUID(2))

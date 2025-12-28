@@ -78,11 +78,26 @@ struct ExploreTab: View {
                             HStack {
                                 ForEach(self.store.state.instances) { instance in
                                     VStack(alignment: .leading) {
-                                        Color.secondary
+                                        if let avatarUrlString = instance.avatarUrl,
+                                           let avatarUrl = URL(string: avatarUrlString) {
+                                            AsyncImage(url: avatarUrl) { image in
+                                                image.resizable()
+                                            } placeholder: {
+                                                Color.secondary
+                                            }
                                             .frame(width: 128, height: 128)
                                             .clipShape(.rect(cornerRadius: 8))
+                                        } else {
+                                            Color.secondary
+                                                .frame(width: 128, height: 128)
+                                                .clipShape(.rect(cornerRadius: 8))
+                                        }
                                         Text(instance.host)
                                     }
+//                                    TODO: For whatever reason, this highlightes the entire section, not just the instance
+//                                    .contextMenu {
+//                                        Button("Delete") {}
+//                                    }
                                 }
                             }
                         }
@@ -157,6 +172,11 @@ struct ExploreTab: View {
 }
 
 #Preview {
+    let _ = prepareDependencies {
+        try! $0.bootstrapDatabase()
+        try! $0.defaultDatabase.seed()
+    }
+    
     ExploreTab(
         store: Store(initialState: ExploreTabFeature.State()) {
             ExploreTabFeature()
