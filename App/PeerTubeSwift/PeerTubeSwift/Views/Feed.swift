@@ -317,7 +317,6 @@ struct Feed: View {
                 }
             }
         }
-        .navigationTitle("Feed")
         .task {
             await self.store.send(.initialScreenLoad).finish()
         }
