@@ -32,20 +32,7 @@ struct FeedFeature {
         
         @FetchAll var instances: [Instance] = []
         
-        @FetchAll(
-            #sql(
-                """
-                SELECT
-                  \(Video.columns),
-                  \(VideoChannel.columns),
-                    \(Instance.columns)
-                FROM \(Video.self)
-                LEFT JOIN \(VideoChannel.self) ON \(Video.channelID) = \(VideoChannel.id)
-                LEFT JOIN \(Instance.self) ON \(Video.instanceID) = \(Instance.host)
-                ORDER BY \(Video.publishDate) DESC
-                """
-            )
-        )
+//        @FetchAll(VideoRow.none)
         var feed: [VideoRow] = []
         
         let columns = Array(repeating: GridItem(.flexible()), count: 2)
@@ -62,7 +49,7 @@ struct FeedFeature {
         case addInstanceButtonTapped
         
         case loadVideos
-        case finishLoading
+        case finishLoading([VideoRow])
         
         case loadVideosNewestOfInstance
         case loadChannelVideos
@@ -103,15 +90,14 @@ struct FeedFeature {
                 case .subscriptions:
                     return .send(.loadSubscriptionVideos)
                 }
-                
             case .loadVideosNewestOfInstance:
                 return .run { [client = state.client] send in
                     print("Getting new videos from instance")
                     // Get Videos from Peertube
                     
-                    let videos = try await client.getVideos()
+                    let peertubeVideos = try await client.getVideos()
                     
-                    for peertubeVideo in videos {
+                    for peertubeVideo in peertubeVideos {
                         guard let channel = peertubeVideo.channel,
                               let videoId = peertubeVideo.uuid,
                               let videoName = peertubeVideo.name,
@@ -175,7 +161,26 @@ struct FeedFeature {
                         }
                     }
                     
-                    await send(.finishLoading)
+                    let videos = await withErrorReporting {
+                        return try await database.read { db in
+                            let orderedVideos = Video
+                                .order { $0.publishDate.desc() }
+                                .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
+                                .leftJoin(Instance.all) { $0.instanceID.eq($2.host) }
+                            
+                            return try orderedVideos
+                                .select {
+                                    VideoRow.Columns(
+                                        video: $0,
+                                        channel: $1,
+                                        instance: $2
+                                    )
+                                }
+                                .fetchAll(db)
+                        }
+                    }
+                    
+                    await send(.finishLoading(videos ?? []))
                 }
             case .loadChannelVideos:
                 return .none
@@ -183,7 +188,6 @@ struct FeedFeature {
                 return .run { [client = state.client] send in
                     print("Getting new videos from subscriptions")
                     // Get Videos from Peertube
-                    @Dependency(\.defaultDatabase) var database
                     
                     let subscriptions = try await database.read { db in
                         try PeertubeSubscription
@@ -251,9 +255,32 @@ struct FeedFeature {
                             }
                         }
                     }
-                    await send(.finishLoading)
+                    
+                    // Query the database
+                    let videos = await withErrorReporting {
+                        return try await database.read { db in
+                            let orderedVideos = Video
+                                .order { $0.publishDate.desc() }
+                                .join(PeertubeSubscription.all) { $0.channelID.eq($1.channelID) }
+                                .leftJoin(VideoChannel.all) { $0.channelID.eq($2.id) }
+                                .leftJoin(Instance.all) { $0.instanceID.eq($3.host) }
+                            
+                            return try orderedVideos
+                                .select {
+                                    VideoRow.Columns(
+                                        video: $0,
+                                        channel: $2,
+                                        instance: $3
+                                    )
+                                }
+                                .fetchAll(db)
+                        }
+                    }
+                    
+                    await send(.finishLoading(videos ?? []))
                 }
-            case .finishLoading:
+            case let .finishLoading(videos):
+                state.feed = videos
                 state.isLoadingVideos = false
                 return .none
             case .pulledToRefresh:
