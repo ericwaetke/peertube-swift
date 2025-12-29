@@ -178,8 +178,6 @@ struct ExploreTab: View {
                 Explore(store: store)
             case let .videoDetail(store):
                 VideoDetails(store: store)
-                //            case let .screenB(store):
-                //                ScreenBView(store: store)
             }
         }
         .sheet(item: $store.scope(state: \.addInstance, action: \.addInstance)) { store in
