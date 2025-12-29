@@ -17,7 +17,7 @@ struct VideoDetailsFeature {
     struct State: Equatable {
         let host: String
         let videoId: String
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "http", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         var videoChannel: VideoChannel?
         var instance: Instance?
         var selectedQuality: TubeSDK.VideoFile?

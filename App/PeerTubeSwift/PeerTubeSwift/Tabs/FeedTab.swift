@@ -5,35 +5,47 @@
 //  Created by Eric Wätke on 26.12.25.
 //
 
+import SQLiteData
 import ComposableArchitecture
 import SwiftUI
 
 @Reducer
 struct FeedTabFeature {
+    @Reducer
+    enum Path {
+        case videoDetail(VideoDetailsFeature)
+    }
+    
+    @ObservableState
     struct State {
-        var path = StackState<FeedPath.State>()
+        var path = StackState<Path.State>()
+        
+        @Presents var manageSubscriptions: SubscriptionFeature.State?
     }
     
     enum Action {
-        case path(StackActionOf<FeedPath>)
+        case path(StackActionOf<Path>)
+        
+        case manageSubscriptionButtonTapped
+        case manageSubsctiptions(PresentationAction<SubscriptionFeature.Action>)
     }
     
-    @Reducer
-    struct FeedPath {
-        enum State {
-            case manageSubscriptions(SubscriptionFeature.State)
-//            case feed(feedType: FeedType)
-//            case video(video: Video)
-//            case channel(channel: VideoChannel)
-//            case instance(instance: Instance)
-        }
-        enum Action {
-            case manageSubscriptions(SubscriptionFeature.Action)
-        }
-        var body: some ReducerOf<Self> {
-            Scope(state: \.manageSubscriptions, action: \.manageSubscriptions) {
-                SubscriptionFeature()
+    var body: some ReducerOf<Self> {
+        Reduce { state, action in
+            switch action {
+            case .manageSubscriptionButtonTapped:
+                state.manageSubscriptions = SubscriptionFeature.State()
+                return .none
+            case .manageSubsctiptions:
+                return .none
+                
+            case let .path(action):
+                return .none
             }
+        }
+        .forEach(\.path, action: \.path)
+        .ifLet(\.$manageSubscriptions, action: \.manageSubsctiptions) {
+            SubscriptionFeature()
         }
     }
 }
@@ -41,12 +53,48 @@ struct FeedTabFeature {
 
 
 struct FeedTab: View {
-    let store: StoreOf<FeedTabFeature>
+    @Bindable var store: StoreOf<FeedTabFeature>
     var body: some View {
-        NavigationStack {
-        Subscriptions(store: Store(initialState: SubscriptionFeature.State()) {
-            SubscriptionFeature()
-        })
+        NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
+            Feed(store: Store(initialState: FeedFeature.State(feedType: .subscriptions), reducer: {
+                FeedFeature()
+            }))
+            .navigationTitle("Subscriptions")
+            .toolbar {
+                ToolbarItemGroup(placement: .secondaryAction) {
+                    Button {
+                        self.store.send(.manageSubscriptionButtonTapped)
+                    } label: {
+                        Label("Manage Subscriptions", systemImage: "heart")
+                    }
+                }
+            }
+        } destination: { store in
+            switch store.case {
+            case let .videoDetail(store):
+                VideoDetails(store: store)
+            }
+        }
+        .sheet(item: $store.scope(state: \.manageSubscriptions, action: \.manageSubsctiptions)) { store in
+            NavigationStack {
+                Subscriptions(store: store)
+                    .navigationTitle("Manage Subscriptions")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
         }
     }
+}
+
+
+#Preview {
+    let _ = prepareDependencies {
+        try! $0.bootstrapDatabase()
+        try! $0.defaultDatabase.seed()
+    }
+    
+    FeedTab(
+        store: Store(initialState: FeedTabFeature.State()) {
+            FeedTabFeature()
+        }
+    )
 }
