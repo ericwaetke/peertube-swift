@@ -26,7 +26,7 @@ struct FeedFeature {
     struct State: Equatable {
         let feedType: FeedFilter
         
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "http", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         var isLoadingVideos: Bool = false
         var order: FeedOrder = .descending
         
@@ -101,11 +101,12 @@ struct FeedFeature {
                 case .exploreNewest:
                     return .send(.loadVideosNewestOfInstance)
                 case .subscriptions:
-                    return .send(.loadChannelVideos)
+                    return .send(.loadSubscriptionVideos)
                 }
                 
             case .loadVideosNewestOfInstance:
                 return .run { [client = state.client] send in
+                    print("Getting new videos from instance")
                     // Get Videos from Peertube
                     
                     let videos = try await client.getVideos()
@@ -180,6 +181,7 @@ struct FeedFeature {
                 return .none
             case .loadSubscriptionVideos:
                 return .run { [client = state.client] send in
+                    print("Getting new videos from subscriptions")
                     // Get Videos from Peertube
                     @Dependency(\.defaultDatabase) var database
                     
@@ -200,7 +202,7 @@ struct FeedFeature {
                             continue
                         }
                         
-                        let videos = try  await client.getVideos(forChannelIdentifier: channel.id)
+                        let videos = try  await client.getVideos(channelIdentifier: channel.id)
                         
                         for video in videos {
                             guard let videoId = video.uuid,
@@ -333,11 +335,10 @@ struct Feed: View {
     }
     
     NavigationStack {
-        Explore(
-            store: Store(initialState: ExploreFeature.State()) {
-                ExploreFeature()
+        Feed(
+            store: Store(initialState: FeedFeature.State(feedType: .subscriptions)) {
+                FeedFeature()
             }
         )
-        .environment(AppState())
     }
 }
