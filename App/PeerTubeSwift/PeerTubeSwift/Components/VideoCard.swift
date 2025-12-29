@@ -50,26 +50,26 @@ struct VideoCard: View {
                     .aspectRatio(16 / 9, contentMode: .fit)
                     .clipShape(.rect(cornerRadius: 8))
                     
-//                    VStack(alignment: .leading) {
-//                        if let instanceName = video.channel?.host {
-//                            InstanceIndicator(instanceName: instanceName, instanceImage: nil)
-//                            .padding(8)
-//                        }
-//                        
-//                        Spacer()
-//                        
-//                        HStack {
-//                            Spacer()
-//                            if let durationInt = video.duration {
-//                                Text(Duration.seconds(durationInt).formatted())
-//                                    .padding(.horizontal, 8)
-//                                    .padding(.vertical, 4)
-//                                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
-////                                    .clipShape(.rect(cornerRadius: 4))
-//                                    .padding(8)
-//                            }
-//                        }
-//                    }
+                    VStack(alignment: .leading) {
+                        if let instanceName = row.instance?.host {
+                            InstanceIndicator(instanceName: instanceName, instanceImage: nil)
+                            .padding(8)
+                        }
+                        
+                        Spacer()
+                        
+                        HStack {
+                            Spacer()
+                            if let durationInt = row.video.duration {
+                                Text(Duration.seconds(durationInt).formatted())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
+//                                    .clipShape(.rect(cornerRadius: 4))
+                                    .padding(8)
+                            }
+                        }
+                    }
                 }
             } else {
             Color.secondary

@@ -71,7 +71,6 @@ struct SubscriptionFeature {
 struct Subscriptions: View {
     let store: StoreOf<SubscriptionFeature>
     
-    
     var body: some View {
         VStack {
             if !self.store.$records.isLoading, self.store.records.isEmpty {
