@@ -21,6 +21,22 @@ extension SubRecord: Identifiable {
     }
 }
 
+enum RecommendationCategory: String, CaseIterable {
+    case tech = "Technology"
+    case photography = "Photography"
+    case politics = "Politics"
+}
+
+struct Recommendation: Equatable, Hashable, Identifiable {
+    let id: UUID = UUID()
+    let username: String
+    let displayName: String
+    let avatarUrl: URL
+    let category: RecommendationCategory
+    
+    var isSubscribed = false
+}
+
 @Reducer
 struct SubscriptionFeature {
     
@@ -36,14 +52,24 @@ struct SubscriptionFeature {
                         subscription: $0,
                         channel: $1
                     )
-                }
+                },
+            animation: .default
         )
         var records: [SubRecord]
+        
+        var recommendations: [Recommendation] = [
+            Recommendation(username: "arthurpizza@tilvids.com", displayName: "arthurpizza", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/af6645ec-6d5e-4880-a710-98475525162d.jpg")!, category: .tech),
+            Recommendation(username: "transit@video.canadiancivil.com", displayName: "Transit", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/59406d16-fd0d-4604-963c-4aae5bfdb1d9.jpg")!, category: .politics),
+            Recommendation(username: "thelinuxexperiment_channel@tilvids.com", displayName: "The Linux Experiment", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/a35f3a25-ff7f-4dff-886c-e8373f6ed306.jpg")!, category: .tech),
+            Recommendation(username: "gardiner_bryant@subscribeto.me", displayName: "Gardiner Bryant", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/178a420f-a00a-4db9-960f-ef5a213a168e.png")!, category: .tech),
+        ]
     }
     
     enum Action {
         case findChannelsButtonTapped
         case listElementDeleteSwiped(offsets: IndexSet)
+        
+        case recommendationSubscribeButtonTapped(Recommendation)
     }
     
     var body: some ReducerOf<Self> {
@@ -61,6 +87,62 @@ struct SubscriptionFeature {
                         }
                     }
                 }
+            case let .recommendationSubscribeButtonTapped(recommendation):
+                @Dependency(\.defaultDatabase) var database
+                let isSubscribed = state.records.filter {$0.channel?.id == recommendation.username}.count > 0
+                
+                if isSubscribed {
+                    return .run { send in
+                        await withErrorReporting {
+                            try await database.write { db in
+                                try PeertubeSubscription
+                                    .where { $0.channelID == recommendation.username }
+                                    .delete()
+                                    .execute(db)
+                            }
+                        }
+                    }
+                } else {
+                    return .run { send in
+                        await withErrorReporting {
+                            try await database.write { db in
+                                guard let hostSubstring = recommendation.username.split(separator: "@").last else {
+                                    print("could not get host")
+                                    return
+                                }
+                                
+                                let instance = try Instance
+                                    .upsert {
+                                        Instance(host: String(hostSubstring), scheme: "https")
+                                    }
+                                    .returning(\.self)
+                                    .fetchOne(db)
+                                
+                                guard let instance = instance else {
+                                    return
+                                }
+                                
+                                try VideoChannel
+                                    .upsert {
+                                        VideoChannel(
+                                            id: recommendation.username,
+                                            name: recommendation.displayName,
+                                            avatarUrl: recommendation.avatarUrl.absoluteString,
+                                            instanceID: instance.id
+                                        )
+                                    }
+                                    .execute(db)
+                                
+                                try PeertubeSubscription
+                                    .insert {
+                                        PeertubeSubscription.Draft(
+                                            channelID: recommendation.username, createdAt: .now)
+                                    }
+                                    .execute(db)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -72,42 +154,88 @@ struct Subscriptions: View {
     let store: StoreOf<SubscriptionFeature>
     
     var body: some View {
-        VStack {
-            if !self.store.$records.isLoading, self.store.records.isEmpty {
-                ContentUnavailableView {
-                    Label("You are not subscribed to anyone", systemImage: "person.crop.square.on.square.angled.fill")
-                } description: {
-                    Button("Find interesing channels") {
-                        self.store.send(.findChannelsButtonTapped)
+        Form {
+            Section {
+                if !self.store.$records.isLoading, self.store.records.isEmpty {
+                    ContentUnavailableView {
+                        Label("You are not subscribed to anyone", systemImage: "person.crop.square.on.square.angled.fill")
+                    } description: {
+                        //                    Button("Find interesing channels") {
+                        //                        self.store.send(.findChannelsButtonTapped)
+                        //                    }
                     }
-                }
-            } else {
-                List {
-                    ForEach(self.store.records) { row in
-                        HStack {
-                            if let avatarUrlString = row.channel?.avatarUrl,
-                               let avatarUrl = URL(string: avatarUrlString) {
-                                AsyncImage(url: avatarUrl) { image in
-                                    image.resizable()
-                                } placeholder: {
-                                    Color.secondary
-                                }
-                                .frame(width: 36, height: 36)
-                                .clipShape(.circle)
-                            } else {
-                                Color.secondary
+                } else {
+                    List {
+                        ForEach(self.store.records) { row in
+                            HStack {
+                                if let avatarUrlString = row.channel?.avatarUrl,
+                                   let avatarUrl = URL(string: avatarUrlString) {
+                                    AsyncImage(url: avatarUrl) { image in
+                                        image.resizable()
+                                    } placeholder: {
+                                        Color.secondary
+                                    }
                                     .frame(width: 36, height: 36)
                                     .clipShape(.circle)
+                                } else {
+                                    Color.secondary
+                                        .frame(width: 36, height: 36)
+                                        .clipShape(.circle)
+                                }
+                                
+                                Text(row.channel?.name ?? "Channel Name Not Available")
                             }
-                            
-                            Text(row.channel?.name ?? "Channel Name Not Available")
                         }
-                    }
-                    .onDelete { offsets in
-                        self.store.send(.listElementDeleteSwiped(offsets: offsets))
+                        .onDelete { offsets in
+                            self.store.send(.listElementDeleteSwiped(offsets: offsets))
+                        }
                     }
                 }
             }
+            
+            Section("Recommendations") {
+                ForEach(RecommendationCategory.allCases, id: \.rawValue) { category in
+                    VStack(alignment: .leading) {
+                        Text(category.rawValue)
+                            .font(.title3)
+                        ScrollView(.horizontal) {
+                            LazyHStack {
+                                ForEach(self.store.recommendations.filter { $0.category == category }) { recommendation in
+                                    VStack {
+                                        AsyncImage(url: recommendation.avatarUrl) { image in
+                                            image.resizable()
+                                        } placeholder: {
+                                            Color.secondary
+                                        }
+                                        .frame(width: 48, height: 48)
+                                        .clipShape(.circle)
+                                        
+                                        Text(recommendation.displayName)
+                                        
+                                        Button(
+                                            self.store.state.records.filter {$0.channel?.id == recommendation.username}.count > 0
+                                            ? "Unsubscribe" : "Subscribe"
+                                        ) {
+                                            self.store.send(.recommendationSubscribeButtonTapped(recommendation))
+                                        }
+                                        .apply {
+                                            if #available(iOS 26.0, *) {
+                                                $0.buttonStyle(.glass)
+                                            } else {
+                                                $0.buttonStyle(.automatic)
+                                            }
+                                        }
+                                    }
+                                    .padding()
+                                    .background(.quinary)
+                                    .clipShape(.rect(cornerRadius: 8))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
         }
         .navigationTitle("Subscriptions")
     }
