@@ -19,6 +19,7 @@ struct FeedTabFeature {
     @ObservableState
     struct State {
         var path = StackState<Path.State>()
+        var subscriptionFeed = FeedFeature.State(feedType: .subscriptions)
         
         @Presents var manageSubscriptions: SubscriptionFeature.State?
     }
@@ -26,6 +27,7 @@ struct FeedTabFeature {
     enum Action {
         case path(StackActionOf<Path>)
         
+        case subscriptionFeed
         case manageSubscriptionButtonTapped
         case manageSubsctiptions(PresentationAction<SubscriptionFeature.Action>)
     }
@@ -40,7 +42,17 @@ struct FeedTabFeature {
                 return .none
                 
             case let .path(action):
-                return .none
+                switch action {
+                case let .element(id: _, action: .fe(.videoTapped(row: row))):
+                    guard let instance = row.instance else {
+                        return .none
+                    }
+                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
+                    return .none
+                    
+                default:
+                    return .none
+                }
             }
         }
         .forEach(\.path, action: \.path)
