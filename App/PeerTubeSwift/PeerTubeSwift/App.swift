@@ -8,6 +8,7 @@
 import SQLiteData
 import ComposableArchitecture
 import SwiftUI
+import TubeSDK
 
 @Reducer
 struct AppFeature {
@@ -33,6 +34,12 @@ struct AppFeature {
             switch action {
             case let .selectedTabChanged(tab):
                 state.selectedTab = tab
+                return .none
+            case .settingsTab(.goToCCVideo):
+                state.selectedTab = .explore
+                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: "peertube.wtf",
+                                                                                    videoId: "18QZB6GTN1DRd1LtkeQm22",
+                                                                                    client: try! TubeSDKClient(scheme: "https", host: "peertube.wtf"))))
                 return .none
             case .feedTab(_), .exploreTab(_), .settingsTab(_):
                 return .none

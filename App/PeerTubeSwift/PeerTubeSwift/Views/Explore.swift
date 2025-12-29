@@ -222,7 +222,7 @@ struct Explore: View {
                 }
             } else {
                 ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))]) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12) {
                         ForEach(self.store.feed, id: \.self) { row in
                             VideoCard(row: row) {
                                 self.store.send(.videoTapped(row: row))
