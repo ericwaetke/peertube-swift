@@ -213,23 +213,6 @@ struct VideoDetailsFeature {
     }
 }
 
-func getAudioStream(quality: TubeSDK.VideoFile, videoDetails: TubeSDK.VideoDetails) -> URL? {
-    if let hasAudio = quality.hasAudio {
-        if !hasAudio {
-            if let streamingPlaylists = videoDetails.streamingPlaylists,
-               let firstPlaylist = streamingPlaylists.first,
-               let playlistFiles = firstPlaylist.files,
-               let tempAudioStream = playlistFiles.first(where: { $0.hasAudio == true }),
-               let tempAudioStreamUrlString = tempAudioStream.fileUrl,
-               let tempAudioStreamUrl = URL(string: tempAudioStreamUrlString) {
-                return tempAudioStreamUrl
-            }
-        }
-    }
-    
-    return nil
-}
-
 struct VideoDetails: View {
     @Bindable var store: StoreOf<VideoDetailsFeature>
     
@@ -243,10 +226,13 @@ struct VideoDetails: View {
                         if let quality = self.store.state.selectedQuality,
                            let urlString = quality.playlistUrl,
                            let url = URL(string: urlString){
-                            VideoPlayerView(
-                                videoURL: url,
-                                sidecarAudioUrl: getAudioStream(quality: quality, videoDetails: videoDetails)
-                            )
+                            
+                            let _ = withErrorReporting {
+                                print(quality.playlistUrl)
+                                print(try TubeSDK.spliceAudioIntoPlaylist(playlistUrl: url))
+                            }
+                            
+                            VideoPlayerView(videoURL: url)
                                 .frame(
                                     minWidth: 0,
                                     maxWidth: .infinity,

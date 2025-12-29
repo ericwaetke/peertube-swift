@@ -1,5 +1,5 @@
 {
-  "originHash" : "4b9262f8410e36e584ba50ace12f2c7f7c9d211fbb50dc271901f611f3028ddd",
+  "originHash" : "a0be29411ed332a4f659614142fa46a62d88ee1931644991622d308923183e9c",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "aa0079aeb82a4bf00324561a40bffe68c6fe1c26",
         "version" : "7.9.0"
+      }
+    },
+    {
+      "identity" : "m3u8decoder",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ikhvorost/M3U8Decoder.git",
+      "state" : {
+        "revision" : "ef6b1aa7080bb62a1950ac349637f23fa7ae8790",
+        "version" : "2.1.2"
       }
     },
     {

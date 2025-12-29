@@ -14,7 +14,7 @@ import TubeSDK
     public static func == (lhs: VideoRow, rhs: VideoRow) -> Bool {
         return lhs.video.id == rhs.video.id
     }
-
+    
     let video: Video
     let channel: VideoChannel?
     let instance: Instance?
@@ -28,9 +28,9 @@ struct ExploreFeature {
         var isLoadingVideos: Bool = false
         var filter: FeedFilter = .all
         var order: FeedOrder = .descending
-
+        
         @FetchAll var instances: [Instance] = []
-
+        
         @FetchAll(
             #sql(
                 """
@@ -41,12 +41,15 @@ struct ExploreFeature {
                 FROM \(Video.self)
                 LEFT JOIN \(VideoChannel.self) ON \(Video.channelID) = \(VideoChannel.id)
                 LEFT JOIN \(Instance.self) ON \(Video.instanceID) = \(Instance.host)
+                ORDER BY \(Video.publishDate) DESC
                 """
             )
         )
         var feed: [VideoRow] = []
+        
+        let columns = Array(repeating: GridItem(.flexible()), count: 2)
     }
-
+    
     enum Action {
         case addClient(TubeSDKClient)
         case videoTapped(row: VideoRow)
@@ -60,22 +63,22 @@ struct ExploreFeature {
         case instanceTapped
         case addInstanceButtonTapped
     }
-
+    
     enum FeedFilter {
         case all
     }
-
+    
     enum FeedOrder {
         case ascending
         case descending
     }
-
+    
     @Dependency(\.defaultDatabase) var database
-
+    
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case let .addClient(client):
+            case .addClient(let client):
                 state.clients.append(client)
                 return .none
             case .videoTapped(let row):
@@ -88,40 +91,43 @@ struct ExploreFeature {
                 return .run { [instances = state.instances] send in
                     for instance in instances {
                         await withErrorReporting {
-                            await send(.addClient(try TubeSDKClient(scheme: instance.scheme, host: instance.host)))
+                            await send(
+                                .addClient(
+                                    try TubeSDKClient(scheme: instance.scheme, host: instance.host))
+                            )
                         }
                     }
                 }
             case .loadVideos:
-//                state.isLoadingVideos = true
+                //                state.isLoadingVideos = true
                 return .run { [clients = state.clients, instances = state.instances] send in
                     await send(.loadClients)
                     // Get Videos from Peertube
                     for (clientIndex, client) in clients.enumerated() {
                         let videos = try await client.getVideos()
-
+                        
                         for (videoIndex, peertubeVideo) in videos.enumerated() {
                             guard let channel = peertubeVideo.channel,
-                                let videoId = peertubeVideo.uuid,
-                                let videoName = peertubeVideo.name,
-                                let publishedAt = peertubeVideo.publishedAt,
-                                let channelId = channel.id,
-                                let channelDisplayName = channel.displayName
+                                  let videoId = peertubeVideo.uuid,
+                                  let videoName = peertubeVideo.name,
+                                  let publishedAt = peertubeVideo.publishedAt,
+                                  let channelId = channel.id,
+                                  let channelDisplayName = channel.displayName
                             else {
                                 print("Error adding video")
                                 continue
                             }
-
+                            
                             let instance = instances.first { $0.host == client.instance.host }
                             guard let instance = instance else {
                                 print("instance not found in db")
                                 continue
                             }
-
+                            
                             await withErrorReporting {
                                 try await database.write { db in
                                     let avatarUrl: String? = channel.avatars?.first?.fileUrl
-
+                                    
                                     try VideoChannel
                                         .upsert {
                                             VideoChannel(
@@ -132,7 +138,7 @@ struct ExploreFeature {
                                             )
                                         }
                                         .execute(db)
-
+                                    
                                     var thumbnailUrl: String? = nil
                                     if let thumbnailPath = peertubeVideo.thumbnailPath {
                                         do {
@@ -143,7 +149,7 @@ struct ExploreFeature {
                                             print("could not get thumbnail url")
                                         }
                                     }
-
+                                    
                                     try Video
                                         .upsert {
                                             Video(
@@ -158,9 +164,9 @@ struct ExploreFeature {
                                         .execute(db)
                                 }
                             }
-//                            if clientIndex + 1 == clients.count && videoIndex + 1 == videos.count {
-//                                await send(.finishLoading)
-//                            }
+                            //                            if clientIndex + 1 == clients.count && videoIndex + 1 == videos.count {
+                            //                                await send(.finishLoading)
+                            //                            }
                         }
                     }
                 }
@@ -181,61 +187,61 @@ struct ExploreFeature {
 }
 
 struct Explore: View {
-//    @Environment(AppState.self) private var appState: AppState
+    //    @Environment(AppState.self) private var appState: AppState
     let store: StoreOf<ExploreFeature>
-
+    
     var body: some View {
-//        @Bindable var appState = appState
-
-            ZStack {
-                if self.store.isLoadingVideos {
-                    ProgressView()
-                } else if self.store.feed.isEmpty {
-                    if self.store.instances.isEmpty {
-                        ContentUnavailableView {
-                            Label("Your Feed is empty", systemImage: "video")
-                        } description: {
-                            Button("Add an Instance to get their latest videos") {
-                                self.store.send(.addInstanceButtonTapped)
-                            }
+        //        @Bindable var appState = appState
+        
+        ZStack {
+            if self.store.isLoadingVideos {
+                ProgressView()
+            } else if self.store.feed.isEmpty {
+                if self.store.instances.isEmpty {
+                    ContentUnavailableView {
+                        Label("Your Feed is empty", systemImage: "video")
+                    } description: {
+                        Button("Add an Instance to get their latest videos") {
+                            self.store.send(.addInstanceButtonTapped)
                         }
-                    } else {
-                        ContentUnavailableView {
-                            Label("Your Feed is empty", systemImage: "video")
-                        } description: {
-                            VStack {
-                                Text(
-                                    "You have instances added, but they dont seem to have any videos right now"
-                                )
-                                Button("Reload") {
-                                    self.store.send(.pulledToRefresh)
-                                }
-                            }
-                        }
-
                     }
                 } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading) {
-                            ForEach(self.store.feed, id: \.self) { row in
-                                VideoCard(row: row) {
-                                    self.store.send(.videoTapped(row: row))
-                                } openChannel: {
-                                    self.store.send(.channelTapped(row: row))
-                                }
+                    ContentUnavailableView {
+                        Label("Your Feed is empty", systemImage: "video")
+                    } description: {
+                        VStack {
+                            Text(
+                                "You have instances added, but they dont seem to have any videos right now"
+                            )
+                            Button("Reload") {
+                                self.store.send(.pulledToRefresh)
                             }
                         }
-                        .padding()
                     }
+                    
+                }
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))]) {
+                        ForEach(self.store.feed, id: \.self) { row in
+                            VideoCard(row: row) {
+                                self.store.send(.videoTapped(row: row))
+                            } openChannel: {
+                                self.store.send(.channelTapped(row: row))
+                            }
+                        }
+                    }
+                    .padding()
                 }
             }
-            .navigationTitle("Explore")
-            .task {
-                await self.store.send(.initialScreenLoad).finish()
-            }
-            .refreshable {
-                self.store.send(.pulledToRefresh)
-            }
+        }
+        .navigationTitle("Explore")
+        .task {
+            await self.store.send(.initialScreenLoad).finish()
+        }
+        .refreshable {
+            self.store.send(.pulledToRefresh)
+        }
         
     }
 }
@@ -245,6 +251,7 @@ struct Explore: View {
         try! $0.bootstrapDatabase()
         try! $0.defaultDatabase.seed()
     }
+    
     NavigationStack {
         Explore(
             store: Store(initialState: ExploreFeature.State()) {
