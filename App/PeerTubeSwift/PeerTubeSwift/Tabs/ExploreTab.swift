@@ -70,11 +70,10 @@ struct ExploreTabFeature {
             case let .path(action):
                 switch action {
                 case let .element(id: _, action: .oldExplore(.videoTapped(row: row))):
-                    guard let instance = row.instance,
-                          let client = try? TubeSDKClient(scheme: instance.scheme, host: instance.host) else {
+                    guard let instance = row.instance else {
                         return .none
                     }
-                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString, client: client)))
+                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
                     return .none
                     
                 default:
