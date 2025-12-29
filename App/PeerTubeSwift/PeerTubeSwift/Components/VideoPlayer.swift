@@ -54,37 +54,89 @@ struct VideoPlayerView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        print("🎬 VideoPlayer: updateUIViewController called")
+
         // Check if we need to update the player
         guard let selectedFile = selectedVideoFile,
             let selectedURL = selectedFile.bestPlaybackURL
         else {
+            print("❌ VideoPlayer: No selected file or URL")
             return
         }
 
+        print("🎬 VideoPlayer: Selected file: \(selectedFile.resolution?.label ?? "Unknown")")
+        print(
+            "🎬   hasAudio: \(selectedFile.hasAudio ?? false), hasVideo: \(selectedFile.hasVideo ?? false)"
+        )
+        print("🎬   URL: \(selectedURL)")
+
         // Compare current URL with selected URL
         if let currentItem = uiViewController.player?.currentItem,
-            let currentURL = (currentItem.asset as? AVURLAsset)?.url,
-            currentURL.absoluteString == selectedURL.absoluteString
+            let currentURL = (currentItem.asset as? AVURLAsset)?.url
         {
-            return  // No change needed
+            print("🎬 VideoPlayer: Current URL: \(currentURL)")
+
+            // For custom scheme URLs, compare the original URL stored in the delegate
+            let currentOriginalURL = getOriginalURL(from: currentURL)
+
+            if currentOriginalURL?.absoluteString == selectedURL.absoluteString {
+                print("🎬 VideoPlayer: Same URL, no update needed")
+                return
+            }
         }
+
+        print("🎬 VideoPlayer: URL changed, updating player...")
 
         // Store current playback state
         let currentTime = uiViewController.player?.currentTime()
         let wasPlaying = uiViewController.player?.rate != 0
 
+        print("🎬   Current time: \(currentTime?.seconds ?? 0)s, was playing: \(wasPlaying)")
+
+        // CRITICAL: Stop and clean up current player to prevent multiple audio streams
+        if let currentPlayer = uiViewController.player {
+            print("🎬   Stopping current player")
+            currentPlayer.pause()
+            currentPlayer.replaceCurrentItem(with: nil)
+
+            // Clean up any resource loader delegates
+            if let currentItem = currentPlayer.currentItem,
+                let currentAsset = currentItem.asset as? AVURLAsset
+            {
+                currentAsset.resourceLoader.setDelegate(nil, queue: nil)
+                print("🎬   Cleaned up resource loader delegate")
+            }
+        }
+
         // Create new player
         if let newPlayer = createPlayerWithCombinedStreams() {
+            print("🎬 VideoPlayer: Created new player successfully")
             uiViewController.player = newPlayer
 
             // Restore playback state
             if let currentTime = currentTime {
+                print("🎬   Seeking to: \(currentTime.seconds)s")
                 newPlayer.seek(to: currentTime)
             }
             if wasPlaying {
+                print("🎬   Resuming playback")
                 newPlayer.play()
             }
+        } else {
+            print("❌ VideoPlayer: Failed to create new player")
         }
+    }
+
+    private func getOriginalURL(from url: URL) -> URL? {
+        // If it's our custom scheme, we need to get the original URL from the delegate
+        if url.scheme == "peertube-hls" {
+            // Try to find the delegate associated with the current player item
+            // This is a simplified approach - in practice you might want to store this differently
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            components?.scheme = url.host == "localhost" ? "http" : "https"
+            return components?.url
+        }
+        return url
     }
 
     private func createPlayerWithCombinedStreams() -> AVPlayer? {

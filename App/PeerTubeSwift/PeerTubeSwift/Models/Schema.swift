@@ -18,7 +18,7 @@ import SQLiteData
 }
 
 @Table struct VideoChannel: Identifiable, Hashable {
-    // \(host)-\(id)
+    // \(channelname)@\(host)
     let id: String
     var name: String
 
@@ -59,6 +59,7 @@ extension Instance {
 
     var name: String
     var publishDate: Date
+    var duration: Int?
     var views: Int = 0
     var comments: Int = 0
     var likes: Int = 0
@@ -129,6 +130,7 @@ func appDatabase() throws -> any DatabaseWriter {
                     "instanceID" TEXT NOT NULL REFERENCES "instances"("host") ON DELETE CASCADE,
                     "name" TEXT NOT NULL,
                     "publishDate" TEXT NOT NULL,
+                    "duration" INTEGER,
                     "views" INTEGER NOT NULL DEFAULT 0,
                     "comments" INTEGER NOT NULL DEFAULT 0,
                     "likes" INTEGER NOT NULL DEFAULT 0,

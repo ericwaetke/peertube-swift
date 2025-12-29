@@ -11,41 +11,13 @@ import SQLiteData
 import SwiftUI
 import TubeSDK
 
-func test() async throws {
-    @Dependency(\.defaultDatabase) var database
-
-    let host = ""
-    let channelId = ""
-    let subscriptionState = false
-
-    await withErrorReporting {
-        if subscriptionState {
-            try await database.write { db in
-                try PeertubeSubscription
-                    .delete()
-                    .where { $0.channelID == "\(host)-\(channelId)" }
-                    .execute(db)
-            }
-        } else {
-            try await database.write { db in
-                try PeertubeSubscription
-                    .insert {
-                        PeertubeSubscription.Draft(
-                            channelID: "\(host)-\(channelId)", createdAt: .now)
-                    }
-                    .execute(db)
-            }
-        }
-    }
-}
-
 @Reducer
 struct VideoDetailsFeature {
     @ObservableState
     struct State: Equatable {
         let host: String
         let videoId: String
-        let client: TubeSDKClient
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "http", host: "peertube.wtf")
         var videoChannel: VideoChannel?
         var instance: Instance?
         var selectedQuality: TubeSDK.VideoFile?
@@ -147,7 +119,9 @@ struct VideoDetailsFeature {
                     guard let instanceId = instance?.id,
                         let channelDetails = videoDetails.channel,
                         let channelId = channelDetails.id,
-                        let channelName = channelDetails.displayName
+                        let channelName = channelDetails.displayName,
+                          let channelUsername = channelDetails.name,
+                          let channelHost = channelDetails.host
                     else {
                         return
                     }
@@ -158,7 +132,7 @@ struct VideoDetailsFeature {
                                 try VideoChannel
                                 .upsert {
                                     VideoChannel(
-                                        id: "\(host)-\(channelId)",
+                                        id: "\(channelUsername)@\(channelHost)",
                                         name: channelName,
                                         avatarUrl: channelDetails.avatars?.first?.fileUrl,
                                         instanceID: instanceId
@@ -189,13 +163,14 @@ struct VideoDetailsFeature {
                     @Dependency(\.defaultDatabase) var database
 
                     guard let videoDetails = videoDetails,
-                        let channel = videoDetails.channel,
-                        let peertubeChannelId = channel.id
+                          let channel = videoDetails.channel,
+                          let channelUsername = channel.name,
+                          let channelHost = channel.host
                     else {
                         return
                     }
 
-                    let channelId = "\(host)-\(peertubeChannelId)"
+                    let channelId = "\(channelUsername)@\(channelHost)"
                     print("changing subscription state of »\(channelId)«")
 
                     await withErrorReporting {
@@ -244,10 +219,6 @@ struct VideoDetails: View {
                             !videoFiles.isEmpty
                         {
 
-//                            VideoPlayerView(
-//                                videoFiles: videoFiles,
-//                                selectedVideoFile: self.store.state.selectedQuality
-//                            )
                             VideoPlayerView(videoFiles: videoFiles, selectedVideoFile: self.store.state.selectedQuality)
                             .frame(
                                 minWidth: 0,
@@ -498,8 +469,7 @@ extension View {
         VideoDetails(
             store: Store(
                 initialState: VideoDetailsFeature.State(
-                    host: "peertube.wtf", videoId: "18QZB6GTN1DRd1LtkeQm22",
-                    client: try! TubeSDKClient(scheme: "https", host: "peertube.wtf"))
+                    host: "peertube.wtf", videoId: "18QZB6GTN1DRd1LtkeQm22")
             ) {
                 VideoDetailsFeature()
             })
