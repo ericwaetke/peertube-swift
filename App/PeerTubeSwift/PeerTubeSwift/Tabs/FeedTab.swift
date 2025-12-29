@@ -19,7 +19,7 @@ struct FeedTabFeature {
     @ObservableState
     struct State {
         var path = StackState<Path.State>()
-//        var subscriptionFeed = FeedFeature.State(feedType: .subscriptions)
+        var subscriptionFeed = FeedFeature.State(feedType: .subscriptions)
         
         @Presents var manageSubscriptions: SubscriptionFeature.State?
     }
@@ -27,12 +27,15 @@ struct FeedTabFeature {
     enum Action {
         case path(StackActionOf<Path>)
         
-//        case subscriptionFeed
+        case subscriptionFeed(FeedFeature.Action)
         case manageSubscriptionButtonTapped
         case manageSubsctiptions(PresentationAction<SubscriptionFeature.Action>)
     }
     
     var body: some ReducerOf<Self> {
+        Scope(state: \.subscriptionFeed, action: \.subscriptionFeed) {
+            FeedFeature()
+        }
         Reduce { state, action in
             switch action {
             case .manageSubscriptionButtonTapped:
@@ -40,6 +43,8 @@ struct FeedTabFeature {
                 return .none
             case .manageSubsctiptions:
                 return .none
+                
+        
                 
             case let .path(action):
                 return .none
@@ -54,6 +59,19 @@ struct FeedTabFeature {
 //                default:
 //                    return .none
 //                }
+            case let .subscriptionFeed(action):
+                switch action {
+                    
+                case .videoTapped(row: let row):
+                    guard let instance = row.instance else {
+                        return .none
+                    }
+                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
+                    return .none
+                    
+                default:
+                    return .none
+                }
             }
         }
         .forEach(\.path, action: \.path)
@@ -69,9 +87,7 @@ struct FeedTab: View {
     @Bindable var store: StoreOf<FeedTabFeature>
     var body: some View {
         NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-            Feed(store: Store(initialState: FeedFeature.State(feedType: .subscriptions), reducer: {
-                FeedFeature()
-            }))
+            Feed(store: self.store.scope(state: \.subscriptionFeed, action: \.subscriptionFeed))
             .navigationTitle("Subscriptions")
             .toolbar {
                 ToolbarItemGroup(placement: .secondaryAction) {
