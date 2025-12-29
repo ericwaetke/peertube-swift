@@ -244,10 +244,11 @@ struct VideoDetails: View {
                             !videoFiles.isEmpty
                         {
 
-                            VideoPlayerView(
-                                videoFiles: videoFiles,
-                                selectedVideoFile: self.store.state.selectedQuality
-                            )
+//                            VideoPlayerView(
+//                                videoFiles: videoFiles,
+//                                selectedVideoFile: self.store.state.selectedQuality
+//                            )
+                            VideoPlayerView(videoFiles: videoFiles, selectedVideoFile: self.store.state.selectedQuality)
                             .frame(
                                 minWidth: 0,
                                 maxWidth: .infinity,
