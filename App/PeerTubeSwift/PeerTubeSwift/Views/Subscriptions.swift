@@ -58,10 +58,16 @@ struct SubscriptionFeature {
         var records: [SubRecord]
         
         var recommendations: [Recommendation] = [
+            Recommendation(username: "veronicaexplains@tinkerbetter.tube", displayName: "Veronica Explains", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/52cda089-6645-4306-8a8e-e54459652462.jpg")!, category: .tech),
             Recommendation(username: "arthurpizza@tilvids.com", displayName: "arthurpizza", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/af6645ec-6d5e-4880-a710-98475525162d.jpg")!, category: .tech),
+            Recommendation(username: "ct_3003@peertube.heise.de", displayName: "c’t 3003", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/86130f91-8d83-42e3-853c-b3a50ea29944.jpg")!, category: .tech),
             Recommendation(username: "transit@video.canadiancivil.com", displayName: "Transit", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/59406d16-fd0d-4604-963c-4aae5bfdb1d9.jpg")!, category: .politics),
+            Recommendation(username: "she_drives_mobility@tube.tchncs.de", displayName: "Katja Diehl", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/a9fb9cca-b70f-47c4-9b8c-62edcb696e14.png")!, category: .politics),
             Recommendation(username: "thelinuxexperiment_channel@tilvids.com", displayName: "The Linux Experiment", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/a35f3a25-ff7f-4dff-886c-e8373f6ed306.jpg")!, category: .tech),
             Recommendation(username: "gardiner_bryant@subscribeto.me", displayName: "Gardiner Bryant", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/178a420f-a00a-4db9-960f-ef5a213a168e.png")!, category: .tech),
+            Recommendation(username: "ewen@makertube.net", displayName: "Photography with Ewen Bell", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/86012f0f-1fad-4405-8a1a-a00210a44848.jpg")!, category: .photography),
+            Recommendation(username: "norberteder.photography@tube.graz.social", displayName: "Norbert Eder Photography", avatarUrl: URL(string: "https://tube.tchncs.de/lazy-static/avatars/5d7ad89e-2d1b-4799-82ca-3cfc19af12f3.jpg")!, category: .photography),
+            Recommendation(username: "obsidianurbexvideos@lostpod.space", displayName: "Obsidian Urbex - Abandoned Places Videos", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/c73cb49d-a7cc-4e93-9278-83ee8e8bc37f.png")!, category: .photography),
         ]
     }
     
