@@ -16,7 +16,7 @@ import WebURL
 struct ExploreTabFeature {
     @Reducer
     enum Path {
-        case oldExplore(ExploreFeature)
+        case exploreFeed(FeedFeature)
         case videoDetail(VideoDetailsFeature)
     }
     
@@ -69,7 +69,7 @@ struct ExploreTabFeature {
                 
             case let .path(action):
                 switch action {
-                case let .element(id: _, action: .oldExplore(.videoTapped(row: row))):
+                case let .element(id: _, action: .exploreFeed(.videoTapped(row: row))):
                     guard let instance = row.instance else {
                         return .none
                     }
@@ -155,7 +155,7 @@ struct ExploreTab: View {
                 
                 NavigationLink(
                     "Newest",
-                    state: ExploreTabFeature.Path.State.oldExplore(ExploreFeature.State())
+                    state: ExploreTabFeature.Path.State.exploreFeed(FeedFeature.State(feedType: .exploreNewest))
                 )
                 //                NavigationLink(
                 //                    "Trending",
@@ -174,8 +174,9 @@ struct ExploreTab: View {
             }
         } destination: { store in
             switch store.case {
-            case let .oldExplore(store):
-                Explore(store: store)
+            case let .exploreFeed(store):
+                Feed(store: store)
+                    .navigationTitle("Newest Videos")
             case let .videoDetail(store):
                 VideoDetails(store: store)
             }
