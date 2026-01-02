@@ -32,7 +32,7 @@ struct FeedFeature {
         
         @FetchAll var instances: [Instance] = []
         
-//        @FetchAll(VideoRow.none)
+        //        @FetchAll(VideoRow.none)
         var feed: [VideoRow] = []
         
         let columns = Array(repeating: GridItem(.flexible()), count: 2)
@@ -54,11 +54,13 @@ struct FeedFeature {
         case loadVideosNewestOfInstance
         case loadChannelVideos
         case loadSubscriptionVideos
+        case loadVideosBySearch(TubeSDK.SearchVideoQueryParameters)
     }
     
     enum FeedFilter {
         case exploreNewest
         case subscriptions
+        case search
     }
     
     enum FeedOrder {
@@ -68,13 +70,93 @@ struct FeedFeature {
     
     @Dependency(\.defaultDatabase) var database
     
+    func saveVideos(videos: [TubeSDK.Video], client: TubeSDKClient) async throws -> [VideoRow] {
+        var insertedVideos: [VideoRow] = []
+        for peertubeVideo in videos {
+            guard let channel = peertubeVideo.channel,
+                  let videoId = peertubeVideo.uuid,
+                  let videoName = peertubeVideo.name,
+                  let publishedAt = peertubeVideo.publishedAt,
+                  let channelUsername = channel.name,
+                  let channelDisplayName = channel.displayName,
+                  let instanceHost = channel.host
+            else {
+                print("Error adding video")
+                continue
+            }
+            
+            let video: Optional<VideoRow> = await withErrorReporting {
+                return try await database.write { db in
+                    let avatarUrl: String? = channel.avatars?.first?.fileUrl
+                    
+                    let instance = try Instance
+                        .upsert { Instance(host: instanceHost, scheme: "https") }
+                        .returning(\.self)
+                        .fetchOne(db)
+                    
+                    guard let instance = instance else {
+                        return .none
+                    }
+                    
+                    let channel = try VideoChannel
+                        .upsert {
+                            VideoChannel(
+                                id: "\(channelUsername)@\(instanceHost)",
+                                name: channelDisplayName,
+                                avatarUrl: avatarUrl,
+                                instanceID: instance.id,
+                            )
+                        }
+                        .returning(\.self)
+                        .fetchOne(db)
+                    
+                    var thumbnailUrl: String? = nil
+                    if let thumbnailPath = peertubeVideo.thumbnailPath {
+                        do {
+                            thumbnailUrl = try client.getImageUrl(
+                                path: thumbnailPath
+                            ).absoluteString
+                        } catch {
+                            print("could not get thumbnail url")
+                        }
+                    }
+                    
+                    let video = try Video
+                        .upsert {
+                            Video(
+                                id: videoId,
+                                channelID: "\(channelUsername)@\(instanceHost)",
+                                instanceID: instance.id,
+                                name: videoName,
+                                publishDate: publishedAt,
+                                thumbnailUrl: thumbnailUrl
+                            )
+                        }
+                        .returning(\.self)
+                        .fetchOne(db)
+                    
+                    if let inserted = video {
+                        return .some(VideoRow(video: inserted, channel: channel, instance: instance))
+                    } else {
+                        return .none
+                    }
+                }
+            }
+            if let video = video {
+                insertedVideos.append(video)
+            }
+        }
+        
+        return insertedVideos
+    }
+    
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
             case .videoTapped(let row):
                 let _ = row
                 return .none
-            case .videoOverflowMenuTapped(let row):
+            case .videoOverflowMenuTapped(let row, let host):
                 let _ = row
                 return .none
             case .initialScreenLoad:
@@ -89,6 +171,9 @@ struct FeedFeature {
                     return .send(.loadVideosNewestOfInstance)
                 case .subscriptions:
                     return .send(.loadSubscriptionVideos)
+                case .search:
+                    state.isLoadingVideos = false
+                    return .none
                 }
             case .loadVideosNewestOfInstance:
                 return .run { [client = state.client] send in
@@ -97,69 +182,8 @@ struct FeedFeature {
                     
                     let peertubeVideos = try await client.getVideos()
                     
-                    for peertubeVideo in peertubeVideos {
-                        guard let channel = peertubeVideo.channel,
-                              let videoId = peertubeVideo.uuid,
-                              let videoName = peertubeVideo.name,
-                              let publishedAt = peertubeVideo.publishedAt,
-                              let channelUsername = channel.name,
-                              let channelDisplayName = channel.displayName,
-                              let instanceHost = channel.host
-                        else {
-                            print("Error adding video")
-                            continue
-                        }
-                        
-                        await withErrorReporting {
-                            try await database.write { db in
-                                let avatarUrl: String? = channel.avatars?.first?.fileUrl
-                                
-                                let instance = try Instance
-                                    .upsert { Instance(host: instanceHost, scheme: "https") }
-                                    .returning(\.self)
-                                    .fetchOne(db)
-                                
-                                guard let instance = instance else {
-                                    return
-                                }
-                                
-                                try VideoChannel
-                                    .upsert {
-                                        VideoChannel(
-                                            id: "\(channelUsername)@\(instanceHost)",
-                                            name: channelDisplayName,
-                                            avatarUrl: avatarUrl,
-                                            instanceID: instance.id,
-                                        )
-                                    }
-                                    .execute(db)
-                                
-                                var thumbnailUrl: String? = nil
-                                if let thumbnailPath = peertubeVideo.thumbnailPath {
-                                    do {
-                                        thumbnailUrl = try client.getImageUrl(
-                                            path: thumbnailPath
-                                        ).absoluteString
-                                    } catch {
-                                        print("could not get thumbnail url")
-                                    }
-                                }
-                                
-                                try Video
-                                    .upsert {
-                                        Video(
-                                            id: videoId,
-                                            channelID: "\(channelUsername)@\(instanceHost)",
-                                            instanceID: instance.id,
-                                            name: videoName,
-                                            publishDate: publishedAt,
-                                            thumbnailUrl: thumbnailUrl
-                                        )
-                                    }
-                                    .execute(db)
-                            }
-                        }
-                    }
+//                    await send(.saveVideos(peertubeVideos))
+                    let _ = try await self.saveVideos(videos: peertubeVideos, client: client)
                     
                     let videos = await withErrorReporting {
                         return try await database.read { db in
@@ -180,6 +204,13 @@ struct FeedFeature {
                         }
                     }
                     
+                    await send(.finishLoading(videos ?? []))
+                }
+            case .loadVideosBySearch(let searchParameters):
+                return .run { [client = state.client, searchParameters = searchParameters] send in
+                    let searchResult = try await client.searchVideos(search: searchParameters)
+                    
+                    let videos = try await self.saveVideos(videos: searchResult, client: client)
                     await send(.finishLoading(videos ?? []))
                 }
             case .loadChannelVideos:
@@ -330,18 +361,16 @@ struct Feed: View {
                     
                 }
             } else {
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12) {
-                        ForEach(self.store.feed, id: \.self) { row in
-                            VideoCard(row: row) {
-                                self.store.send(.videoTapped(row: row))
-                            } openChannel: {
-                                self.store.send(.channelTapped(row: row))
-                            }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12) {
+                    ForEach(self.store.feed, id: \.self) { row in
+                        VideoCard(row: row) {
+                            self.store.send(.videoTapped(row: row))
+                        } openChannel: {
+                            self.store.send(.channelTapped(row: row))
                         }
                     }
-                    .padding()
                 }
+                .padding()
             }
         }
         .task {
