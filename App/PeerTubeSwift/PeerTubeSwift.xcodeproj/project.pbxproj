@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F627376B2EF9A871001DAA70 /* TubeSDK */; };
+		F660BBFB2F0406070049A3BA /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = F660BBFA2F0406070049A3BA /* AppIcon.icon */; };
 		F66EE81F2F0140DB00793122 /* WebURL in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE81E2F0140DB00793122 /* WebURL */; };
 		F66EE8212F0140DB00793122 /* WebURLFoundationExtras in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE8202F0140DB00793122 /* WebURLFoundationExtras */; };
 		F6BFCE672EFAEB890043499D /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE662EFAEB890043499D /* SQLiteData */; };
@@ -33,6 +34,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F660BBF72F0404F00049A3BA /* peertubeswift.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = peertubeswift.icon; sourceTree = "<group>"; };
+		F660BBFA2F0406070049A3BA /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PeerTubeSwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F67428F22EF4AFC9000600DB /* PeerTubeSwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeerTubeSwiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F67428FC2EF4AFC9000600DB /* PeerTubeSwiftUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeerTubeSwiftUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -104,6 +107,7 @@
 		F635CF1B2EF86C01003D7CB2 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				F660BBF72F0404F00049A3BA /* peertubeswift.icon */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -117,6 +121,7 @@
 				F67428FF2EF4AFC9000600DB /* PeerTubeSwiftUITests */,
 				F635CF1B2EF86C01003D7CB2 /* Frameworks */,
 				F67428E22EF4AFC6000600DB /* Products */,
+				F660BBFA2F0406070049A3BA /* AppIcon.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -261,6 +266,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F660BBFB2F0406070049A3BA /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -330,6 +336,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PeerTubeSwift/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "PeerTube Swift";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -365,6 +373,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PeerTubeSwift/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "PeerTube Swift";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

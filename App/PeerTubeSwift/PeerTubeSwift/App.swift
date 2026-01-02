@@ -14,11 +14,12 @@ import TubeSDK
 struct AppFeature {
     @ObservableState
     struct State {
-        var selectedTab: TubeTab = .explore
+        var selectedTab: TubeTab = .feed
         
         var feedTab = FeedTabFeature.State()
         var exploreTab = ExploreTabFeature.State()
         var settingsTab = SettingsTabFeature.State()
+        var searchTab = SearchFeature.State()
     }
     
     enum Action {
@@ -27,6 +28,7 @@ struct AppFeature {
         case feedTab(FeedTabFeature.Action)
         case exploreTab(ExploreTabFeature.Action)
         case settingsTab(SettingsTabFeature.Action)
+        case searchTab(SearchFeature.Action)
     }
 
     var body: some ReducerOf<AppFeature> {
@@ -40,7 +42,7 @@ struct AppFeature {
                 state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: "peertube.wtf",
                                                                                     videoId: "18QZB6GTN1DRd1LtkeQm22")))
                 return .none
-            case .feedTab(_), .exploreTab(_), .settingsTab(_):
+            case .feedTab(_), .exploreTab(_), .settingsTab(_), .searchTab(_):
                 return .none
             }
         }
@@ -54,6 +56,9 @@ struct AppFeature {
         Scope(state: \.settingsTab, action: \.settingsTab) {
             SettingsTabFeature()
         }
+        Scope(state: \.searchTab, action: \.searchTab) {
+            SearchFeature()
+        }
     }
 }
 
@@ -61,6 +66,7 @@ enum TubeTab {
     case feed
     case explore
     case settings
+    case search
 }
 
 
@@ -69,16 +75,6 @@ struct ContentView: View {
     
     var body: some View {
         TabView(selection: $store.selectedTab.sending(\.selectedTabChanged)) {
-            Tab(
-                "Explore",
-                systemImage: "play.tv",
-                value: .explore
-            ) {
-                ExploreTab(
-                    store: self.store.scope(state: \.exploreTab, action: \.exploreTab)
-                )
-            }
-            
             // Subscriptions Tab
             Tab(
                 "Feed",
@@ -91,12 +87,33 @@ struct ContentView: View {
             }
             
             Tab(
+                "Explore",
+                systemImage: "play.tv",
+                value: .explore
+            ) {
+                ExploreTab(
+                    store: self.store.scope(state: \.exploreTab, action: \.exploreTab)
+                )
+            }
+            
+            Tab(
                 "Settings",
                 systemImage: "gear",
                 value: .settings,
             ) {
                 SettingsTab(
                     store: self.store.scope(state: \.settingsTab, action: \.settingsTab)
+                )
+            }
+            
+            Tab(
+                "Search",
+                systemImage: "magnifyingglass",
+                value: .search,
+                role: .search
+            ) {
+                SearchTab(
+                    store: self.store.scope(state: \.searchTab, action: \.searchTab)
                 )
             }
         }

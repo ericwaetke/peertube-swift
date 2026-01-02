@@ -15,8 +15,6 @@ import SQLiteData
 
 @main
 struct PeerTubeSwiftApp: App {
-    let appState = AppState()
-    
     init() {
       prepareDependencies {
           try! $0.bootstrapDatabase()
@@ -28,8 +26,6 @@ struct PeerTubeSwiftApp: App {
             ContentView(store: Store(initialState: AppFeature.State(), reducer: {
                 AppFeature()
             }))
-//			ContentViewOld()
-//				.environment(appState)
 		}
 	}
 }
