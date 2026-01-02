@@ -175,7 +175,9 @@ struct ExploreTab: View {
         } destination: { store in
             switch store.case {
             case let .exploreFeed(store):
-                Feed(store: store)
+                ScrollView {
+                    Feed(store: store)
+                }
                     .navigationTitle("Newest Videos")
             case let .videoDetail(store):
                 VideoDetails(store: store)
