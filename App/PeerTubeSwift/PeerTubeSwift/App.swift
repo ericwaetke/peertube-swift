@@ -42,6 +42,15 @@ struct AppFeature {
                 state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: "peertube.wtf",
                                                                                     videoId: "18QZB6GTN1DRd1LtkeQm22")))
                 return .none
+            case .searchTab(.videoFeed(.videoTapped(let row))):
+                state.selectedTab = .explore
+                guard let instance = row.instance else {
+                    return .none
+                }
+                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
+//                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: videoRow.,
+//                                                                                    videoId: "18QZB6GTN1DRd1LtkeQm22")))
+                return .none
             case .feedTab(_), .exploreTab(_), .settingsTab(_), .searchTab(_):
                 return .none
             }

@@ -87,7 +87,9 @@ struct FeedTab: View {
     @Bindable var store: StoreOf<FeedTabFeature>
     var body: some View {
         NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-            Feed(store: self.store.scope(state: \.subscriptionFeed, action: \.subscriptionFeed))
+            ScrollView {
+                Feed(store: self.store.scope(state: \.subscriptionFeed, action: \.subscriptionFeed))
+            }
             .navigationTitle("Subscriptions")
             .toolbar {
                 ToolbarItemGroup(placement: .secondaryAction) {

@@ -58,19 +58,15 @@ struct SearchTab: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading) {
-                    Text("Searching for \(self.store.state.search)")
                     Feed(store: self.store.scope(state: \.videoFeed, action: \.videoFeed))
                 }
+                .navigationTitle("Search")
             }
-            .navigationTitle("Searchable Example")
         }
         .searchable(text: $store.search.sending(\.setSearch))
         .onSubmit(of: .search) {
             self.store.send(.startSearch)
         }
-//        .onSubmit {
-//            self.store.send(.startSearch)
-//        }
     }
 }
 
