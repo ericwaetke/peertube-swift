@@ -17,7 +17,8 @@ struct VideoDetailsFeature {
     struct State: Equatable {
         let host: String
         let videoId: String
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
         var videoChannel: VideoChannel?
         var instance: Instance?
         var selectedQuality: TubeSDK.VideoFile?
@@ -120,8 +121,8 @@ struct VideoDetailsFeature {
                         let channelDetails = videoDetails.channel,
                         let channelId = channelDetails.id,
                         let channelName = channelDetails.displayName,
-                          let channelUsername = channelDetails.name,
-                          let channelHost = channelDetails.host
+                        let channelUsername = channelDetails.name,
+                        let channelHost = channelDetails.host
                     else {
                         return
                     }
@@ -163,9 +164,9 @@ struct VideoDetailsFeature {
                     @Dependency(\.defaultDatabase) var database
 
                     guard let videoDetails = videoDetails,
-                          let channel = videoDetails.channel,
-                          let channelUsername = channel.name,
-                          let channelHost = channel.host
+                        let channel = videoDetails.channel,
+                        let channelUsername = channel.name,
+                        let channelHost = channel.host
                     else {
                         return
                     }
@@ -197,8 +198,8 @@ struct VideoDetailsFeature {
                 return .none
             case .instanceTapped:
                 return .none
-            case .newResolutionSelected(let resolution):
-                state.selectedQuality = resolution
+            case .newResolutionSelected(let quality):
+                state.selectedQuality = quality
                 return .none
             }
         }
@@ -211,112 +212,62 @@ struct VideoDetails: View {
     let formatter = RelativeDateTimeFormatter()
 
     var body: some View {
-        ZStack { 
-            if let videoDetails = self.store.state.videoDetails {
-                ScrollView {
-                    VStack(spacing: 16) {
-                        if let videoFiles = videoDetails.streamingPlaylists?.first?.files,
-                            !videoFiles.isEmpty
-                        {
+        NavigationStack {
+            ZStack {
+                if let videoDetails = self.store.state.videoDetails {
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            if let videoFiles = videoDetails.streamingPlaylists?.first?.files,
+                                !videoFiles.isEmpty
+                            {
 
-                            VideoPlayerView(videoFiles: videoFiles, selectedVideoFile: self.store.state.selectedQuality)
-                            .frame(
-                                minWidth: 0,
-                                maxWidth: .infinity,
-                                minHeight: 100,
-                                maxHeight: .infinity
-                            )
-                            .aspectRatio(16 / 9, contentMode: .fit)
-                        }
-                        VStack(alignment: .leading, spacing: 16) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(videoDetails.name ?? "Unknown Video Title")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
+                                VideoPlayerView(
+                                    videoFiles: videoFiles,
+                                    selectedVideoFile: self.store.state.selectedQuality
+                                )
+                                .frame(
+                                    minWidth: 0,
+                                    maxWidth: .infinity,
+                                    minHeight: 100,
+                                    maxHeight: .infinity
+                                )
+                                .aspectRatio(16 / 9, contentMode: .fit)
+                            }
+                            VStack(alignment: .leading, spacing: 16) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(videoDetails.name ?? "Unknown Video Title")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
 
-                                HStack {
-                                    if let views = videoDetails.views {
-                                        Text("^[\(views) View](inflect: true)")
+                                    HStack {
+                                        if let views = videoDetails.views {
+                                            Text("^[\(views) View](inflect: true)")
+                                                .font(.callout)
+                                        }
+
+                                        if let publishedAt = videoDetails.publishedAt {
+                                            Text("·")
+                                            Text(
+                                                formatter.localizedString(
+                                                    for: publishedAt, relativeTo: Date.now)
+                                            )
                                             .font(.callout)
-                                    }
-
-                                    if let publishedAt = videoDetails.publishedAt {
-                                        Text("·")
-                                        Text(
-                                            formatter.localizedString(
-                                                for: publishedAt, relativeTo: Date.now)
-                                        )
-                                        .font(.callout)
+                                        }
                                     }
                                 }
-                            }
-                            if let likes = videoDetails.likes,
-                                let dislikes = videoDetails.dislikes
-                            {
-                                HStack {
-                                    Button {
-                                        self.store.send(.likeButtonTapped)
-                                    } label: {
-                                        HStack {
-                                            Image(systemName: "hand.thumbsup")
-                                            Text(likes.formatted())
-                                        }
-                                    }
-                                    .tint(self.store.state.hasLiked ? .blue : .primary)
-                                    .apply {
-                                        if #available(iOS 26.0, *) {
-                                            $0.buttonStyle(.glass)
-                                        } else {
-                                            $0.buttonStyle(.automatic)
-                                        }
-                                    }
-
-                                    Button {
-                                        self.store.send(.dislikeButtonTapped)
-                                    } label: {
-                                        HStack {
-                                            Image(systemName: "hand.thumbsdown")
-                                            Text(dislikes.formatted())
-                                        }
-                                    }
-                                    .tint(self.store.state.hasDisliked ? .blue : .primary)
-                                    .apply {
-                                        if #available(iOS 26.0, *) {
-                                            $0.buttonStyle(.glass)
-                                        } else {
-                                            $0.buttonStyle(.automatic)
-                                        }
-                                    }
-
-                                    if let playlist = videoDetails.streamingPlaylists?.first,
-                                        let qualities = playlist.files
-                                    {
-                                        Menu {
-                                            ForEach(qualities) { quality in
-                                                if let resolution = quality.resolution?.label {
-                                                    Button {
-                                                        //                                                        withAnimation {
-                                                        self.store.send(
-                                                            .newResolutionSelected(quality))
-                                                        //                                                        }
-                                                    } label: {
-                                                        let string =
-                                                            "\(resolution) (A: \((quality.hasAudio ?? false) ? "✓" : "×"), V: \((quality.hasVideo ?? false) ? "✓" : "×")"
-                                                        if self.store.state.selectedQuality
-                                                            == quality
-                                                        {
-                                                            Label(string, systemImage: "checkmark")
-                                                        } else {
-                                                            Text(string)
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                if let likes = videoDetails.likes,
+                                    let dislikes = videoDetails.dislikes
+                                {
+                                    HStack {
+                                        Button {
+                                            self.store.send(.likeButtonTapped)
                                         } label: {
-                                            Label(
-                                                self.store.state.selectedQuality?.resolution?.label
-                                                    ?? "Quality", systemImage: "gear")
+                                            HStack {
+                                                Image(systemName: "hand.thumbsup")
+                                                Text(likes.formatted())
+                                            }
                                         }
+                                        .tint(self.store.state.hasLiked ? .blue : .primary)
                                         .apply {
                                             if #available(iOS 26.0, *) {
                                                 $0.buttonStyle(.glass)
@@ -325,128 +276,186 @@ struct VideoDetails: View {
                                             }
                                         }
 
-                                        //                                        Picker("Quality", selection: $store.selectedQuality.sending(\.changeSubscriptionState)) {
-                                        //                                            ForEach(qualities) { quality in
-                                        //                                                if let resolution = quality.resolution?.label {
-                                        //                                                    Text(resolution).tag(quality)
-                                        //                                                }
-                                        //                                            }
-                                        //                                        }
-                                    }
+                                        Button {
+                                            self.store.send(.dislikeButtonTapped)
+                                        } label: {
+                                            HStack {
+                                                Image(systemName: "hand.thumbsdown")
+                                                Text(dislikes.formatted())
+                                            }
+                                        }
+                                        .tint(self.store.state.hasDisliked ? .blue : .primary)
+                                        .apply {
+                                            if #available(iOS 26.0, *) {
+                                                $0.buttonStyle(.glass)
+                                            } else {
+                                                $0.buttonStyle(.automatic)
+                                            }
+                                        }
 
-                                    if let url = URL(
-                                        string:
-                                            "https://\(self.store.state.host)/w/\(self.store.state.videoId)"
-                                    ) {
-                                        ShareLink(item: url)
+                                        if let playlist = videoDetails.streamingPlaylists?.first,
+                                            let qualities = playlist.files
+                                        {
+                                            Menu {
+                                                ForEach(qualities) { quality in
+                                                    if let resolution = quality.resolution?.label {
+                                                        Button {
+                                                            //                                                        withAnimation {
+                                                            self.store.send(
+                                                                .newResolutionSelected(quality))
+                                                            //                                                        }
+                                                        } label: {
+                                                            let string =
+                                                                "\(resolution) (A: \((quality.hasAudio ?? false) ? "✓" : "×"), V: \((quality.hasVideo ?? false) ? "✓" : "×")"
+                                                            if self.store.state.selectedQuality
+                                                                == quality
+                                                            {
+                                                                Label(
+                                                                    string, systemImage: "checkmark"
+                                                                )
+                                                            } else {
+                                                                Text(string)
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            } label: {
+                                                Label(
+                                                    self.store.state.selectedQuality?.resolution?
+                                                        .label
+                                                        ?? "Quality", systemImage: "gear")
+                                            }
+                                            .apply {
+                                                if #available(iOS 26.0, *) {
+                                                    $0.buttonStyle(.glass)
+                                                } else {
+                                                    $0.buttonStyle(.automatic)
+                                                }
+                                            }
+
+                                            //                                        Picker("Quality", selection: $store.selectedQuality.sending(\.changeSubscriptionState)) {
+                                            //                                            ForEach(qualities) { quality in
+                                            //                                                if let resolution = quality.resolution?.label {
+                                            //                                                    Text(resolution).tag(quality)
+                                            //                                                }
+                                            //                                            }
+                                            //                                        }
+                                        }
+
+                                        if let url = URL(
+                                            string:
+                                                "https://\(self.store.state.host)/w/\(self.store.state.videoId)"
+                                        ) {
+                                            ShareLink(item: url)
+                                        }
                                     }
                                 }
-                            }
 
-                            // Channel Subscription Bar
-                            HStack {
-                                ZStack(alignment: .bottomLeading) {
-                                    // Default Channel Stuff
-                                    HStack(alignment: .top) {
-                                        if let avatars = videoDetails.channel?.avatars,
-                                            let avatar = avatars.first,
-                                            let fileUrl = avatar.fileUrl,
-                                            let url = URL(string: fileUrl)
-                                        {
-                                            AsyncImage(url: url) { image in
-                                                image.resizable()
-                                            } placeholder: {
-                                                Color.secondary
-                                            }
-                                            .frame(width: 48, height: 48)
-                                            .clipShape(.circle)
-                                        } else {
-                                            Color.secondary
+                                // Channel Subscription Bar
+                                HStack {
+                                    ZStack(alignment: .bottomLeading) {
+                                        // Default Channel Stuff
+                                        HStack(alignment: .top) {
+                                            if let avatars = videoDetails.channel?.avatars,
+                                                let avatar = avatars.first,
+                                                let fileUrl = avatar.fileUrl,
+                                                let url = URL(string: fileUrl)
+                                            {
+                                                AsyncImage(url: url) { image in
+                                                    image.resizable()
+                                                } placeholder: {
+                                                    Color.secondary
+                                                }
                                                 .frame(width: 48, height: 48)
                                                 .clipShape(.circle)
+                                            } else {
+                                                Color.secondary
+                                                    .frame(width: 48, height: 48)
+                                                    .clipShape(.circle)
+                                            }
+                                            Text(
+                                                "\(videoDetails.channel?.displayName ?? "Unknown Channel")"
+                                            )
+                                            .lineLimit(1)
                                         }
-                                        Text(
-                                            "\(videoDetails.channel?.displayName ?? "Unknown Channel")"
-                                        )
-                                        .lineLimit(1)
+                                        // Instance Indicator
+                                        if let instanceName = videoDetails.channel?.host {
+                                            InstanceIndicator(
+                                                instanceName: instanceName, instanceImage: nil
+                                            )
+                                            .padding(.leading, 36)
+                                        }
                                     }
-                                    // Instance Indicator
-                                    if let instanceName = videoDetails.channel?.host {
-                                        InstanceIndicator(
-                                            instanceName: instanceName, instanceImage: nil
-                                        )
-                                        .padding(.leading, 36)
+                                    Spacer()
+                                    Button(
+                                        self.store.state.isSubscribedToChannel
+                                            ? "Unsubscribe" : "Subscribe"
+                                    ) {
+                                        self.store.send(.subscribeButtonTapped)
+                                    }
+                                    .apply {
+                                        if #available(iOS 26.0, *) {
+                                            $0.buttonStyle(.glass)
+                                        } else {
+                                            $0.buttonStyle(.automatic)
+                                        }
+                                    }
+                                }
+
+                                // Description
+
+                                if let description = videoDetails.description {
+                                    Divider()
+                                    DisclosureGroup(
+                                        isExpanded: $store.descriptionVisible.sending(
+                                            \.descriptionVisibleChanged)
+                                    ) {
+                                        // TODO: don’t do this, ugh … can’t get it to work differently right now though
+                                        HStack {
+                                            Text(description)
+                                            Spacer()
+                                        }
+                                    } label: {
+                                        Text("Description")
+                                            .foregroundStyle(.primary)
+                                            .fontWeight(.bold)
+
+                                    }
+                                }
+
+                                Divider()
+
+                                VStack(alignment: .leading) {
+                                    if let commentCount = videoDetails.comments {
+                                        DisclosureGroup(
+                                            isExpanded: $store.commentsVisible.sending(
+                                                \.commentsVisibleChanged)
+                                        ) {
+                                        } label: {
+                                            HStack {
+                                                Text("Comments")
+                                                    .fontWeight(.bold)
+                                                Text(commentCount.formatted())
+                                                    .opacity(0.5)
+                                            }
+                                        }
+
                                     }
                                 }
                                 Spacer()
-                                Button(
-                                    self.store.state.isSubscribedToChannel
-                                        ? "Unsubscribe" : "Subscribe"
-                                ) {
-                                    self.store.send(.subscribeButtonTapped)
-                                }
-                                .apply {
-                                    if #available(iOS 26.0, *) {
-                                        $0.buttonStyle(.glass)
-                                    } else {
-                                        $0.buttonStyle(.automatic)
-                                    }
-                                }
                             }
+                            .padding()
 
-                            // Description
-
-                            if let description = videoDetails.description {
-                                Divider()
-                                DisclosureGroup(
-                                    isExpanded: $store.descriptionVisible.sending(
-                                        \.descriptionVisibleChanged)
-                                ) {
-                                    // TODO: don’t do this, ugh … can’t get it to work differently right now though
-                                    HStack {
-                                        Text(description)
-                                        Spacer()
-                                    }
-                                } label: {
-                                    Text("Description")
-                                        .foregroundStyle(.primary)
-                                        .fontWeight(.bold)
-
-                                }
-                            }
-
-                            Divider()
-
-                            VStack(alignment: .leading) {
-                                if let commentCount = videoDetails.comments {
-                                    DisclosureGroup(
-                                        isExpanded: $store.commentsVisible.sending(
-                                            \.commentsVisibleChanged)
-                                    ) {
-                                    } label: {
-                                        HStack {
-                                            Text("Comments")
-                                                .fontWeight(.bold)
-                                            Text(commentCount.formatted())
-                                                .opacity(0.5)
-                                        }
-                                    }
-
-                                }
-                            }
-                            Spacer()
+                            .containerRelativeFrame(.horizontal)
                         }
-                        .padding()
-
-                        .containerRelativeFrame(.horizontal)
                     }
+                } else {
+                    ProgressView()
                 }
-            } else {
-                ProgressView()
             }
-        }
-        .task {
-            await self.store.send(.screenLoaded).finish()
+            .task {
+                await self.store.send(.screenLoaded).finish()
+            }
         }
     }
 }
