@@ -20,6 +20,8 @@ struct AppFeature {
         var exploreTab = ExploreTabFeature.State()
         var settingsTab = SettingsTabFeature.State()
         var searchTab = SearchFeature.State()
+        
+        @Presents var videoDetails: VideoDetailsFeature.State?
     }
     
     enum Action {
@@ -29,6 +31,8 @@ struct AppFeature {
         case exploreTab(ExploreTabFeature.Action)
         case settingsTab(SettingsTabFeature.Action)
         case searchTab(SearchFeature.Action)
+        
+        case videoDetails(PresentationAction<VideoDetailsFeature.Action>)
     }
 
     var body: some ReducerOf<AppFeature> {
@@ -38,9 +42,10 @@ struct AppFeature {
                 state.selectedTab = tab
                 return .none
             case .settingsTab(.goToCCVideo):
-                state.selectedTab = .explore
-                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: "peertube.wtf",
-                                                                                    videoId: "18QZB6GTN1DRd1LtkeQm22")))
+//                state.selectedTab = .explore
+//                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: "peertube.wtf",
+//                                                                                    videoId: "18QZB6GTN1DRd1LtkeQm22")))
+                state.videoDetails = VideoDetailsFeature.State(host: "peertube.wtf", videoId: "18QZB6GTN1DRd1LtkeQm22")
                 return .none
             case .searchTab(.videoFeed(.videoTapped(let row))):
                 state.selectedTab = .explore
@@ -48,12 +53,13 @@ struct AppFeature {
                     return .none
                 }
                 state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
-//                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: videoRow.,
-//                                                                                    videoId: "18QZB6GTN1DRd1LtkeQm22")))
                 return .none
-            case .feedTab(_), .exploreTab(_), .settingsTab(_), .searchTab(_):
+            case .feedTab(_), .exploreTab(_), .settingsTab(_), .searchTab(_), .videoDetails(_):
                 return .none
             }
+        }
+        .ifLet(\.$videoDetails, action: \.videoDetails) {
+            VideoDetailsFeature()
         }
         
         Scope(state: \.feedTab, action: \.feedTab) {
@@ -125,6 +131,18 @@ struct ContentView: View {
                     store: self.store.scope(state: \.searchTab, action: \.searchTab)
                 )
             }
+        }
+        .apply {
+            if #available(iOS 26.0, *) {
+                $0.tabViewBottomAccessory {
+                    // 3.
+                    Image(systemName: "star.fill")
+                }
+            } else {
+            }
+        }
+        .sheet(item: $store.scope(state: \.videoDetails, action: \.videoDetails)) { store in
+            VideoDetails(store: store)
         }
     }
 }
