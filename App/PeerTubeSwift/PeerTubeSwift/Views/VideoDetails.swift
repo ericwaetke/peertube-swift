@@ -221,9 +221,13 @@ struct VideoDetails: View {
                                 !videoFiles.isEmpty
                             {
 
-                                VideoPlayerView(
+                                PersistentVideoPlayerView(
                                     videoFiles: videoFiles,
-                                    selectedVideoFile: self.store.state.selectedQuality
+                                    selectedVideoFile: self.store.state.selectedQuality,
+                                    videoTitle: videoDetails.name ?? "Unknown Video Title",
+                                    channelName: videoDetails.channel?.displayName
+                                        ?? "Unknown Channel",
+                                    thumbnailURL: videoDetails.previewPath != nil ? URL(string: videoDetails.previewPath!) : nil
                                 )
                                 .frame(
                                     minWidth: 0,
