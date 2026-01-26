@@ -17,12 +17,12 @@ struct MiniVideoPlayerFeature {
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
             scheme: "https", host: "peertube.wtf")
     }
-    
+
     enum Action {
         case onTap
         case onDismiss
     }
-    
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
@@ -38,48 +38,38 @@ struct MiniVideoPlayerFeature {
 struct MiniVideoPlayer: View {
     @Bindable var store: StoreOf<MiniVideoPlayerFeature>
 
+    @Dependency(\.videoPlayerCoordinator) var coordinator
+
     var body: some View {
         HStack(spacing: 12) {
-            // Video thumbnail
-            if let videoDetails = self.store.videoState.videoDetails {
-                if let previewPath = videoDetails.previewPath,
-                    let url = try? self.store.client.getImageUrl(path: previewPath) {
-                        AsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Rectangle()
-                                .fill(.gray.opacity(0.3))
-                        }
-                        .frame(width: 60, height: 34)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                
-                // Video info
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(self.store.state.videoState.videoDetails?.name ?? "Loading...")
-                        .font(.system(size: 14, weight: .medium))
-                        .lineLimit(1)
-                        .foregroundColor(.primary)
-                    
-                    Text(
-                        "Collective Change"
-                    )
+            // Actual video player view (mini size)
+            MiniPersistentVideoPlayerView()
+                .frame(width: 60, height: 34)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .onTapGesture {
+                    coordinator.togglePlayback()
+                }
+
+            // Video info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(coordinator.currentVideoInfo?.title ?? "Loading...")
+                    .font(.system(size: 14, weight: .medium))
+                    .lineLimit(1)
+                    .foregroundColor(.primary)
+
+                Text(coordinator.currentVideoInfo?.channelName ?? "")
                     .font(.system(size: 12))
                     .lineLimit(1)
                     .foregroundColor(.secondary)
-                }
-                
             }
 
             Spacer()
 
-            // Play/pause button (placeholder for now)
+            // Play/pause button
             Button(action: {
-                // TODO: Implement play/pause functionality
+                coordinator.togglePlayback()
             }) {
-                Image(systemName: "play.fill")
+                Image(systemName: coordinator.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 16))
                     .foregroundColor(.primary)
             }
@@ -113,10 +103,12 @@ struct MiniVideoPlayer: View {
         videoId: "18QZB6GTN1DRd1LtkeQm22"
     )
 
-    MiniVideoPlayer(store: Store(initialState: MiniVideoPlayerFeature.State(videoState: videoState)) {
-        MiniVideoPlayerFeature()
-    })
-//    .previewLayout(.sizeThatFits)
-//    .sizeThatFitsLayout
+    MiniVideoPlayer(
+        store: Store(initialState: MiniVideoPlayerFeature.State(videoState: videoState)) {
+            MiniVideoPlayerFeature()
+        }
+    )
+    //    .previewLayout(.sizeThatFits)
+    //    .sizeThatFitsLayout
     .padding()
 }
