@@ -304,51 +304,56 @@ struct Feed: View {
     let store: StoreOf<FeedFeature>
     
     var body: some View {
-        ZStack {
-            if self.store.isLoadingVideos {
-                ProgressView()
-            } else if self.store.feed.isEmpty {
-                if self.store.instances.isEmpty {
-                    ContentUnavailableView {
-                        Label("Your Feed is empty", systemImage: "video")
-                    } description: {
-                        Button("Add an Instance to get their latest videos") {
-                            self.store.send(.addInstanceButtonTapped)
+        ScrollView {
+            ZStack {
+                if self.store.isLoadingVideos {
+                    ProgressView()
+                        .containerRelativeFrame([.horizontal, .vertical])
+                } else if self.store.feed.isEmpty {
+                    if self.store.instances.isEmpty {
+                        ContentUnavailableView {
+                            Label("Your Feed is empty", systemImage: "video")
+                        } description: {
+                            Button("Add an Instance to get their latest videos") {
+                                self.store.send(.addInstanceButtonTapped)
+                            }
                         }
+                        .containerRelativeFrame([.horizontal, .vertical])
+                    } else {
+                        ContentUnavailableView {
+                            Label("Your Feed is empty", systemImage: "video")
+                        } description: {
+                            VStack {
+                                Text(
+                                    "You have instances added, but they dont seem to have any videos right now"
+                                )
+                                Button("Reload") {
+                                    self.store.send(.pulledToRefresh)
+                                }
+                            }
+                        }
+                        .containerRelativeFrame([.horizontal, .vertical])
+                        
                     }
                 } else {
-                    ContentUnavailableView {
-                        Label("Your Feed is empty", systemImage: "video")
-                    } description: {
-                        VStack {
-                            Text(
-                                "You have instances added, but they dont seem to have any videos right now"
-                            )
-                            Button("Reload") {
-                                self.store.send(.pulledToRefresh)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12) {
+                        ForEach(self.store.feed, id: \.self) { row in
+                            VideoCard(row: row) {
+                                self.store.send(.videoTapped(row: row))
+                            } openChannel: {
+                                self.store.send(.channelTapped(row: row))
                             }
                         }
                     }
-                    
+                    .padding()
                 }
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12) {
-                    ForEach(self.store.feed, id: \.self) { row in
-                        VideoCard(row: row) {
-                            self.store.send(.videoTapped(row: row))
-                        } openChannel: {
-                            self.store.send(.channelTapped(row: row))
-                        }
-                    }
-                }
-                .padding()
             }
         }
         .task {
             await self.store.send(.initialScreenLoad).finish()
         }
         .refreshable {
-            self.store.send(.pulledToRefresh)
+            await self.store.send(.pulledToRefresh).finish()
         }
         
     }
