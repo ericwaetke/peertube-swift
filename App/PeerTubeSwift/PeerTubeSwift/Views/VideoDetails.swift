@@ -52,6 +52,9 @@ struct VideoDetailsFeature {
         case changeSubscriptionState(Bool)
         case channelTapped
         case instanceTapped
+        case subscriptionStateLoaded(Bool)
+        case loadUserRating
+        case ratingLoaded(TubeSDK.VideoRating)
 
         case newResolutionSelected(TubeSDK.VideoFile)
     }
@@ -65,15 +68,45 @@ struct VideoDetailsFeature {
                 }
             case .dislikeButtonTapped:
                 let wasDisliked = state.hasDisliked
+                let wasLiked = state.hasLiked
+                
                 state.hasLiked = false
                 state.hasDisliked = !wasDisliked
+                
+                var newLikes = state.videoDetails?.likes ?? 0
+                var newDislikes = state.videoDetails?.dislikes ?? 0
+                
+                if wasLiked { newLikes = max(0, newLikes - 1) }
+                if wasDisliked {
+                    newDislikes = max(0, newDislikes - 1)
+                } else {
+                    newDislikes += 1
+                }
+                
+                state.videoDetails?.likes = newLikes
+                state.videoDetails?.dislikes = newDislikes
                 return .run { [client = state.client, videoId = state.videoId, hasDisliked = state.hasDisliked] send in
                     try? await client.rate(videoID: videoId, rating: hasDisliked ? .dislike : .none)
                 }
             case .likeButtonTapped:
                 let wasLiked = state.hasLiked
+                let wasDisliked = state.hasDisliked
+                
                 state.hasLiked = !wasLiked
                 state.hasDisliked = false
+                
+                var newLikes = state.videoDetails?.likes ?? 0
+                var newDislikes = state.videoDetails?.dislikes ?? 0
+                
+                if wasDisliked { newDislikes = max(0, newDislikes - 1) }
+                if wasLiked {
+                    newLikes = max(0, newLikes - 1)
+                } else {
+                    newLikes += 1
+                }
+                
+                state.videoDetails?.likes = newLikes
+                state.videoDetails?.dislikes = newDislikes
                 return .run { [client = state.client, videoId = state.videoId, hasLiked = state.hasLiked] send in
                     try? await client.rate(videoID: videoId, rating: hasLiked ? .like : .none)
                 }
@@ -85,14 +118,17 @@ struct VideoDetailsFeature {
                 return .none
             case .screenLoaded:
                 return .send(.loadInstance)
-            case .loadVideo(let videoDetails):
+                        case .loadVideo(let videoDetails):
                 state.videoDetails = videoDetails
                 if state.selectedQuality == nil {
                     if let quality = videoDetails.streamingPlaylists?.first?.files?.first {
                         state.selectedQuality = quality
                     }
                 }
-                return .send(.loadChannel(videoDetails))
+                return .merge(
+                    .send(.loadChannel(videoDetails)),
+                    .send(.loadUserRating)
+                )
             case .loadInstance:
                 return .run { [host = state.host] send in
                     @Dependency(\.defaultDatabase) var database
@@ -160,7 +196,13 @@ struct VideoDetailsFeature {
             case .saveChannel(let channel):
                 print(channel)
                 state.videoChannel = channel
-                return .none
+                return .run { [client = state.client, channel = channel] send in
+                    if client.currentToken != nil {
+                        if let isSubscribed = try? await client.checkSubscription(channelUri: channel.id) {
+                            await send(.subscriptionStateLoaded(isSubscribed))
+                        }
+                    }
+                }
             case .subscribeButtonTapped:
                 let isSubscribed = state.isSubscribedToChannel
                 return .send(.changeSubscriptionState(!isSubscribed))
@@ -211,6 +253,21 @@ struct VideoDetailsFeature {
                         }
                     }
                 }
+                        case .subscriptionStateLoaded(let isSubscribed):
+                state.isSubscribedToChannel = isSubscribed
+                return .none
+            case .loadUserRating:
+                return .run { [client = state.client, videoId = state.videoId] send in
+                    if client.currentToken != nil {
+                        if let rating = try? await client.getRating(videoID: videoId) {
+                            await send(.ratingLoaded(rating))
+                        }
+                    }
+                }
+            case .ratingLoaded(let rating):
+                state.hasLiked = rating == .like
+                state.hasDisliked = rating == .dislike
+                return .none
             case .channelTapped:
                 return .none
             case .instanceTapped:
@@ -281,13 +338,7 @@ struct VideoDetails: View {
                                         }
                                     }
                                     .tint(self.store.state.hasLiked ? .blue : .primary)
-                                    .apply {
-                                        if #available(iOS 26.0, *) {
-                                            $0.buttonStyle(.glass)
-                                        } else {
-                                            $0.buttonStyle(.automatic)
-                                        }
-                                    }
+                                    .buttonStyle(.bordered)
 
                                     Button {
                                         self.store.send(.dislikeButtonTapped)
@@ -298,13 +349,7 @@ struct VideoDetails: View {
                                         }
                                     }
                                     .tint(self.store.state.hasDisliked ? .blue : .primary)
-                                    .apply {
-                                        if #available(iOS 26.0, *) {
-                                            $0.buttonStyle(.glass)
-                                        } else {
-                                            $0.buttonStyle(.automatic)
-                                        }
-                                    }
+                                    .buttonStyle(.bordered)
 
                                     if let playlist = videoDetails.streamingPlaylists?.first,
                                         let qualities = playlist.files
@@ -335,13 +380,7 @@ struct VideoDetails: View {
                                                 self.store.state.selectedQuality?.resolution?.label
                                                     ?? "Quality", systemImage: "gear")
                                         }
-                                        .apply {
-                                            if #available(iOS 26.0, *) {
-                                                $0.buttonStyle(.glass)
-                                            } else {
-                                                $0.buttonStyle(.automatic)
-                                            }
-                                        }
+                                        .buttonStyle(.bordered)
 
                                         //                                        Picker("Quality", selection: $store.selectedQuality.sending(\.changeSubscriptionState)) {
                                         //                                            ForEach(qualities) { quality in
@@ -403,13 +442,7 @@ struct VideoDetails: View {
                                 ) {
                                     self.store.send(.subscribeButtonTapped)
                                 }
-                                .apply {
-                                    if #available(iOS 26.0, *) {
-                                        $0.buttonStyle(.glass)
-                                    } else {
-                                        $0.buttonStyle(.automatic)
-                                    }
-                                }
+                                .buttonStyle(.bordered)
                             }
 
                             // Description
