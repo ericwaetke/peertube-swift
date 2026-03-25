@@ -66,8 +66,19 @@ struct VideoDetailsFeature {
         Reduce { state, action in
             switch action {
             case .timeUpdate(let time):
-                return .run { [client = state.client, videoId = state.videoId] send in
+                return .run { [client = state.client, videoId = state.videoId, videoDetails = state.videoDetails] send in
                     try? await client.pingVideoWatchingInProgress(videoID: videoId, currentTime: time)
+                    
+                    // Also update the local database so watch history works offline/unauthenticated
+                    if let uuidString = videoDetails?.uuid, let uuid = UUID(uuidString: uuidString) {
+                        @Dependency(\.defaultDatabase) var database
+                        try? await database.write { db in
+                            try Video
+                                .where { $0.id == uuid }
+                                .update { $0.currentTime = time }
+                                .execute(db)
+                        }
+                    }
                 }
             case .dislikeButtonTapped:
                 let wasDisliked = state.hasDisliked
@@ -156,8 +167,21 @@ struct VideoDetailsFeature {
                 state.instance = instance
                 return .run { [client = state.client, videoId = state.videoId] send in
                     print("running side-effect screen loaded")
-                    let videoDetails = try await client.getVideo(
+                    var videoDetails = try await client.getVideo(
                         host: client.instance.host, id: videoId)
+                        
+                    if videoDetails.userHistory == nil {
+                        if let uuidString = videoDetails.uuid, let uuid = UUID(uuidString: uuidString) {
+                            @Dependency(\.defaultDatabase) var database
+                            let localTime = try? await database.read { db in
+                                try Video.find(uuid).fetchOne(db)?.currentTime
+                            }
+                            if let time = localTime, let unwrappedTime = time {
+                                videoDetails.userHistory = TubeSDK.VideoUserHistory(currentTime: unwrappedTime)
+                            }
+                        }
+                    }
+                        
                     await send(.loadVideo(videoDetails))
                 }
             case .loadChannel(let videoDetails):

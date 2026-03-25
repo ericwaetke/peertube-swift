@@ -53,7 +53,10 @@ struct VideoPlayerView: UIViewControllerRepresentable {
             removeObserver()
             self.player = player
             
+            print("🎬 addObserver: parent.startTime = \(String(describing: parent.startTime)), initialSeekPerformed = \(initialSeekPerformed)")
+            
             if !initialSeekPerformed, let startTime = parent.startTime, startTime > 0 {
+                print("🎬 addObserver: Calling performSeekWhenReady with startTime \(startTime)")
                 performSeekWhenReady(time: CMTime(seconds: Double(startTime), preferredTimescale: 600))
                 initialSeekPerformed = true
             }
@@ -65,19 +68,29 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         }
         
         func performSeekWhenReady(time: CMTime) {
-            guard let player = self.player, let item = player.currentItem else { return }
+            guard let player = self.player, let item = player.currentItem else { 
+                print("🎬 performSeekWhenReady: No player or currentItem")
+                return 
+            }
+            
+            print("🎬 performSeekWhenReady: Requested seek to \(time.seconds)s, status: \(item.status.rawValue)")
             
             let seekBlock = {
-                player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                print("🎬 performSeekWhenReady: Executing seek to \(time.seconds)s")
+                player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+                    print("🎬 performSeekWhenReady: Seek finished=\(finished)")
                     player.play() // ensure it keeps playing if it was auto-played
                 }
             }
             
             if item.status == .readyToPlay {
+                print("🎬 performSeekWhenReady: Already ready, seeking immediately")
                 seekBlock()
             } else {
+                print("🎬 performSeekWhenReady: Waiting for readyToPlay...")
                 statusObservation?.invalidate()
                 statusObservation = item.observe(\.status) { [weak self] observedItem, _ in
+                    print("🎬 performSeekWhenReady: Status changed to \(observedItem.status.rawValue)")
                     if observedItem.status == .readyToPlay {
                         seekBlock()
                         self?.statusObservation?.invalidate()
@@ -128,6 +141,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        context.coordinator.parent = self
         print("🎬 VideoPlayer: updateUIViewController called")
 
         // Check if we need to update the player
@@ -155,6 +169,12 @@ struct VideoPlayerView: UIViewControllerRepresentable {
 
             if currentOriginalURL?.absoluteString == selectedURL.absoluteString {
                 print("🎬 VideoPlayer: Same URL, no update needed")
+                // Still try to seek if we haven't performed initial seek yet!
+                if !context.coordinator.initialSeekPerformed, let startTime = self.startTime, startTime > 0 {
+                    print("🎬 updateUIViewController: Trying initial seek from update")
+                    context.coordinator.performSeekWhenReady(time: CMTime(seconds: Double(startTime), preferredTimescale: 600))
+                    context.coordinator.initialSeekPerformed = true
+                }
                 return
             }
         }
