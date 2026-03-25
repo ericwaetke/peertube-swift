@@ -79,6 +79,8 @@ struct SubscriptionFeature {
         case listElementDeleteSwiped(offsets: IndexSet)
         
         case recommendationSubscribeButtonTapped(Recommendation)
+        case toggleNotification(SubRecord)
+        case updateNotificationState(SubRecord, Bool)
     }
     
     var body: some ReducerOf<Self> {
@@ -86,6 +88,35 @@ struct SubscriptionFeature {
             switch action {
             case .findChannelsButtonTapped:
                 return .none
+            case .toggleNotification(let row):
+                let currentNotificationState = row.subscription.notifyOnNewVideo
+                return .run { send in
+                    let center = UNUserNotificationCenter.current()
+                    let settings = await center.notificationSettings()
+                    
+                    if settings.authorizationStatus == .notDetermined {
+                        let granted = try? await center.requestAuthorization(options: [.alert, .sound])
+                        if granted == true {
+                            await send(.updateNotificationState(row, !currentNotificationState))
+                        }
+                    } else if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
+                        await send(.updateNotificationState(row, !currentNotificationState))
+                    } else {
+                        // User denied notifications in settings
+                        print("User denied notifications")
+                    }
+                }
+            case .updateNotificationState(let row, let notify):
+                return .run { _ in
+                    let channelId = row.subscription.channelID
+                    @Dependency(\.defaultDatabase) var database
+                    try? await database.write { db in
+                        try PeertubeSubscription
+                            .where { $0.channelID == channelId }
+                            .update { $0.notifyOnNewVideo = notify }
+                            .execute(db)
+                    }
+                }
             case .listElementDeleteSwiped(offsets: let offsets):
                 return .run { [client = state.client, subscriptions = state.records] send in
                     withErrorReporting {
@@ -205,6 +236,15 @@ struct Subscriptions: View {
                                 }
                                 
                                 Text(row.channel?.name ?? "Channel Name Not Available")
+
+                                Spacer()
+                                
+                                Button {
+                                    self.store.send(.toggleNotification(row))
+                                } label: {
+                                    Image(systemName: row.subscription.notifyOnNewVideo ? "bell.fill" : "bell")
+                                }
+                                .buttonStyle(.borderless)
                             }
                         }
                         .onDelete { offsets in
