@@ -70,7 +70,7 @@ struct VideoDetailsFeature {
                     try? await client.pingVideoWatchingInProgress(videoID: videoId, currentTime: time)
                     
                     // Also update the local database so watch history works offline/unauthenticated
-                    if let uuidString = videoDetails?.uuid, let uuid = UUID(uuidString: uuidString) {
+                    if let uuid = videoDetails?.uuid {
                         @Dependency(\.defaultDatabase) var database
                         try? await database.write { db in
                             try Video
@@ -171,13 +171,13 @@ struct VideoDetailsFeature {
                         host: client.instance.host, id: videoId)
                         
                     if videoDetails.userHistory == nil {
-                        if let uuidString = videoDetails.uuid, let uuid = UUID(uuidString: uuidString) {
+                        if let uuid = videoDetails.uuid {
                             @Dependency(\.defaultDatabase) var database
                             let localTime = try? await database.read { db in
                                 try Video.find(uuid).fetchOne(db)?.currentTime
                             }
-                            if let time = localTime, let unwrappedTime = time {
-                                videoDetails.userHistory = TubeSDK.VideoUserHistory(currentTime: unwrappedTime)
+                            if let time = localTime {
+                                videoDetails.userHistory = TubeSDK.VideoUserHistory(currentTime: time)
                             }
                         }
                     }
