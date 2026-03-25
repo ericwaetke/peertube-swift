@@ -21,6 +21,13 @@ struct SettingsTabFeature {
         @Presents var editInstance: InstanceManagerFeature.State?
         @Presents var login: LoginFeature.State?
         var session: UserSession?
+        
+        enum HealthStatus: Equatable {
+            case loading
+            case healthy(ServerConfig)
+            case error(String)
+        }
+        var healthStatus: HealthStatus = .loading
     }
     
     enum Action {
@@ -28,6 +35,9 @@ struct SettingsTabFeature {
         
         case onAppear
         case sessionLoaded(UserSession?)
+        
+        case checkInstanceHealth
+        case instanceHealthResponse(Result<ServerConfig, NetworkError>)
         
         case editInstanceButtonTapped
         case editInstance(PresentationAction<InstanceManagerFeature.Action>)
@@ -55,6 +65,7 @@ struct SettingsTabFeature {
                 return .run { send in
                     let session = try? await authClient.getSession()
                     await send(.sessionLoaded(session))
+                    await send(.checkInstanceHealth)
                 }
                 
             case let .sessionLoaded(session):
@@ -66,6 +77,25 @@ struct SettingsTabFeature {
                 } else {
                     state.$client.withLock { $0.currentToken = nil }
                 }
+                return .none
+                
+            case .checkInstanceHealth:
+                state.healthStatus = .loading
+                return .run { [client = state.client] send in
+                    do {
+                        let config = try await client.instance.getConfig()
+                        await send(.instanceHealthResponse(.success(config)))
+                    } catch {
+                        await send(.instanceHealthResponse(.failure(.connectionFailed(error.localizedDescription))))
+                    }
+                }
+                
+            case let .instanceHealthResponse(.success(config)):
+                state.healthStatus = .healthy(config)
+                return .none
+                
+            case let .instanceHealthResponse(.failure(error)):
+                state.healthStatus = .error(error.localizedDescription)
                 return .none
                 
             case .path(_):
@@ -91,7 +121,7 @@ struct SettingsTabFeature {
                 }
             case let .setClient(client):
                 state.$client.withLock { $0 = client }
-                return .none
+                return .send(.checkInstanceHealth)
             case .editInstance:
                 return .none
                 
@@ -104,7 +134,7 @@ struct SettingsTabFeature {
                 state.$client.withLock { 
                     $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
                 }
-                return .none
+                return .send(.checkInstanceHealth)
                 
             case .login:
                 return .none
@@ -132,7 +162,42 @@ struct SettingsTab: View {
         NavigationStack {
             Form {
                 Section("Your Home Instance") {
-                    Text("Connected to: \(self.store.client.instance.host)")
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("Connected to: \(self.store.client.instance.host)")
+                            
+                            switch self.store.healthStatus {
+                            case .loading:
+                                EmptyView()
+                            case let .healthy(config):
+                                Text(config.instance.name)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text("v\(config.serverVersion)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            case let .error(error):
+                                Text("Error: \(error)")
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        switch self.store.healthStatus {
+                        case .loading:
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        case .healthy:
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                        case .error:
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                        }
+                    }
+                    
                     Button("Change Connected Instance") {
                         self.store.send(.editInstanceButtonTapped)
                     }
