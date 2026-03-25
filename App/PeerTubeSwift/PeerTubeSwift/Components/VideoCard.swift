@@ -70,7 +70,21 @@ struct VideoCard: View {
                             }
                         }
                     }
+                    
+                    if let duration = row.video.duration, let currentTime = row.video.currentTime, duration > 0, currentTime > 0 {
+                        VStack {
+                            Spacer()
+                            GeometryReader { geometry in
+                                Rectangle()
+                                    .fill(Color.red)
+                                    .frame(width: geometry.size.width * CGFloat(min(Double(currentTime) / Double(duration), 1.0)))
+                            }
+                            .frame(height: 4)
+                        }
+                        .clipShape(.rect(cornerRadius: 8)) // Ensure progress bar follows corner radius at bottom
+                    }
                 }
+                .aspectRatio(16 / 9, contentMode: .fit)
             } else {
             Color.secondary
                 .frame(

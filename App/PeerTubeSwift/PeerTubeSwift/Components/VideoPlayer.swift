@@ -14,6 +14,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
     var onTimeUpdate: ((Int) -> Void)? = nil
     let videoFiles: [TubeSDK.VideoFile]
     let selectedVideoFile: TubeSDK.VideoFile?
+    var startTime: Int? = nil
 
     // Legacy initializer for single URL (backwards compatibility)
     init(videoURL: URL) {
@@ -25,13 +26,15 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         )
         self.videoFiles = [tempVideoFile]
         self.selectedVideoFile = tempVideoFile
+        self.startTime = nil
     }
 
     // New initializer for VideoFile arrays with quality selection
-    init(onTimeUpdate: ((Int) -> Void)? = nil, videoFiles: [TubeSDK.VideoFile], selectedVideoFile: TubeSDK.VideoFile?) {
+    init(onTimeUpdate: ((Int) -> Void)? = nil, videoFiles: [TubeSDK.VideoFile], selectedVideoFile: TubeSDK.VideoFile?, startTime: Int? = nil) {
         self.onTimeUpdate = onTimeUpdate
         self.videoFiles = videoFiles
         self.selectedVideoFile = selectedVideoFile
+        self.startTime = startTime
     }
 
     
@@ -78,6 +81,9 @@ struct VideoPlayerView: UIViewControllerRepresentable {
 
         // Create player with combined streams if needed
         if let player = createPlayerWithCombinedStreams() {
+            if let startTime = self.startTime, startTime > 0 {
+                player.seek(to: CMTime(seconds: Double(startTime), preferredTimescale: 1))
+            }
             playerViewController.player = player
             context.coordinator.addObserver(to: player)
         }
