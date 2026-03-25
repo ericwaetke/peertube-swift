@@ -60,6 +60,7 @@ extension Instance {
     var name: String
     var publishDate: Date
     var duration: Int?
+    var currentTime: Int?
     var views: Int = 0
     var comments: Int = 0
     var likes: Int = 0
@@ -131,6 +132,7 @@ func appDatabase() throws -> any DatabaseWriter {
                     "name" TEXT NOT NULL,
                     "publishDate" TEXT NOT NULL,
                     "duration" INTEGER,
+                    "currentTime" INTEGER,
                     "views" INTEGER NOT NULL DEFAULT 0,
                     "comments" INTEGER NOT NULL DEFAULT 0,
                     "likes" INTEGER NOT NULL DEFAULT 0,

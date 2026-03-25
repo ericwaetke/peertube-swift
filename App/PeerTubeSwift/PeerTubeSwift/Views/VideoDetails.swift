@@ -294,7 +294,7 @@ struct VideoDetails: View {
                             !videoFiles.isEmpty
                         {
 
-                            VideoPlayerView(onTimeUpdate: { time in self.store.send(.timeUpdate(time)) }, videoFiles: videoFiles, selectedVideoFile: self.store.state.selectedQuality)
+                            VideoPlayerView(onTimeUpdate: { time in self.store.send(.timeUpdate(time)) }, videoFiles: videoFiles, selectedVideoFile: self.store.state.selectedQuality, startTime: videoDetails.userHistory?.currentTime)
                             .frame(
                                 minWidth: 0,
                                 maxWidth: .infinity,
