@@ -17,7 +17,7 @@ struct FeedTabFeature {
     }
     
     @ObservableState
-    struct State {
+    struct State: Equatable {
         var path = StackState<Path.State>()
         var subscriptionFeed = FeedFeature.State(feedType: .subscriptions)
         
@@ -127,3 +127,5 @@ struct FeedTab: View {
         }
     )
 }
+
+extension FeedTabFeature.Path.State: Equatable {}

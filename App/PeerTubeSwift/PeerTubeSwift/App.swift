@@ -13,7 +13,7 @@ import TubeSDK
 @Reducer
 struct AppFeature {
     @ObservableState
-    struct State {
+    struct State: Equatable {
         var isLoaded = false
         var selectedTab: TubeTab = .feed
         
@@ -39,6 +39,7 @@ struct AppFeature {
     }
 
     @Dependency(\.authClient) var authClient
+    @Dependency(\.urlSession) var urlSession
 
     var body: some ReducerOf<AppFeature> {
         Reduce { state, action in
@@ -52,7 +53,7 @@ struct AppFeature {
                 state.isLoaded = true
                 if let session = session {
                     state.$client.withLock {
-                        $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
+                        $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token, session: urlSession)
                     }
                     return .run { send in
                         await send(.syncSubscriptions)
@@ -227,3 +228,4 @@ struct ContentView: View {
         AppFeature()
     })
 }
+

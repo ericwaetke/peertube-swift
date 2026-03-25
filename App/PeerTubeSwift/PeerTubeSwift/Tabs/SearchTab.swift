@@ -13,7 +13,7 @@ import TubeSDK
 @Reducer
 struct SearchFeature {
     @ObservableState
-    struct State {
+    struct State: Equatable {
         var search = String()
         
         var videoFeed = FeedFeature.State(feedType: .search)

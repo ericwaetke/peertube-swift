@@ -68,7 +68,7 @@ extension Instance {
     var thumbnailUrl: String?
 }
 
-@Table struct PeertubeSubscription: Identifiable {
+@Table struct PeertubeSubscription: Identifiable, Equatable, Hashable {
     let id: String
     let channelID: VideoChannel.ID
 

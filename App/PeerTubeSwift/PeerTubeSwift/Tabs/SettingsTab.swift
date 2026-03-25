@@ -14,8 +14,8 @@ import WebURL
 @Reducer
 struct SettingsTabFeature {
     @ObservableState
-    struct State {
-        var path = StackState<SettingsPath>()
+    struct State: Equatable {
+        var path = StackState<SettingsPath.State>()
         
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         @Presents var editInstance: InstanceManagerFeature.State?
@@ -51,7 +51,7 @@ struct SettingsTabFeature {
 
     @Reducer
     struct SettingsPath {
-        enum State {}
+        enum State: Equatable {}
         enum Action {}
         var body: some ReducerOf<Self> {}
     }
