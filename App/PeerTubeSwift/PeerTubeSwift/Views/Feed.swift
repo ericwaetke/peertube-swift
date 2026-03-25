@@ -121,6 +121,8 @@ struct FeedFeature {
                         }
                     }
                     
+                    let existingTime = try Video.find(videoId).fetchOne(db)?.currentTime
+                    
                     let video = try Video
                         .upsert {
                             Video(
@@ -130,7 +132,7 @@ struct FeedFeature {
                                 name: videoName,
                                 publishDate: publishedAt,
                                 duration: peertubeVideo.duration,
-                                currentTime: peertubeVideo.userHistory?.currentTime,
+                                currentTime: peertubeVideo.userHistory?.currentTime ?? existingTime,
                                 thumbnailUrl: thumbnailUrl
                             )
                         }
