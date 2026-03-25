@@ -11,6 +11,7 @@ import SwiftUI
 import TubeSDK
 
 struct VideoPlayerView: UIViewControllerRepresentable {
+    var onTimeUpdate: ((Int) -> Void)? = nil
     let videoFiles: [TubeSDK.VideoFile]
     let selectedVideoFile: TubeSDK.VideoFile?
 
@@ -27,9 +28,45 @@ struct VideoPlayerView: UIViewControllerRepresentable {
     }
 
     // New initializer for VideoFile arrays with quality selection
-    init(videoFiles: [TubeSDK.VideoFile], selectedVideoFile: TubeSDK.VideoFile?) {
+    init(onTimeUpdate: ((Int) -> Void)? = nil, videoFiles: [TubeSDK.VideoFile], selectedVideoFile: TubeSDK.VideoFile?) {
+        self.onTimeUpdate = onTimeUpdate
         self.videoFiles = videoFiles
         self.selectedVideoFile = selectedVideoFile
+    }
+
+    
+    class Coordinator: NSObject {
+        var parent: VideoPlayerView
+        var timeObserver: Any?
+        var player: AVPlayer?
+
+        init(_ parent: VideoPlayerView) {
+            self.parent = parent
+        }
+
+        func addObserver(to player: AVPlayer) {
+            removeObserver()
+            self.player = player
+            let interval = CMTime(seconds: 5.0, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+            timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+                self?.parent.onTimeUpdate?(Int(time.seconds))
+            }
+        }
+
+        func removeObserver() {
+            if let observer = timeObserver, let player = player {
+                player.removeTimeObserver(observer)
+                timeObserver = nil
+            }
+        }
+
+        deinit {
+            removeObserver()
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
     }
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
@@ -42,6 +79,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         // Create player with combined streams if needed
         if let player = createPlayerWithCombinedStreams() {
             playerViewController.player = player
+            context.coordinator.addObserver(to: player)
         }
 
         #if targetEnvironment(preview)
@@ -112,6 +150,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         if let newPlayer = createPlayerWithCombinedStreams() {
             print("🎬 VideoPlayer: Created new player successfully")
             uiViewController.player = newPlayer
+            context.coordinator.addObserver(to: newPlayer)
 
             // Restore playback state
             if let currentTime = currentTime {

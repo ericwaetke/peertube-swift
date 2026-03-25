@@ -34,6 +34,7 @@ struct VideoDetailsFeature {
     }
 
     enum Action {
+        case timeUpdate(Int)
         case dislikeButtonTapped
         case likeButtonTapped
 
@@ -58,14 +59,24 @@ struct VideoDetailsFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
+            case .timeUpdate(let time):
+                return .run { [client = state.client, videoId = state.videoId] send in
+                    try? await client.pingVideoWatchingInProgress(videoID: videoId, currentTime: time)
+                }
             case .dislikeButtonTapped:
+                let wasDisliked = state.hasDisliked
                 state.hasLiked = false
-                state.hasDisliked = true
-                return .none
+                state.hasDisliked = !wasDisliked
+                return .run { [client = state.client, videoId = state.videoId, hasDisliked = state.hasDisliked] send in
+                    try? await client.rate(videoID: videoId, rating: hasDisliked ? .dislike : .none)
+                }
             case .likeButtonTapped:
-                state.hasLiked = true
+                let wasLiked = state.hasLiked
+                state.hasLiked = !wasLiked
                 state.hasDisliked = false
-                return .none
+                return .run { [client = state.client, videoId = state.videoId, hasLiked = state.hasLiked] send in
+                    try? await client.rate(videoID: videoId, rating: hasLiked ? .like : .none)
+                }
             case .descriptionVisibleChanged(_):
                 state.descriptionVisible.toggle()
                 return .none
@@ -226,7 +237,7 @@ struct VideoDetails: View {
                             !videoFiles.isEmpty
                         {
 
-                            VideoPlayerView(videoFiles: videoFiles, selectedVideoFile: self.store.state.selectedQuality)
+                            VideoPlayerView(onTimeUpdate: { time in self.store.send(.timeUpdate(time)) }, videoFiles: videoFiles, selectedVideoFile: self.store.state.selectedQuality)
                             .frame(
                                 minWidth: 0,
                                 maxWidth: .infinity,
