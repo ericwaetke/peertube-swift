@@ -67,6 +67,7 @@ public struct LoginFeature {
                 
             case let .loginResponse(.failure(error)):
                 state.isLoading = false
+                print("Failed to login: \\(error)")
                 state.errorMessage = error.localizedDescription
                 return .none
                 
