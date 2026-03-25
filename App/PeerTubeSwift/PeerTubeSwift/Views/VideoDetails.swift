@@ -31,6 +31,7 @@ struct VideoDetailsFeature {
 
         //        TODO: Fetch from DB
         var isSubscribedToChannel = false
+        var notifyOnNewVideo = false
     }
 
     enum Action {
@@ -49,10 +50,12 @@ struct VideoDetailsFeature {
 
         case screenLoaded
         case subscribeButtonTapped
+        case toggleNotificationButtonTapped
+        case updateNotificationState(Bool)
         case changeSubscriptionState(Bool)
         case channelTapped
         case instanceTapped
-        case subscriptionStateLoaded(Bool)
+        case subscriptionStateLoaded(Bool, Bool)
         case loadUserRating
         case ratingLoaded(TubeSDK.VideoRating)
 
@@ -197,15 +200,59 @@ struct VideoDetailsFeature {
                 print(channel)
                 state.videoChannel = channel
                 return .run { [client = state.client, channel = channel] send in
+                    @Dependency(\.defaultDatabase) var database
+                    var localNotificationState = false
+                    if let subscription = try? await database.read({ db in
+                        try PeertubeSubscription.find(channel.id).fetchOne(db)
+                    }) {
+                        localNotificationState = subscription.notifyOnNewVideo
+                    }
+
                     if client.currentToken != nil {
                         if let isSubscribed = try? await client.checkSubscription(channelUri: channel.id) {
-                            await send(.subscriptionStateLoaded(isSubscribed))
+                            await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
                         }
+                    } else {
+                        // Unauthenticated fallback: If they have a local subscription record
+                        let hasLocalSub = try? await database.read({ db in
+                            try PeertubeSubscription.find(channel.id).fetchOne(db) != nil
+                        })
+                        await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
                     }
                 }
             case .subscribeButtonTapped:
                 let isSubscribed = state.isSubscribedToChannel
                 return .send(.changeSubscriptionState(!isSubscribed))
+            case .toggleNotificationButtonTapped:
+                let currentNotificationState = state.notifyOnNewVideo
+                return .run { send in
+                    let center = UNUserNotificationCenter.current()
+                    let settings = await center.notificationSettings()
+                    
+                    if settings.authorizationStatus == .notDetermined {
+                        let granted = try? await center.requestAuthorization(options: [.alert, .sound])
+                        if granted == true {
+                            await send(.updateNotificationState(!currentNotificationState))
+                        }
+                    } else if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
+                        await send(.updateNotificationState(!currentNotificationState))
+                    } else {
+                        // User denied notifications in settings
+                        print("User denied notifications")
+                    }
+                }
+            case .updateNotificationState(let notify):
+                state.notifyOnNewVideo = notify
+                return .run { [channel = state.videoChannel, notify = notify] _ in
+                    guard let channelId = channel?.id else { return }
+                    @Dependency(\.defaultDatabase) var database
+                    try? await database.write { db in
+                        try PeertubeSubscription
+                            .where { $0.channelID == channelId }
+                            .update { $0.notifyOnNewVideo = notify }
+                            .execute(db)
+                    }
+                }
             case .changeSubscriptionState(let newSubscriptionState):
                 state.isSubscribedToChannel = newSubscriptionState
                 return .run {
@@ -253,8 +300,9 @@ struct VideoDetailsFeature {
                         }
                     }
                 }
-                        case .subscriptionStateLoaded(let isSubscribed):
+                        case .subscriptionStateLoaded(let isSubscribed, let notifyOnNewVideo):
                 state.isSubscribedToChannel = isSubscribed
+                state.notifyOnNewVideo = notifyOnNewVideo
                 return .none
             case .loadUserRating:
                 return .run { [client = state.client, videoId = state.videoId] send in
@@ -436,13 +484,24 @@ struct VideoDetails: View {
                                     }
                                 }
                                 Spacer()
-                                Button(
-                                    self.store.state.isSubscribedToChannel
-                                        ? "Unsubscribe" : "Subscribe"
-                                ) {
-                                    self.store.send(.subscribeButtonTapped)
+                                HStack {
+                                    if self.store.state.isSubscribedToChannel {
+                                        Button {
+                                            self.store.send(.toggleNotificationButtonTapped)
+                                        } label: {
+                                            Image(systemName: self.store.state.notifyOnNewVideo ? "bell.fill" : "bell")
+                                        }
+                                        .buttonStyle(.bordered)
+                                    }
+
+                                    Button(
+                                        self.store.state.isSubscribedToChannel
+                                            ? "Unsubscribe" : "Subscribe"
+                                    ) {
+                                        self.store.send(.subscribeButtonTapped)
+                                    }
+                                    .buttonStyle(.bordered)
                                 }
-                                .buttonStyle(.bordered)
                             }
 
                             // Description

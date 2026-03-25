@@ -73,6 +73,7 @@ extension Instance {
     let channelID: VideoChannel.ID
 
     let createdAt: Date
+    var notifyOnNewVideo: Bool = false
 }
 
 func appDatabase() throws -> any DatabaseWriter {
@@ -184,6 +185,13 @@ func appDatabase() throws -> any DatabaseWriter {
             """
         )
         .execute(db)
+    }
+
+    migrator.registerMigration("Add notifyOnNewVideo to subscriptions") { db in
+        try db.execute(literal: """
+            ALTER TABLE "peertubeSubscriptions"
+            ADD COLUMN "notifyOnNewVideo" INTEGER NOT NULL DEFAULT 0
+        """)
     }
 
     try migrator.migrate(database)
