@@ -42,6 +42,8 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         var parent: VideoPlayerView
         var timeObserver: Any?
         var player: AVPlayer?
+        var statusObservation: NSKeyValueObservation?
+        var initialSeekPerformed = false
 
         init(_ parent: VideoPlayerView) {
             self.parent = parent
@@ -50,9 +52,32 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         func addObserver(to player: AVPlayer) {
             removeObserver()
             self.player = player
+            
+            if !initialSeekPerformed, let startTime = parent.startTime, startTime > 0 {
+                performSeekWhenReady(time: CMTime(seconds: Double(startTime), preferredTimescale: 600))
+                initialSeekPerformed = true
+            }
+            
             let interval = CMTime(seconds: 5.0, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
             timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
                 self?.parent.onTimeUpdate?(Int(time.seconds))
+            }
+        }
+        
+        func performSeekWhenReady(time: CMTime) {
+            guard let player = self.player, let item = player.currentItem else { return }
+            
+            if item.status == .readyToPlay {
+                player.seek(to: time)
+            } else {
+                statusObservation?.invalidate()
+                statusObservation = item.observe(\.status) { [weak self, weak player] observedItem, _ in
+                    if observedItem.status == .readyToPlay {
+                        player?.seek(to: time)
+                        self?.statusObservation?.invalidate()
+                        self?.statusObservation = nil
+                    }
+                }
             }
         }
 
@@ -61,6 +86,8 @@ struct VideoPlayerView: UIViewControllerRepresentable {
                 player.removeTimeObserver(observer)
                 timeObserver = nil
             }
+            statusObservation?.invalidate()
+            statusObservation = nil
         }
 
         deinit {
@@ -81,9 +108,6 @@ struct VideoPlayerView: UIViewControllerRepresentable {
 
         // Create player with combined streams if needed
         if let player = createPlayerWithCombinedStreams() {
-            if let startTime = self.startTime, startTime > 0 {
-                player.seek(to: CMTime(seconds: Double(startTime), preferredTimescale: 1))
-            }
             playerViewController.player = player
             context.coordinator.addObserver(to: player)
         }
@@ -161,7 +185,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
             // Restore playback state
             if let currentTime = currentTime {
                 print("🎬   Seeking to: \(currentTime.seconds)s")
-                newPlayer.seek(to: currentTime)
+                context.coordinator.performSeekWhenReady(time: currentTime)
             }
             if wasPlaying {
                 print("🎬   Resuming playback")
