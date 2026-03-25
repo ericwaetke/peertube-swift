@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import SQLiteData
 import SwiftUI
+import TubeSDK
 
 @Selection
 struct SubRecord {
@@ -42,6 +43,8 @@ struct SubscriptionFeature {
     
     @ObservableState
     struct State {
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        
         @FetchAll(
             PeertubeSubscription
                 .group(by: \.id)
@@ -84,12 +87,18 @@ struct SubscriptionFeature {
             case .findChannelsButtonTapped:
                 return .none
             case .listElementDeleteSwiped(offsets: let offsets):
-                return .run { [subscriptions = state.records] send in
+                return .run { [client = state.client, subscriptions = state.records] send in
                     withErrorReporting {
                         try database.write { db in
                             try PeertubeSubscription.find(offsets.map { subscriptions[$0].id })
                                 .delete()
                                 .execute(db)
+                        }
+                    }
+                    if client.currentToken != nil {
+                        for index in offsets {
+                            let channelId = subscriptions[index].subscription.channelID
+                            try? await client.removeSubscription(channelUri: channelId)
                         }
                     }
                 }
@@ -98,7 +107,7 @@ struct SubscriptionFeature {
                 let isSubscribed = state.records.filter {$0.channel?.id == recommendation.username}.count > 0
                 
                 if isSubscribed {
-                    return .run { send in
+                    return .run { [client = state.client] send in
                         await withErrorReporting {
                             try await database.write { db in
                                 try PeertubeSubscription
@@ -106,10 +115,13 @@ struct SubscriptionFeature {
                                     .delete()
                                     .execute(db)
                             }
+                            if client.currentToken != nil {
+                                try? await client.removeSubscription(channelUri: recommendation.username)
+                            }
                         }
                     }
                 } else {
-                    return .run { send in
+                    return .run { [client = state.client] send in
                         await withErrorReporting {
                             try await database.write { db in
                                 guard let hostSubstring = recommendation.username.split(separator: "@").last else {
@@ -145,6 +157,9 @@ struct SubscriptionFeature {
                                             channelID: recommendation.username, createdAt: .now)
                                     }
                                     .execute(db)
+                            }
+                            if client.currentToken != nil {
+                                try? await client.addSubscription(channelUri: recommendation.username)
                             }
                         }
                     }
