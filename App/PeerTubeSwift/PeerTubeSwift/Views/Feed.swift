@@ -218,8 +218,21 @@ struct FeedFeature {
             case .loadSubscriptionVideos:
                 return .run { [client = state.client] send in
                     print("Getting new videos from subscriptions")
-                    // Get Videos from Peertube
                     
+                    if client.currentToken != nil {
+                        print("User is authenticated, fetching native subscription feed")
+                        do {
+                            let peertubeVideos = try await client.getMySubscriptionVideos()
+                            let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                            await send(.finishLoading(videos))
+                        } catch {
+                            print("Error fetching native subscription feed: \(error)")
+                            await send(.finishLoading([]))
+                        }
+                        return
+                    }
+                    
+                    // Fallback for unauthenticated users
                     let subscriptions = try await database.read { db in
                         try PeertubeSubscription
                             .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
@@ -237,54 +250,8 @@ struct FeedFeature {
                             continue
                         }
                         
-                        let videos = try  await client.getVideos(channelIdentifier: channel.id)
-                        
-                        for video in videos {
-                            guard let videoId = video.uuid,
-                                  let videoName = video.name,
-                                  let publishedAt = video.publishedAt,
-                                  let videoChannel = video.channel,
-                                  let instanceHost = videoChannel.host
-                            else {
-                                print("Error adding video")
-                                continue
-                            }
-                            
-                            try await database.write { db in
-                                var thumbnailUrl: String? = nil
-                                if let thumbnailPath = video.thumbnailPath {
-                                    do {
-                                        thumbnailUrl = try client.getImageUrl(
-                                            path: thumbnailPath
-                                        ).absoluteString
-                                    } catch {
-                                        print("could not get thumbnail url")
-                                    }
-                                }
-                                
-                                let instance = try Instance
-                                    .upsert { Instance(host: instanceHost, scheme: "https") }
-                                    .returning(\.self)
-                                    .fetchOne(db)
-                                
-                                guard let instance = instance else {
-                                    return
-                                }
-                                
-                                try Video
-                                    .upsert {
-                                        Video(
-                                            id: videoId,
-                                            channelID: channel.id,
-                                            instanceID: instance.id,
-                                            name: videoName,
-                                            publishDate: publishedAt,
-                                            thumbnailUrl: thumbnailUrl
-                                        )
-                                    }
-                                    .execute(db)
-                            }
-                        }
+                        let videos = try await client.getVideos(channelIdentifier: channel.id)
+                        let _ = try await self.saveVideos(videos: videos, client: client)
                     }
                     
                     // Query the database
