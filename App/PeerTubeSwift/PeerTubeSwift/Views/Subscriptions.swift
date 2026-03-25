@@ -11,7 +11,7 @@ import SwiftUI
 import TubeSDK
 
 @Selection
-struct SubRecord {
+struct SubRecord: Equatable {
     let subscription: PeertubeSubscription
     let channel: VideoChannel?
 }
@@ -42,7 +42,7 @@ struct Recommendation: Equatable, Hashable, Identifiable {
 struct SubscriptionFeature {
     
     @ObservableState
-    struct State {
+    struct State: Equatable {
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         
         @FetchAll(
