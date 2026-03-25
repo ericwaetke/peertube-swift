@@ -28,6 +28,7 @@ struct AppFeature {
     enum Action {
         case task
         case sessionLoaded(UserSession?)
+        case syncSubscriptions
         
         case selectedTabChanged(TubeTab)
         
@@ -53,8 +54,64 @@ struct AppFeature {
                     state.$client.withLock {
                         $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
                     }
+                    return .run { send in
+                        await send(.syncSubscriptions)
+                    }
                 }
                 return .none
+            case .syncSubscriptions:
+                return .run { [client = state.client] _ in
+                    @Dependency(\.defaultDatabase) var database
+                    if let remoteSubs = try? await client.getMySubscriptions() {
+                        try? await database.write { db in
+                            var remoteIds = Set<String>()
+                            for channel in remoteSubs {
+                                guard let host = channel.host, let username = channel.name else { continue }
+                                let id = "\(username)@\(host)"
+                                remoteIds.insert(id)
+                                
+                                let instance = try Instance
+                                    .upsert {
+                                        Instance(host: host, scheme: "https")
+                                    }
+                                    .returning(\.self)
+                                    .fetchOne(db)
+                                
+                                guard let instance = instance else { continue }
+                                
+                                try VideoChannel
+                                    .upsert {
+                                        VideoChannel(
+                                            id: id,
+                                            name: channel.displayName ?? channel.name,
+                                            avatarUrl: channel.avatars?.first?.fileUrl,
+                                            instanceID: instance.id
+                                        )
+                                    }
+                                    .execute(db)
+                                
+                                try PeertubeSubscription
+                                    .insert {
+                                        PeertubeSubscription.Draft(
+                                            channelID: id, createdAt: channel.createdAt ?? .now)
+                                    }
+                                    .onConflict { _, _ in }
+                                    .execute(db)
+                            }
+                            
+                            // Delete local subscriptions that are not in the remote list
+                            let localSubs = try PeertubeSubscription.all.fetchAll(db)
+                            for localSub in localSubs {
+                                if !remoteIds.contains(localSub.channelID) {
+                                    try PeertubeSubscription
+                                        .where { $0.id == localSub.id }
+                                        .delete()
+                                        .execute(db)
+                                }
+                            }
+                        }
+                    }
+                }
             case let .selectedTabChanged(tab):
                 state.selectedTab = tab
                 return .none
