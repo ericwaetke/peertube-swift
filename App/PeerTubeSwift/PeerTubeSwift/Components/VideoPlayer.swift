@@ -67,13 +67,19 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         func performSeekWhenReady(time: CMTime) {
             guard let player = self.player, let item = player.currentItem else { return }
             
+            let seekBlock = {
+                player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                    player.play() // ensure it keeps playing if it was auto-played
+                }
+            }
+            
             if item.status == .readyToPlay {
-                player.seek(to: time)
+                seekBlock()
             } else {
                 statusObservation?.invalidate()
-                statusObservation = item.observe(\.status) { [weak self, weak player] observedItem, _ in
+                statusObservation = item.observe(\.status) { [weak self] observedItem, _ in
                     if observedItem.status == .readyToPlay {
-                        player?.seek(to: time)
+                        seekBlock()
                         self?.statusObservation?.invalidate()
                         self?.statusObservation = nil
                     }
@@ -115,7 +121,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         #if targetEnvironment(preview)
         #else
             // Auto-play can be enabled here if desired
-            // playerViewController.player?.play()
+            playerViewController.player?.play()
         #endif
 
         return playerViewController
