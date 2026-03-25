@@ -239,13 +239,7 @@ struct Subscriptions: View {
                                         ) {
                                             self.store.send(.recommendationSubscribeButtonTapped(recommendation))
                                         }
-                                        .apply {
-                                            if #available(iOS 26.0, *) {
-                                                $0.buttonStyle(.glass)
-                                            } else {
-                                                $0.buttonStyle(.automatic)
-                                            }
-                                        }
+                                        .buttonStyle(.bordered)
                                     }
                                     .padding()
                                     .background(.quinary)
