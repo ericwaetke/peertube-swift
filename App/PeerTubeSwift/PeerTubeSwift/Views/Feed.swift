@@ -129,6 +129,8 @@ struct FeedFeature {
                                 instanceID: instance.id,
                                 name: videoName,
                                 publishDate: publishedAt,
+                                duration: peertubeVideo.duration,
+                                currentTime: peertubeVideo.userHistory?.currentTime,
                                 thumbnailUrl: thumbnailUrl
                             )
                         }
