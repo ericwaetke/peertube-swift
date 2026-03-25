@@ -34,8 +34,6 @@ struct FeedFeature {
         
         //        @FetchAll(VideoRow.none)
         var feed: [VideoRow] = []
-        
-        let columns = Array(repeating: GridItem(.flexible()), count: 2)
     }
     
     enum Action {

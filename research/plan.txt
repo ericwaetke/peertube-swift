@@ -1,0 +1,21 @@
+1. Update peertube-swift-sdk
+- Add new models in `Sources/TubeSDK/Models/Video/`:
+  - `VideoComment.swift` (id, url, text, threadId, inReplyToCommentId, videoId, createdAt, updatedAt, deletedAt, isDeleted, heldForReview, totalRepliesFromVideoAuthor, totalReplies, account)
+  - `CommentThreadResponse.swift` (total, totalNotDeletedComments, data: [VideoComment])
+  - `VideoCommentThreadTree.swift` (comment: VideoComment, children: [VideoCommentThreadTree])
+- Add new file `Sources/TubeSDK/Comments.swift` extending `TubeSDKClient` with:
+  - `getCommentThreads(videoID: String, start: Int = 0, count: Int = 15) async throws -> CommentThreadResponse`
+  - `getCommentThread(videoID: String, threadId: Int) async throws -> VideoCommentThreadTree`
+  
+2. Update peertube-swift App
+- Add to `VideoDetailsFeature.State`: `var comments: [TubeSDK.VideoComment] = []`
+- Add to `VideoDetailsFeature.Action`:
+  - `case loadComments`
+  - `case commentsLoaded([TubeSDK.VideoComment])`
+- Add to `VideoDetailsFeature` reducer:
+  - When `.loadComments` is triggered, call `client.getCommentThreads(videoID: state.videoId)`
+  - When `.commentsLoaded(let comments)` is received, set `state.comments = comments`
+  - Trigger `.loadComments` from `.loadVideo` or `.screenLoaded`
+- Add UI to `VideoDetails.swift` under DisclosureGroup for Comments:
+  - Iterate over `store.comments` and display a simple view for each comment (e.g., Avatar, Account name, HTML text or stripped HTML text, and created at date).
+  - You can use standard `Text(comment.text)` or an HTML renderer if available. Looking at `VideoComment` text is HTML. We might need a utility to render HTML or strip it if there's no HTML renderer, though iOS `Text(try! AttributedString(markdown: ...))` could work if it's markdown, but the spec says `format: html` for `text`.
