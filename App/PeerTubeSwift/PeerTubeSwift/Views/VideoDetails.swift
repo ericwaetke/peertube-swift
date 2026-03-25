@@ -157,6 +157,7 @@ struct VideoDetailsFeature {
                 state.isSubscribedToChannel = newSubscriptionState
                 return .run {
                     [
+                        client = state.client,
                         host = state.host, videoDetails = state.videoDetails,
                         newSubscriptionState = newSubscriptionState
                     ] send in
@@ -183,12 +184,18 @@ struct VideoDetailsFeature {
                                     }
                                     .execute(db)
                             }
+                            if client.currentToken != nil {
+                                try? await client.addSubscription(channelUri: channelId)
+                            }
                         } else {
                             try await database.write { db in
                                 try PeertubeSubscription
                                     .where { $0.channelID == channelId }
                                     .delete()
                                     .execute(db)
+                            }
+                            if client.currentToken != nil {
+                                try? await client.removeSubscription(channelUri: channelId)
                             }
                         }
                     }

@@ -14,15 +14,21 @@ import TubeSDK
 struct AppFeature {
     @ObservableState
     struct State {
+        var isLoaded = false
         var selectedTab: TubeTab = .feed
         
         var feedTab = FeedTabFeature.State()
         var exploreTab = ExploreTabFeature.State()
         var settingsTab = SettingsTabFeature.State()
         var searchTab = SearchFeature.State()
+        
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
     }
     
     enum Action {
+        case task
+        case sessionLoaded(UserSession?)
+        
         case selectedTabChanged(TubeTab)
         
         case feedTab(FeedTabFeature.Action)
@@ -31,9 +37,24 @@ struct AppFeature {
         case searchTab(SearchFeature.Action)
     }
 
+    @Dependency(\.authClient) var authClient
+
     var body: some ReducerOf<AppFeature> {
         Reduce { state, action in
             switch action {
+            case .task:
+                return .run { send in
+                    let session = try? await authClient.getSession()
+                    await send(.sessionLoaded(session))
+                }
+            case let .sessionLoaded(session):
+                state.isLoaded = true
+                if let session = session {
+                    state.$client.withLock {
+                        $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
+                    }
+                }
+                return .none
             case let .selectedTabChanged(tab):
                 state.selectedTab = tab
                 return .none
@@ -83,48 +104,57 @@ struct ContentView: View {
     @Bindable var store: StoreOf<AppFeature>
     
     var body: some View {
-        TabView(selection: $store.selectedTab.sending(\.selectedTabChanged)) {
-            // Subscriptions Tab
-            Tab(
-                "Feed",
-                systemImage: "heart",
-                value: .feed
-            ) {
-                FeedTab(
-                    store: self.store.scope(state: \.feedTab, action: \.feedTab)
-                )
+        Group {
+            if store.isLoaded {
+                TabView(selection: $store.selectedTab.sending(\.selectedTabChanged)) {
+                    // Subscriptions Tab
+                    Tab(
+                        "Feed",
+                        systemImage: "heart",
+                        value: .feed
+                    ) {
+                        FeedTab(
+                            store: self.store.scope(state: \.feedTab, action: \.feedTab)
+                        )
+                    }
+                    
+                    Tab(
+                        "Explore",
+                        systemImage: "play.tv",
+                        value: .explore
+                    ) {
+                        ExploreTab(
+                            store: self.store.scope(state: \.exploreTab, action: \.exploreTab)
+                        )
+                    }
+                    
+                    Tab(
+                        "Settings",
+                        systemImage: "gear",
+                        value: .settings,
+                    ) {
+                        SettingsTab(
+                            store: self.store.scope(state: \.settingsTab, action: \.settingsTab)
+                        )
+                    }
+                    
+                    Tab(
+                        "Search",
+                        systemImage: "magnifyingglass",
+                        value: .search,
+                        role: .search
+                    ) {
+                        SearchTab(
+                            store: self.store.scope(state: \.searchTab, action: \.searchTab)
+                        )
+                    }
+                }
+            } else {
+                ProgressView("Loading...")
             }
-            
-            Tab(
-                "Explore",
-                systemImage: "play.tv",
-                value: .explore
-            ) {
-                ExploreTab(
-                    store: self.store.scope(state: \.exploreTab, action: \.exploreTab)
-                )
-            }
-            
-            Tab(
-                "Settings",
-                systemImage: "gear",
-                value: .settings,
-            ) {
-                SettingsTab(
-                    store: self.store.scope(state: \.settingsTab, action: \.settingsTab)
-                )
-            }
-            
-            Tab(
-                "Search",
-                systemImage: "magnifyingglass",
-                value: .search,
-                role: .search
-            ) {
-                SearchTab(
-                    store: self.store.scope(state: \.searchTab, action: \.searchTab)
-                )
-            }
+        }
+        .task {
+            await store.send(.task).finish()
         }
     }
 }
