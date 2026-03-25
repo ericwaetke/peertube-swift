@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import SwiftUI
 import WebURL
+import TubeSDK
 
 @Reducer
 struct InstanceManagerFeature {
@@ -28,7 +29,7 @@ struct InstanceManagerFeature {
         case textFieldSubmitButtonPressed
         
         case testConnection
-        case connectionResponse(Result<String, NetworkError>)
+        case connectionResponse(Result<ServerConfig, NetworkError>)
         case setInstanceUrl(WebURL)
         
         @CasePathable
@@ -59,22 +60,26 @@ struct InstanceManagerFeature {
             case .testConnection:
                 state.tryingInstanceConnection = true
                 return .run { [instanceUrl = state.instanceUrlString] send in
-                    // TODO: Implement the real test, this is only a stub
-
-                    guard let url = WebURL(instanceUrl) else {
+                    guard let url = WebURL(instanceUrl), let host = url.host?.serialized else {
                         await send(.connectionResponse(.failure(.badURL)))
                         return
                     }
                     await send(.setInstanceUrl(url))
-                    try await Task.sleep(for: .seconds(1))
-                    await send(.connectionResponse(.success("Connection Successful")))
+                    do {
+                        let client = try TubeSDKClient(scheme: url.scheme, host: host)
+                        let config = try await client.instance.getConfig()
+                        await send(.connectionResponse(.success(config)))
+                    } catch {
+                        await send(.connectionResponse(.failure(.connectionFailed(error.localizedDescription))))
+                    }
                 }
             case let .connectionResponse(response):
                 state.tryingInstanceConnection = false
                 
                 switch response {
-                case let .success(successMessage):
+                case let .success(config):
                     state.readyToSaveInstance = true
+                    state.connectionError = "Successfully connected to \(config.instance.name) (v\(config.serverVersion))"
                 case let .failure(error):
                     state.connectionError = error.localizedDescription
                 }
@@ -88,8 +93,9 @@ struct InstanceManagerFeature {
     }
 }
 
-enum NetworkError: Error {
+enum NetworkError: Error, Equatable {
     case badURL
+    case connectionFailed(String)
 }
 
 extension NetworkError: LocalizedError {
@@ -97,6 +103,8 @@ extension NetworkError: LocalizedError {
         switch self {
             case .badURL:
                 return String(localized: "The Instance URL doesn’t seem to be valid.")
+            case let .connectionFailed(error):
+                return String(localized: "Connection failed: \(error)")
         }
     }
 }
@@ -133,6 +141,7 @@ struct InstanceManager: View {
                 if let connectionError = self.store.state.connectionError {
                     Text(connectionError)
                         .monospaced()
+                        .foregroundStyle(self.store.state.readyToSaveInstance ? .green : .red)
                 }
                 
                 if self.store.state.readyToSaveInstance {
