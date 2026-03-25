@@ -83,20 +83,22 @@ struct AppFeature {
                                     .upsert {
                                         VideoChannel(
                                             id: id,
-                                            name: channel.displayName ?? channel.name,
+                                            name: channel.displayName ?? username,
                                             avatarUrl: channel.avatars?.first?.fileUrl,
                                             instanceID: instance.id
                                         )
                                     }
                                     .execute(db)
                                 
-                                try PeertubeSubscription
-                                    .insert {
-                                        PeertubeSubscription.Draft(
-                                            channelID: id, createdAt: channel.createdAt ?? .now)
-                                    }
-                                    .onConflict { _, _ in }
-                                    .execute(db)
+                                let exists = try PeertubeSubscription.where { $0.channelID == id }.fetchOne(db) != nil
+                                if !exists {
+                                    try PeertubeSubscription
+                                        .insert {
+                                            PeertubeSubscription.Draft(
+                                                channelID: id, createdAt: channel.createdAt ?? .now)
+                                        }
+                                        .execute(db)
+                                }
                             }
                             
                             // Delete local subscriptions that are not in the remote list
