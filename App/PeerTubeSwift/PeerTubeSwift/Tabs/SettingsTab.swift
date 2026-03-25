@@ -60,7 +60,9 @@ struct SettingsTabFeature {
             case let .sessionLoaded(session):
                 state.session = session
                 if let session = session {
-                    state.$client.withLock { $0.currentToken = session.token }
+                    state.$client.withLock { 
+                        $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
+                    }
                 } else {
                     state.$client.withLock { $0.currentToken = nil }
                 }
@@ -99,7 +101,9 @@ struct SettingsTabFeature {
                 
             case let .login(.presented(.delegate(.didLogin(session)))):
                 state.session = session
-                state.$client.withLock { $0.currentToken = session.token }
+                state.$client.withLock { 
+                    $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
+                }
                 return .none
                 
             case .login:
