@@ -70,10 +70,7 @@ struct ExploreTabFeature {
             case let .path(action):
                 switch action {
                 case let .element(id: _, action: .exploreFeed(.videoTapped(row: row))):
-                    guard let instance = row.instance else {
-                        return .none
-                    }
-                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
+                    // Handled by AppFeature for global player
                     return .none
                     
                 default:

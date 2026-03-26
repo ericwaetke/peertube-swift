@@ -62,11 +62,8 @@ struct FeedTabFeature {
             case let .subscriptionFeed(action):
                 switch action {
                     
-                case .videoTapped(row: let row):
-                    guard let instance = row.instance else {
-                        return .none
-                    }
-                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
+                case .videoTapped(row: _):
+                    // Handled by AppFeature for global player
                     return .none
                     
                 default:
