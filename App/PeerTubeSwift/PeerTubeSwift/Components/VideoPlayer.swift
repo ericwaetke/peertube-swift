@@ -15,6 +15,9 @@ struct VideoPlayerView: UIViewControllerRepresentable {
     let videoFiles: [TubeSDK.VideoFile]
     let selectedVideoFile: TubeSDK.VideoFile?
     var startTime: Int? = nil
+    var videoTitle: String? = nil
+    var channelName: String? = nil
+    var thumbnailPath: String? = nil
 
     // Legacy initializer for single URL (backwards compatibility)
     init(videoURL: URL) {
@@ -27,14 +30,28 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         self.videoFiles = [tempVideoFile]
         self.selectedVideoFile = tempVideoFile
         self.startTime = nil
+        self.videoTitle = nil
+        self.channelName = nil
+        self.thumbnailPath = nil
     }
 
     // New initializer for VideoFile arrays with quality selection
-    init(onTimeUpdate: ((Int) -> Void)? = nil, videoFiles: [TubeSDK.VideoFile], selectedVideoFile: TubeSDK.VideoFile?, startTime: Int? = nil) {
+    init(
+        onTimeUpdate: ((Int) -> Void)? = nil, 
+        videoFiles: [TubeSDK.VideoFile], 
+        selectedVideoFile: TubeSDK.VideoFile?, 
+        startTime: Int? = nil,
+        videoTitle: String? = nil,
+        channelName: String? = nil,
+        thumbnailPath: String? = nil
+    ) {
         self.onTimeUpdate = onTimeUpdate
         self.videoFiles = videoFiles
         self.selectedVideoFile = selectedVideoFile
         self.startTime = startTime
+        self.videoTitle = videoTitle
+        self.channelName = channelName
+        self.thumbnailPath = thumbnailPath
     }
 
     
@@ -234,6 +251,64 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         return url
     }
 
+    private func applyMetadata(to playerItem: AVPlayerItem) {
+        var metadataItems: [AVMetadataItem] = []
+        
+        if let title = videoTitle {
+            let titleItem = AVMutableMetadataItem()
+            titleItem.identifier = .commonIdentifierTitle
+            titleItem.value = title as NSString
+            titleItem.extendedLanguageTag = "und"
+            metadataItems.append(titleItem)
+        }
+        
+        if let channel = channelName {
+            let artistItem = AVMutableMetadataItem()
+            artistItem.identifier = .commonIdentifierArtist
+            artistItem.value = channel as NSString
+            artistItem.extendedLanguageTag = "und"
+            metadataItems.append(artistItem)
+        }
+        
+        // Asynchronously load thumbnail if available
+        if let path = thumbnailPath, let url = URL(string: path) {
+            // Because thumbnailPath might just be a path, let's try to construct a full URL if it's not absolute.
+            // Ideally it should be fully resolved by the caller or we use a base URL, but let's do a best effort.
+            var absoluteUrl = url
+            if url.host == nil {
+                // We don't easily have the instance URL here, so if it's a relative path, this might fail unless it's full.
+                // Assuming it's passed as a full URL, or at least a path we can try.
+            }
+            
+            // To properly resolve, we could just use URLSession
+            Task {
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: absoluteUrl)
+                    if let image = UIImage(data: data) {
+                        let artworkItem = AVMutableMetadataItem()
+                        artworkItem.identifier = .commonIdentifierArtwork
+                        if let pngData = image.pngData() {
+                            artworkItem.value = pngData as NSData
+                            artworkItem.dataType = "public.png"
+                            artworkItem.extendedLanguageTag = "und"
+                            
+                            // Update player item on main thread
+                            await MainActor.run {
+                                var currentMetadata = playerItem.externalMetadata
+                                currentMetadata.append(artworkItem)
+                                playerItem.externalMetadata = currentMetadata
+                            }
+                        }
+                    }
+                } catch {
+                    print("🎬 Failed to load thumbnail for metadata: \(error)")
+                }
+            }
+        }
+        
+        playerItem.externalMetadata = metadataItems
+    }
+
     private func createPlayerWithCombinedStreams() -> AVPlayer? {
         guard let selectedFile = selectedVideoFile else {
             return nil
@@ -253,7 +328,9 @@ struct VideoPlayerView: UIViewControllerRepresentable {
 
         // If the primary file has complete streams (both audio and video), use it directly
         if primary.hasCompleteStreams || audioFile == nil {
-            return AVPlayer(url: playbackURL)
+            let playerItem = AVPlayerItem(url: playbackURL)
+            applyMetadata(to: playerItem)
+            return AVPlayer(playerItem: playerItem)
         }
 
         // If we have separate video and audio streams, use our custom loader
@@ -291,6 +368,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         )
 
         let playerItem = AVPlayerItem(asset: playerAsset)
+        applyMetadata(to: playerItem)
         return AVPlayer(playerItem: playerItem)
     }
 }
