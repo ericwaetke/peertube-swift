@@ -153,5 +153,9 @@ peertube-swift/
 - ❌ Do NOT commit `.beads/beads.db` (JSONL only)
 - ❌ Do NOT mix async contexts without proper `await` annotations
 
+## TubeSDK
+
+The TubeSDK is located in . If you need to make API changes, you will need to modify this SDK.
+
 ## TubeSDK Location
 The TubeSDK is located in /Users/ericwatke/Documents/GitHub/peertube-swift-sdk. Future agents should modify this repository when making API changes.
