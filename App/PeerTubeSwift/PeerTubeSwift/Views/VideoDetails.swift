@@ -423,27 +423,28 @@ struct VideoDetails: View {
                                 let dislikes = videoDetails.dislikes
                             {
                                 HStack {
-                                    Button {
-                                        self.store.send(.likeButtonTapped)
-                                    } label: {
-                                        HStack {
-                                            Image(systemName: "hand.thumbsup")
-                                            Text(likes.formatted())
+                                    ControlGroup {
+                                        Button {
+                                            self.store.send(.likeButtonTapped)
+                                        } label: {
+                                            HStack {
+                                                Image(systemName: "hand.thumbsup")
+                                                Text(likes.formatted())
+                                            }
                                         }
-                                    }
-                                    .tint(self.store.state.hasLiked ? .blue : .primary)
-                                    .buttonStyle(.bordered)
-
-                                    Button {
-                                        self.store.send(.dislikeButtonTapped)
-                                    } label: {
-                                        HStack {
-                                            Image(systemName: "hand.thumbsdown")
-                                            Text(dislikes.formatted())
+                                        .tint(self.store.state.hasLiked ? .blue : .primary)
+                                        Button {
+                                            self.store.send(.dislikeButtonTapped)
+                                        } label: {
+                                            HStack {
+                                                Image(systemName: "hand.thumbsdown")
+                                                Text(dislikes.formatted())
+                                            }
                                         }
+                                        .tint(self.store.state.hasDisliked ? .blue : .primary)
                                     }
-                                    .tint(self.store.state.hasDisliked ? .blue : .primary)
-                                    .buttonStyle(.bordered)
+                                    .controlGroupStyle(.automatic)
+                                    
 
                                     if let playlist = videoDetails.streamingPlaylists?.first,
                                         let qualities = playlist.files
@@ -655,13 +656,6 @@ struct VideoDetails: View {
     }
 }
 
-// Source - https://stackoverflow.com/a
-// Posted by Mojtaba Hosseini
-// Retrieved 2025-12-22, License - CC BY-SA 4.0
-
-extension View {
-    func apply<V: View>(@ViewBuilder _ block: (Self) -> V) -> V { block(self) }
-}
 
 #Preview {
     let _ = prepareDependencies {
@@ -673,7 +667,7 @@ extension View {
         VideoDetails(
             store: Store(
                 initialState: VideoDetailsFeature.State(
-                    host: "peertube.wtf", videoId: "18QZB6GTN1DRd1LtkeQm22")
+                    host: "peertube.cpy.re", videoId: "eRbrxETVKN3gxKKD8bcaHK")
             ) {
                 VideoDetailsFeature()
             })
