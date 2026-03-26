@@ -29,6 +29,7 @@ struct FeedFeature {
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         var isLoadingVideos: Bool = false
         var order: FeedOrder = .descending
+        var errorMessage: String? = nil
         
         @FetchAll var instances: [Instance] = []
         
@@ -53,6 +54,8 @@ struct FeedFeature {
         case loadChannelVideos
         case loadSubscriptionVideos
         case loadVideosBySearch(TubeSDK.SearchVideoQueryParameters)
+        
+        case loadingFailed(String)
     }
     
     enum FeedFilter {
@@ -67,6 +70,7 @@ struct FeedFeature {
     }
     
     @Dependency(\.defaultDatabase) var database
+    @Dependency(\.authClient) var authClient
     
     func saveVideos(videos: [TubeSDK.Video], client: TubeSDKClient) async throws -> [VideoRow] {
         var insertedVideos: [VideoRow] = []
@@ -164,6 +168,7 @@ struct FeedFeature {
             case .initialScreenLoad:
                 return .send(.loadVideos)
             case .loadVideos:
+                state.errorMessage = nil
                 if (state.feed.isEmpty) {
                     state.isLoadingVideos = true
                 }
@@ -218,7 +223,7 @@ struct FeedFeature {
             case .loadChannelVideos:
                 return .none
             case .loadSubscriptionVideos:
-                return .run { [client = state.client] send in
+                return .run { [client = state.client, authClient = self.authClient] send in
                     print("Getting new videos from subscriptions")
                     
                     if client.currentToken != nil {
@@ -227,9 +232,36 @@ struct FeedFeature {
                             let peertubeVideos = try await client.getMySubscriptionVideos()
                             let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
                             await send(.finishLoading(videos))
+                        } catch TubeError.unauthorized {
+                            print("Token expired, attempting to refresh")
+                            if let session = try? await authClient.getSession() {
+                                let refreshToken = session.token.refreshToken
+                                do {
+                                    let credentials = try await client.getClientOAuthCredentials()
+                                    let newToken = try await client.refresh(refreshToken: refreshToken, client: credentials)
+                                    var newSession = session
+                                    newSession.token = newToken
+                                    try await authClient.saveSession(newSession)
+                                    
+                                    // Retry
+                                    let peertubeVideos = try await client.getMySubscriptionVideos()
+                                    let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                                    await send(.finishLoading(videos))
+                                    return
+                                } catch {
+                                    print("Failed to refresh token: \(error)")
+                                    try? await authClient.deleteSession()
+                                    client.currentToken = nil
+                                    await send(.loadingFailed("Your session has expired. Please log in again."))
+                                }
+                            } else {
+                                try? await authClient.deleteSession()
+                                client.currentToken = nil
+                                await send(.loadingFailed("Your session has expired. Please log in again."))
+                            }
                         } catch {
                             print("Error fetching native subscription feed: \(error)")
-                            await send(.finishLoading([]))
+                            await send(.loadingFailed("Failed to load feed: \(error.localizedDescription)"))
                         }
                         return
                     }
@@ -283,6 +315,10 @@ struct FeedFeature {
                 state.feed = videos
                 state.isLoadingVideos = false
                 return .none
+            case let .loadingFailed(message):
+                state.errorMessage = message
+                state.isLoadingVideos = false
+                return .none
             case .pulledToRefresh:
                 return .send(.loadVideos)
             case .channelTapped(let row):
@@ -307,6 +343,19 @@ struct Feed: View {
                 if self.store.isLoadingVideos {
                     ProgressView()
                         .containerRelativeFrame([.horizontal, .vertical])
+                } else if let errorMessage = self.store.errorMessage {
+                    ContentUnavailableView {
+                        Label("Error loading feed", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        VStack(spacing: 12) {
+                            Text(errorMessage)
+                            Button("Try Again") {
+                                self.store.send(.pulledToRefresh)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .containerRelativeFrame([.horizontal, .vertical])
                 } else if self.store.feed.isEmpty {
                     if self.store.instances.isEmpty {
                         ContentUnavailableView {
