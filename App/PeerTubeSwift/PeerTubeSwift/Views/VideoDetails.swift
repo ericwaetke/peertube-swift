@@ -380,7 +380,15 @@ struct VideoDetails: View {
                             !videoFiles.isEmpty
                         {
 
-                            VideoPlayerView(onTimeUpdate: { time in self.store.send(.timeUpdate(time)) }, videoFiles: videoFiles, selectedVideoFile: self.store.state.selectedQuality, startTime: videoDetails.userHistory?.currentTime)
+                            VideoPlayerView(
+                                onTimeUpdate: { time in self.store.send(.timeUpdate(time)) }, 
+                                videoFiles: videoFiles, 
+                                selectedVideoFile: self.store.state.selectedQuality, 
+                                startTime: videoDetails.userHistory?.currentTime,
+                                videoTitle: videoDetails.name,
+                                channelName: videoDetails.channel?.displayName,
+                                thumbnailPath: (try? store.client.getImageUrl(path: videoDetails.thumbnailPath ?? ""))?.absoluteString
+                            )
                             .frame(
                                 minWidth: 0,
                                 maxWidth: .infinity,
