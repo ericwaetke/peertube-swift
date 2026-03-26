@@ -22,6 +22,9 @@ struct AppFeature {
         var settingsTab = SettingsTabFeature.State()
         var searchTab = SearchFeature.State()
         
+        var playingVideo: VideoDetailsFeature.State?
+        var videoPresentation: VideoPresentationState = .hidden
+        
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
     }
     
@@ -36,6 +39,10 @@ struct AppFeature {
         case exploreTab(ExploreTabFeature.Action)
         case settingsTab(SettingsTabFeature.Action)
         case searchTab(SearchFeature.Action)
+        
+        case playingVideoAction(VideoDetailsFeature.Action)
+        case setVideoPresentation(VideoPresentationState)
+        case closeGlobalVideo
     }
 
     @Dependency(\.authClient) var authClient
@@ -119,20 +126,33 @@ struct AppFeature {
                 state.selectedTab = tab
                 return .none
             case .settingsTab(.goToCCVideo):
-                state.selectedTab = .explore
-                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: "peertube.wtf",
-                                                                                    videoId: "18QZB6GTN1DRd1LtkeQm22")))
+                state.playingVideo = VideoDetailsFeature.State(host: "peertube.wtf", videoId: "18QZB6GTN1DRd1LtkeQm22")
+                state.videoPresentation = .expanded
                 return .none
-            case .searchTab(.videoFeed(.videoTapped(let row))):
-                state.selectedTab = .explore
+                
+            case let .searchTab(.videoFeed(.videoTapped(row: row))),
+                 let .feedTab(.subscriptionFeed(.videoTapped(row: row))),
+                 let .exploreTab(.path(.element(id: _, action: .exploreFeed(.videoTapped(row: row))))):
+                
                 guard let instance = row.instance else {
                     return .none
                 }
-                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
-//                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: videoRow.,
-//                                                                                    videoId: "18QZB6GTN1DRd1LtkeQm22")))
+                state.playingVideo = VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)
+                state.videoPresentation = .expanded
                 return .none
+                
             case .feedTab(_), .exploreTab(_), .settingsTab(_), .searchTab(_):
+                return .none
+                
+            case let .setVideoPresentation(presentation):
+                state.videoPresentation = presentation
+                return .none
+                
+            case .closeGlobalVideo:
+                state.playingVideo = nil
+                state.videoPresentation = .hidden
+                return .none
+            case .playingVideoAction:
                 return .none
             }
         }
@@ -148,6 +168,9 @@ struct AppFeature {
         }
         Scope(state: \.searchTab, action: \.searchTab) {
             SearchFeature()
+        }
+        self.ifLet(\.playingVideo, action: \.playingVideoAction) {
+            VideoDetailsFeature()
         }
     }
 }
@@ -211,6 +234,20 @@ struct ContentView: View {
                 }
             } else {
                 ProgressView("Loading...")
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if store.videoPresentation != .hidden, let videoStore = store.scope(state: \.playingVideo, action: \.playingVideoAction) {
+                GlobalVideoPlayerView(
+                    store: videoStore,
+                    presentationState: store.videoPresentation,
+                    onStateChange: { state in
+                        store.send(.setVideoPresentation(state))
+                    },
+                    onClose: {
+                        store.send(.closeGlobalVideo)
+                    }
+                )
             }
         }
         .task {
