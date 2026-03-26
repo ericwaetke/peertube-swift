@@ -17,6 +17,7 @@ struct VideoDetailsFeature {
     struct State: Equatable {
         let host: String
         let videoId: String
+        var seekRequest: SeekRequest? = nil
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         
         var videoDetails: TubeSDK.VideoDetails?
@@ -38,6 +39,7 @@ struct VideoDetailsFeature {
 
     enum Action {
         case timeUpdate(Int)
+        case seekTo(Int)
         case loadVideo(TubeSDK.VideoDetails)
         case loadInstance
         case instanceLoaded(Instance)
@@ -65,6 +67,10 @@ struct VideoDetailsFeature {
         
         Reduce { state, action in
             switch action {
+            case .seekTo(let time):
+                state.seekRequest = SeekRequest(time: time)
+                return .none
+                
             case .timeUpdate(let time):
                 return .run { [client = state.client, videoId = state.videoId, videoDetails = state.videoDetails] send in
                     try? await client.pingVideoWatchingInProgress(videoID: videoId, currentTime: time)
@@ -143,6 +149,9 @@ struct VideoDetailsFeature {
                     .send(.comments(.loadComments))
                 )
                 
+            case .description(.delegate(.seekTo(let time))):
+                return .send(.seekTo(time))
+                
             case .actions, .channel, .description, .comments:
                 return .none
             }
@@ -167,6 +176,7 @@ struct VideoDetails: View {
                                 videoFiles: videoFiles, 
                                 selectedVideoFile: self.store.actions.selectedQuality, 
                                 startTime: videoDetails.userHistory?.currentTime,
+                                seekRequest: self.store.seekRequest,
                                 videoTitle: videoDetails.name,
                                 channelName: videoDetails.channel?.displayName,
                                 thumbnailPath: (try? store.client.getImageUrl(path: videoDetails.thumbnailPath ?? ""))?.absoluteString
