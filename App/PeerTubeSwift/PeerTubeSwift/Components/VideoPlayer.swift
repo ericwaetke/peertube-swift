@@ -10,11 +10,17 @@ import ObjectiveC
 import SwiftUI
 import TubeSDK
 
+struct SeekRequest: Equatable {
+    let time: Int
+    let id = UUID()
+}
+
 struct VideoPlayerView: UIViewControllerRepresentable {
     var onTimeUpdate: ((Int) -> Void)? = nil
     let videoFiles: [TubeSDK.VideoFile]
     let selectedVideoFile: TubeSDK.VideoFile?
     var startTime: Int? = nil
+    var seekRequest: SeekRequest? = nil
     var videoTitle: String? = nil
     var channelName: String? = nil
     var thumbnailPath: String? = nil
@@ -30,6 +36,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         self.videoFiles = [tempVideoFile]
         self.selectedVideoFile = tempVideoFile
         self.startTime = nil
+        self.seekRequest = nil
         self.videoTitle = nil
         self.channelName = nil
         self.thumbnailPath = nil
@@ -41,6 +48,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         videoFiles: [TubeSDK.VideoFile], 
         selectedVideoFile: TubeSDK.VideoFile?, 
         startTime: Int? = nil,
+        seekRequest: SeekRequest? = nil,
         videoTitle: String? = nil,
         channelName: String? = nil,
         thumbnailPath: String? = nil
@@ -49,6 +57,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         self.videoFiles = videoFiles
         self.selectedVideoFile = selectedVideoFile
         self.startTime = startTime
+        self.seekRequest = seekRequest
         self.videoTitle = videoTitle
         self.channelName = channelName
         self.thumbnailPath = thumbnailPath
@@ -61,6 +70,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         var player: AVPlayer?
         var statusObservation: NSKeyValueObservation?
         var initialSeekPerformed = false
+        var lastSeekRequestId: UUID?
 
         init(_ parent: VideoPlayerView) {
             self.parent = parent
@@ -160,6 +170,13 @@ struct VideoPlayerView: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
         context.coordinator.parent = self
         print("🎬 VideoPlayer: updateUIViewController called")
+
+        // Handle seek requests explicitly first
+        if let req = self.seekRequest, context.coordinator.lastSeekRequestId != req.id {
+            print("🎬 VideoPlayer: Handling new seek request for \(req.time)s")
+            context.coordinator.lastSeekRequestId = req.id
+            context.coordinator.performSeekWhenReady(time: CMTime(seconds: Double(req.time), preferredTimescale: 600))
+        }
 
         // Check if we need to update the player
         guard let selectedFile = selectedVideoFile,
