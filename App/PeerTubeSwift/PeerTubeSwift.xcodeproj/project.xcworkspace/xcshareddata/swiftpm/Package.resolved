@@ -1,5 +1,5 @@
 {
-  "originHash" : "4b9262f8410e36e584ba50ace12f2c7f7c9d211fbb50dc271901f611f3028ddd",
+  "originHash" : "955c54ebc6bb93770be69ff1d1fa2153922370cd6e8deb44bd12b531540f45b4",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -17,6 +17,24 @@
       "state" : {
         "revision" : "aa0079aeb82a4bf00324561a40bffe68c6fe1c26",
         "version" : "7.9.0"
+      }
+    },
+    {
+      "identity" : "plcrashreporter",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/microsoft/plcrashreporter.git",
+      "state" : {
+        "revision" : "0254f941c646b1ed17b243654723d0f071e990d0",
+        "version" : "1.12.2"
+      }
+    },
+    {
+      "identity" : "posthog-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PostHog/posthog-ios",
+      "state" : {
+        "revision" : "d04eaa61de483aefbfcfce16107fe199fd5f13b1",
+        "version" : "3.48.2"
       }
     },
     {

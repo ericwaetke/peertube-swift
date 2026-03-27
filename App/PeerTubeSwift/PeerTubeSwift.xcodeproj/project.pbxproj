@@ -13,6 +13,7 @@
 		F66EE8212F0140DB00793122 /* WebURLFoundationExtras in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE8202F0140DB00793122 /* WebURLFoundationExtras */; };
 		F6BFCE672EFAEB890043499D /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE662EFAEB890043499D /* SQLiteData */; };
 		F6BFCE692EFAEB890043499D /* SQLiteDataTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE682EFAEB890043499D /* SQLiteDataTestSupport */; };
+		F6AA11132F100000001AA11A /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = F6AA11122F100000001AA11A /* PostHog */; };
 		F6DCA01C2EFD99C000A39CED /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
@@ -83,6 +84,7 @@
 				F6DCA01C2EFD99C000A39CED /* ComposableArchitecture in Frameworks */,
 				F66EE81F2F0140DB00793122 /* WebURL in Frameworks */,
 				F66EE8212F0140DB00793122 /* WebURLFoundationExtras in Frameworks */,
+				F6AA11132F100000001AA11A /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +162,7 @@
 				F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */,
 				F66EE81E2F0140DB00793122 /* WebURL */,
 				F66EE8202F0140DB00793122 /* WebURLFoundationExtras */,
+				F6AA11122F100000001AA11A /* PostHog */,
 			);
 			productName = PeerTubeSwift;
 			productReference = F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */;
@@ -248,6 +251,7 @@
 				F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */,
 				F6DCA01A2EFD99C000A39CED /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 				F66EE81D2F0140DB00793122 /* XCRemoteSwiftPackageReference "swift-url" */,
+				F6AA11112F100000001AA11A /* XCRemoteSwiftPackageReference "posthog-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F67428E22EF4AFC6000600DB /* Products */;
@@ -663,6 +667,14 @@
 				minimumVersion = 1.4.1;
 			};
 		};
+		F6AA11112F100000001AA11A /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.48.2;
+			};
+		};
 		F6DCA01A2EFD99C000A39CED /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
@@ -697,6 +709,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */;
 			productName = SQLiteDataTestSupport;
+		};
+		F6AA11122F100000001AA11A /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F6AA11112F100000001AA11A /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
 		};
 		F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;
