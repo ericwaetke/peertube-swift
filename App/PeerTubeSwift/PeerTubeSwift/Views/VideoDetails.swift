@@ -92,18 +92,11 @@ struct VideoDetailsFeature {
             case .loadInstance:
                 return .run { [host = state.host] send in
                     @Dependency(\.defaultDatabase) var database
+                    @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
 
                     await withErrorReporting {
-                        let instance = try await database.write { db in
-                            return try Instance
-                                .upsert { Instance(host: host, scheme: "https") }
-                                .returning(\.self)
-                                .fetchOne(db)
-                        }
-
-                        if let instance = instance {
-                            await send(.instanceLoaded(instance))
-                        }
+                        let instance = try await peertubeOrchestrator.syncInstanceInfo(host, database)
+                        await send(.instanceLoaded(instance))
                     }
                 }
                 

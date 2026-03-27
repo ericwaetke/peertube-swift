@@ -56,6 +56,7 @@ struct FeedFeature {
         case loadVideosBySearch(TubeSDK.SearchVideoQueryParameters)
         
         case loadingFailed(String)
+        case setLoading(Bool)
     }
     
     enum FeedFilter {
@@ -71,6 +72,49 @@ struct FeedFeature {
     
     @Dependency(\.defaultDatabase) var database
     @Dependency(\.authClient) var authClient
+    @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
+    
+    func fetchLocalVideos(for feedType: FeedFilter) async -> [VideoRow]? {
+        return await withErrorReporting {
+            return try await database.read { db in
+                switch feedType {
+                case .exploreNewest:
+                    let orderedVideos = Video
+                        .order { $0.publishDate.desc() }
+                        .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
+                        .leftJoin(Instance.all) { $0.instanceID.eq($2.host) }
+                    
+                    return try orderedVideos
+                        .select {
+                            VideoRow.Columns(
+                                video: $0,
+                                channel: $1,
+                                instance: $2
+                            )
+                        }
+                        .fetchAll(db)
+                case .subscriptions:
+                    let orderedVideos = Video
+                        .order { $0.publishDate.desc() }
+                        .join(PeertubeSubscription.all) { $0.channelID.eq($1.channelID) }
+                        .leftJoin(VideoChannel.all) { $0.channelID.eq($2.id) }
+                        .leftJoin(Instance.all) { $0.instanceID.eq($3.host) }
+                    
+                    return try orderedVideos
+                        .select {
+                            VideoRow.Columns(
+                                video: $0,
+                                channel: $2,
+                                instance: $3
+                            )
+                        }
+                        .fetchAll(db)
+                case .search:
+                    return []
+                }
+            }
+        }
+    }
     
     func saveVideos(videos: [TubeSDK.Video], client: TubeSDKClient) async throws -> [VideoRow] {
         var insertedVideos: [VideoRow] = []
@@ -88,25 +132,18 @@ struct FeedFeature {
             }
             
             let video: Optional<VideoRow> = await withErrorReporting {
+                let avatarUrl: String? = channel.avatars?.first?.fileUrl
+                
+                let instance = try await self.peertubeOrchestrator.syncInstanceInfo(instanceHost, database)
+                
                 return try await database.write { db in
-                    let avatarUrl: String? = channel.avatars?.first?.fileUrl
-                    
-                    let instance = try Instance
-                        .upsert { Instance(host: instanceHost, scheme: "https") }
-                        .returning(\.self)
-                        .fetchOne(db)
-                    
-                    guard let instance = instance else {
-                        return .none
-                    }
-                    
                     let channel = try VideoChannel
                         .upsert {
                             VideoChannel(
                                 id: "\(channelUsername)@\(instanceHost)",
                                 name: channelDisplayName,
                                 avatarUrl: avatarUrl,
-                                instanceID: instance.id,
+                                instanceID: instance.id
                             )
                         }
                         .returning(\.self)
@@ -169,9 +206,6 @@ struct FeedFeature {
                 return .send(.loadVideos)
             case .loadVideos:
                 state.errorMessage = nil
-                if (state.feed.isEmpty) {
-                    state.isLoadingVideos = true
-                }
                 
                 switch state.feedType {
                 case .exploreNewest:
@@ -179,11 +213,21 @@ struct FeedFeature {
                 case .subscriptions:
                     return .send(.loadSubscriptionVideos)
                 case .search:
-                    state.isLoadingVideos = false
-                    return .none
+                    return .send(.setLoading(false))
                 }
+            case .setLoading(let isLoading):
+                state.isLoadingVideos = isLoading
+                return .none
             case .loadVideosNewestOfInstance:
-                return .run { [client = state.client] send in
+                return .run { [client = state.client, feedType = state.feedType, stateFeedEmpty = state.feed.isEmpty] send in
+                    let localVideos = await self.fetchLocalVideos(for: feedType)
+                    
+                    if let localVideos, !localVideos.isEmpty {
+                        await send(.finishLoading(localVideos))
+                    } else if stateFeedEmpty {
+                        await send(.setLoading(true))
+                    }
+                    
                     print("Getting new videos from instance")
                     // Get Videos from Peertube
                     
@@ -192,25 +236,7 @@ struct FeedFeature {
 //                    await send(.saveVideos(peertubeVideos))
                     let _ = try await self.saveVideos(videos: peertubeVideos, client: client)
                     
-                    let videos = await withErrorReporting {
-                        return try await database.read { db in
-                            let orderedVideos = Video
-                                .order { $0.publishDate.desc() }
-                                .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
-                                .leftJoin(Instance.all) { $0.instanceID.eq($2.host) }
-                            
-                            return try orderedVideos
-                                .select {
-                                    VideoRow.Columns(
-                                        video: $0,
-                                        channel: $1,
-                                        instance: $2
-                                    )
-                                }
-                                .fetchAll(db)
-                        }
-                    }
-                    
+                    let videos = await self.fetchLocalVideos(for: feedType)
                     await send(.finishLoading(videos ?? []))
                 }
             case .loadVideosBySearch(let searchParameters):
@@ -223,7 +249,15 @@ struct FeedFeature {
             case .loadChannelVideos:
                 return .none
             case .loadSubscriptionVideos:
-                return .run { [client = state.client, authClient = self.authClient] send in
+                return .run { [client = state.client, authClient = self.authClient, feedType = state.feedType, stateFeedEmpty = state.feed.isEmpty] send in
+                    let localVideos = await self.fetchLocalVideos(for: feedType)
+                    
+                    if let localVideos, !localVideos.isEmpty {
+                        await send(.finishLoading(localVideos))
+                    } else if stateFeedEmpty {
+                        await send(.setLoading(true))
+                    }
+                    
                     print("Getting new videos from subscriptions")
                     
                     if client.currentToken != nil {
@@ -289,26 +323,7 @@ struct FeedFeature {
                     }
                     
                     // Query the database
-                    let videos = await withErrorReporting {
-                        return try await database.read { db in
-                            let orderedVideos = Video
-                                .order { $0.publishDate.desc() }
-                                .join(PeertubeSubscription.all) { $0.channelID.eq($1.channelID) }
-                                .leftJoin(VideoChannel.all) { $0.channelID.eq($2.id) }
-                                .leftJoin(Instance.all) { $0.instanceID.eq($3.host) }
-                            
-                            return try orderedVideos
-                                .select {
-                                    VideoRow.Columns(
-                                        video: $0,
-                                        channel: $2,
-                                        instance: $3
-                                    )
-                                }
-                                .fetchAll(db)
-                        }
-                    }
-                    
+                    let videos = await self.fetchLocalVideos(for: feedType)
                     await send(.finishLoading(videos ?? []))
                 }
             case let .finishLoading(videos):

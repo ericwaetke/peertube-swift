@@ -8,12 +8,18 @@
 import SQLiteData
 import SwiftUI
 import TubeSDK
+import Dependencies
 
 struct VideoCard: View {
     let row: VideoRow
     let onVideoTap: () -> Void
     let openChannel: () -> Void
     
+    @FetchOne var cachedThumbnail: PeertubeImage?
+    @FetchOne var cachedAvatar: PeertubeImage?
+    @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
+    @Dependency(\.defaultDatabase) var database
+
     init(
         row: VideoRow,
         onVideoTap: @escaping () -> Void,
@@ -22,6 +28,18 @@ struct VideoCard: View {
         self.row = row
         self.onVideoTap = onVideoTap
         self.openChannel = openChannel
+        
+        if let thumbnail = row.video.thumbnailUrl {
+            self._cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnail })
+        } else {
+            self._cachedThumbnail = FetchOne(PeertubeImage.none)
+        }
+        
+        if let avatar = row.channel?.avatarUrl {
+            self._cachedAvatar = FetchOne(PeertubeImage.where { $0.id == avatar })
+        } else {
+            self._cachedAvatar = FetchOne(PeertubeImage.none)
+        }
     }
     
 //    @FetchOne
@@ -36,23 +54,39 @@ struct VideoCard: View {
             if let thumbnail = row.video.thumbnailUrl,
                 let url = URL(string: thumbnail) {
                 ZStack(alignment: .topLeading) {
-                    AsyncImage(url: url) { image in
-                        image.resizable()
-                    } placeholder: {
-                        Color.secondary
+                    if let cachedData = cachedThumbnail?.data, let uiImage = UIImage(data: cachedData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .frame(
+                                minWidth: 0,
+                                maxWidth: .infinity,
+                                minHeight: 100,
+                                maxHeight: .infinity
+                            )
+                            .aspectRatio(16 / 9, contentMode: .fit)
+                            .clipShape(.rect(cornerRadius: 8))
+                    } else {
+                        AsyncImage(url: url) { image in
+                            image.resizable()
+                        } placeholder: {
+                            Color.secondary
+                        }
+                        .frame(
+                            minWidth: 0,
+                            maxWidth: .infinity,
+                            minHeight: 100,
+                            maxHeight: .infinity
+                        )
+                        .aspectRatio(16 / 9, contentMode: .fit)
+                        .clipShape(.rect(cornerRadius: 8))
+                        .task {
+                            try? await peertubeOrchestrator.cacheImageIfNeeded(thumbnail, database)
+                        }
                     }
-                    .frame(
-                        minWidth: 0,
-                        maxWidth: .infinity,
-                        minHeight: 100,
-                        maxHeight: .infinity
-                    )
-                    .aspectRatio(16 / 9, contentMode: .fit)
-                    .clipShape(.rect(cornerRadius: 8))
                     
                     VStack(alignment: .leading) {
                         if let instanceName = row.instance?.host {
-                            InstanceIndicator(instanceName: instanceName, instanceImage: nil)
+                            InstanceIndicator(instanceName: instanceName, instanceImage: row.instance?.avatarUrl)
                             .padding(8)
                         }
                         
@@ -99,15 +133,28 @@ struct VideoCard: View {
             HStack (alignment: .top) {
                 if let avatar = row.channel?.avatarUrl,
                    let url = URL(string: avatar) {
-                    AsyncImage(url: url) { image in
-                        image.resizable()
-                    } placeholder: {
-                        Color.secondary
-                    }
-                    .frame(width: 48, height: 48)
-                    .clipShape(.circle)
-                    .onTapGesture {
-                        openChannel()
+                    if let cachedData = cachedAvatar?.data, let uiImage = UIImage(data: cachedData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .frame(width: 48, height: 48)
+                            .clipShape(.circle)
+                            .onTapGesture {
+                                openChannel()
+                            }
+                    } else {
+                        AsyncImage(url: url) { image in
+                            image.resizable()
+                        } placeholder: {
+                            Color.secondary
+                        }
+                        .frame(width: 48, height: 48)
+                        .clipShape(.circle)
+                        .onTapGesture {
+                            openChannel()
+                        }
+                        .task {
+                            try? await peertubeOrchestrator.cacheImageIfNeeded(avatar, database)
+                        }
                     }
                 } else {
                     Color.secondary
