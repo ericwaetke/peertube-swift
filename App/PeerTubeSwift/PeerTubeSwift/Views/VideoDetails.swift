@@ -183,39 +183,63 @@ struct VideoDetails: View {
                             .aspectRatio(16 / 9, contentMode: .fit)
                         }
                         VStack(alignment: .leading, spacing: 16) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(videoDetails.name ?? "Unknown Video Title")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-
-                                HStack {
-                                    if let views = videoDetails.views {
-                                        Text("^[\(views) View](inflect: true)")
-                                            .font(.callout)
-                                    }
-
-                                    if let publishedAt = videoDetails.publishedAt {
-                                        Text("·")
-                                        Text(
-                                            formatter.localizedString(
-                                                for: publishedAt, relativeTo: Date.now)
-                                        )
-                                        .font(.callout)
-                                    }
+                            Button {
+                                let newValue = !self.store.state.description.descriptionVisible
+                                withAnimation {
+                                    self.store.send(.description(.descriptionVisibleChanged(newValue)))
                                 }
+                            } label: {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(videoDetails.name ?? "Unknown Video Title")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(.primary)
+                                        .multilineTextAlignment(.leading)
+
+                                    HStack(spacing: 4) {
+                                        if let views = videoDetails.views {
+                                            Text("^[\(views) View](inflect: true)")
+                                        }
+
+                                        if let publishedAt = videoDetails.publishedAt {
+                                            Text("·")
+                                            Text(
+                                                formatter.localizedString(
+                                                    for: publishedAt, relativeTo: Date.now)
+                                            )
+                                        }
+                                        
+                                        if !self.store.state.description.descriptionVisible {
+                                            Text("... more")
+                                                .fontWeight(.semibold)
+                                        }
+                                    }
+                                    .font(.callout)
+                                    .opacity(0.5)
+                                    .foregroundStyle(.primary)
+                                    
+                                    VideoDescriptionView(store: self.store.scope(state: \.description, action: \.description))
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             
                             VideoActionsView(store: self.store.scope(state: \.actions, action: \.actions))
                             
                             VideoChannelView(store: self.store.scope(state: \.channel, action: \.channel))
 
-                            VideoDescriptionView(store: self.store.scope(state: \.description, action: \.description))
-
                             Divider()
 
                             VStack(alignment: .leading) {
                                 VideoCommentsView(store: self.store.scope(state: \.comments, action: \.comments))
                             }
+                            
+                            if let url = URL(string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)") {
+                                ShareLink(item: url)
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.large)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            
                             Spacer()
                         }
                         .padding()

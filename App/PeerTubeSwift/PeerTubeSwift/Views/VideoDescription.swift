@@ -6,7 +6,7 @@ import TubeSDK
 struct VideoDescriptionFeature {
     @ObservableState
     struct State: Equatable {
-        var descriptionVisible = true
+        var descriptionVisible = false
         var videoDetails: TubeSDK.VideoDetails?
     }
 
@@ -22,8 +22,8 @@ struct VideoDescriptionFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .descriptionVisibleChanged:
-                state.descriptionVisible.toggle()
+            case .descriptionVisibleChanged(let visible):
+                state.descriptionVisible = visible
                 return .none
             case .delegate:
                 return .none
@@ -67,10 +67,7 @@ struct VideoDescriptionView: View {
 
     var body: some View {
         if let description = store.state.videoDetails?.description {
-            Divider()
-            DisclosureGroup(
-                isExpanded: $store.descriptionVisible.sending(\.descriptionVisibleChanged)
-            ) {
+            if store.descriptionVisible {
                 HStack {
                     Text(parseDescription(description))
                         .environment(\.openURL, OpenURLAction { url in
@@ -80,12 +77,10 @@ struct VideoDescriptionView: View {
                             }
                             return .systemAction
                         })
+                        .font(.subheadline)
                     Spacer()
                 }
-            } label: {
-                Text("Description")
-                    .foregroundStyle(.primary)
-                    .fontWeight(.bold)
+                .padding(.top, 8)
             }
         }
     }
