@@ -14,6 +14,7 @@ struct VideoCommentsFeature {
         var videoDetails: TubeSDK.VideoDetails?
         
         var instanceAvatars: [String: String] = [:]
+        var collapsedCommentIds: Set<Int> = []
         
         @Presents var composeSheet: CommentComposeFeature.State?
     }
@@ -26,6 +27,7 @@ struct VideoCommentsFeature {
         case instanceAvatarLoaded(host: String, avatarUrl: String?)
         case addCommentTapped
         case replyTapped(comment: TubeSDK.VideoComment)
+        case toggleThreadCollapsed(commentId: Int)
         case composeSheet(PresentationAction<CommentComposeFeature.Action>)
     }
 
@@ -87,6 +89,14 @@ struct VideoCommentsFeature {
                 )
                 return .none
                 
+            case .toggleThreadCollapsed(let id):
+                if state.collapsedCommentIds.contains(id) {
+                    state.collapsedCommentIds.remove(id)
+                } else {
+                    state.collapsedCommentIds.insert(id)
+                }
+                return .none
+
             case .replyTapped(let comment):
                 if let id = comment.id {
                     let username = comment.account?.displayName ?? comment.account?.name ?? "Unknown"
@@ -214,26 +224,42 @@ struct CommentTreeView: View {
                                 .font(.body)
                         }
                         
-                        if store.state.client.currentToken != nil {
-                            Button {
-                                store.send(.replyTapped(comment: comment))
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "arrowshape.turn.up.left")
-                                    Text("Reply")
+                        HStack(spacing: 16) {
+                            if store.state.client.currentToken != nil {
+                                Button {
+                                    store.send(.replyTapped(comment: comment))
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrowshape.turn.up.left")
+                                        Text("Reply")
+                                    }
+                                    .font(.caption)
+                                    .foregroundColor(.accentColor)
                                 }
-                                .font(.caption)
-                                .foregroundColor(.accentColor)
                             }
-                            .padding(.top, 2)
+                            
+                            if let children = tree.children, !children.isEmpty, let id = comment.id {
+                                let isCollapsed = store.state.collapsedCommentIds.contains(id)
+                                Button {
+                                    store.send(.toggleThreadCollapsed(commentId: id))
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
+                                        Text(isCollapsed ? "Show \(children.count) replies" : "Hide replies")
+                                    }
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                }
+                            }
                         }
+                        .padding(.top, 2)
                     }
                 }
             }
             .padding(.vertical, 4)
             .padding(.leading, CGFloat(level * 32))
             
-            if let children = tree.children {
+            if let children = tree.children, let id = comment.id, !store.state.collapsedCommentIds.contains(id) {
                 ForEach(children, id: \.comment?.id) { childTree in
                     CommentTreeView(store: store, tree: childTree, level: level + 1)
                 }
