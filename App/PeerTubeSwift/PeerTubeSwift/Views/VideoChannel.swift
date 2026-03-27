@@ -35,22 +35,24 @@ struct VideoChannelFeature {
             case .loadChannel(let videoDetails):
                 return .run { [videoDetails = videoDetails, host = state.host, instance = state.instance] send in
                     @Dependency(\.defaultDatabase) var database
+                    @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
 
-                    guard let instanceId = instance?.id,
-                          let channelDetails = videoDetails.channel,
+                    guard let channelDetails = videoDetails.channel,
                           let channelId = channelDetails.id,
                           let channelName = channelDetails.displayName,
                           let channelUsername = channelDetails.name,
                           let channelHost = channelDetails.host else { return }
 
-                    let channel = withErrorReporting {
-                        return try database.write { db in
+                    let channel = await withErrorReporting {
+                        let instanceObj = try await peertubeOrchestrator.syncInstanceInfo(channelHost, database)
+                        
+                        return try await database.write { db in
                             return try VideoChannel.upsert {
                                 VideoChannel(
                                     id: "\(channelUsername)@\(channelHost)",
                                     name: channelName,
                                     avatarUrl: channelDetails.avatars?.first?.fileUrl,
-                                    instanceID: instanceId
+                                    instanceID: instanceObj.id
                                 )
                             }.returning(\.self).fetchOne(db)
                         }
@@ -189,7 +191,7 @@ struct VideoChannelView: View {
                         .lineLimit(1)
                 }
                 if let instanceName = store.state.videoDetails?.channel?.host {
-                    InstanceIndicator(instanceName: instanceName, instanceImage: nil)
+                    InstanceIndicator(instanceName: instanceName, instanceImage: store.state.instance?.avatarUrl)
                         .padding(.leading, 36)
                 }
             }
