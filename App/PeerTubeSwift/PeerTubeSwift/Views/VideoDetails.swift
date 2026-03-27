@@ -26,6 +26,7 @@ struct VideoDetailsFeature {
         var channel: VideoChannelFeature.State
         var description: VideoDescriptionFeature.State
         var comments: VideoCommentsFeature.State
+        var isNotFound: Bool = false
         
         init(host: String, videoId: String) {
             self.host = host
@@ -44,6 +45,7 @@ struct VideoDetailsFeature {
         case loadInstance
         case instanceLoaded(Instance)
         case screenLoaded
+        case videoLoadFailed
 
         case actions(VideoActionsFeature.Action)
         case channel(VideoChannelFeature.Action)
@@ -120,7 +122,18 @@ struct VideoDetailsFeature {
                     }
                         
                     await send(.loadVideo(videoDetails))
+                } catch: { error, send in
+                    print("Error loading video: \(error)")
+                    if let tubeError = error as? TubeError, case .notFound = tubeError {
+                        await send(.videoLoadFailed)
+                    } else if (error as NSError).code == 404 {
+                        await send(.videoLoadFailed)
+                    }
                 }
+                
+            case .videoLoadFailed:
+                state.isNotFound = true
+                return .none
                 
             case .loadVideo(let videoDetails):
                 state.videoDetails = videoDetails
@@ -158,7 +171,13 @@ struct VideoDetails: View {
 
     var body: some View {
         ZStack { 
-            if let videoDetails = self.store.videoDetails {
+            if self.store.isNotFound {
+                ContentUnavailableView(
+                    "Video Not Found",
+                    systemImage: "video.slash",
+                    description: Text("The video you are looking for does not exist or has been removed.")
+                )
+            } else if let videoDetails = self.store.videoDetails {
                 ScrollView {
                     VStack(spacing: 16) {
                         if let videoFiles = videoDetails.streamingPlaylists?.first?.files,
