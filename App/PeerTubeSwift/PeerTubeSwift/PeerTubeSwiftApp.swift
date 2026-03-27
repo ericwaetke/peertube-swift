@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import Dependencies
 import Combine
+import PostHog
 import SwiftUI
 import BackgroundTasks
 import UserNotifications
@@ -15,6 +16,17 @@ import TubeSDK
 
 import OSLog
 import SQLiteData
+
+enum PostHogEnv: String {
+    case apiKey = "POSTHOG_PROJECT_TOKEN"
+    case host = "POSTHOG_HOST"
+    var value: String {
+        guard let value = ProcessInfo.processInfo.environment[rawValue] else {
+            fatalError("Set \(rawValue) in the Xcode scheme environment variables.")
+        }
+        return value
+    }
+}
 
 @main
 struct PeerTubeSwiftApp: App {
@@ -25,6 +37,10 @@ struct PeerTubeSwiftApp: App {
     })
 
     init() {
+      let config = PostHogConfig(apiKey: PostHogEnv.apiKey.value, host: PostHogEnv.host.value)
+      config.captureApplicationLifecycleEvents = true
+      PostHogSDK.shared.setup(config)
+
       prepareDependencies {
           try! $0.bootstrapDatabase()
       }

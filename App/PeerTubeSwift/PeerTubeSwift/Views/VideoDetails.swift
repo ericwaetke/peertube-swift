@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import Dependencies
+import PostHog
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -152,7 +153,13 @@ struct VideoDetailsFeature {
                 return .merge(
                     .send(.channel(.loadChannel(videoDetails))),
                     .send(.actions(.loadUserRating)),
-                    .send(.comments(.loadComments))
+                    .send(.comments(.loadComments)),
+                    .run { [videoDetails] _ in
+                        PostHogSDK.shared.capture("video_viewed", properties: [
+                            "video_id": videoDetails.uuid?.uuidString ?? "",
+                            "video_name": videoDetails.name ?? ""
+                        ])
+                    }
                 )
                 
             case .description(.delegate(.seekTo(let time))):

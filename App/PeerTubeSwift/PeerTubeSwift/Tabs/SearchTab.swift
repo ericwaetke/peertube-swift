@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import PostHog
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -40,10 +41,15 @@ struct SearchFeature {
                 return .none
             case .startSearch:
                 print("searching for: \(state.search)")
-                return .send(
-                    .videoFeed(
-                        .loadVideosBySearch(TubeSDK.SearchVideoQueryParameters(search: state.search))
-                    )
+                return .merge(
+                    .send(
+                        .videoFeed(
+                            .loadVideosBySearch(TubeSDK.SearchVideoQueryParameters(search: state.search))
+                        )
+                    ),
+                    .run { [search = state.search] _ in
+                        PostHogSDK.shared.capture("search_performed", properties: ["query": search])
+                    }
                 )
             }
         }
