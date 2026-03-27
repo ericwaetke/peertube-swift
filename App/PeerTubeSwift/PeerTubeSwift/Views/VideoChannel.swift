@@ -212,3 +212,20 @@ struct VideoChannelView: View {
         }
     }
 }
+
+#Preview {
+    let _ = prepareDependencies {
+        try! $0.bootstrapDatabase()
+        try! $0.defaultDatabase.seed()
+    }
+
+    return VideoChannelView(
+        store: Store(
+            initialState: VideoChannelFeature.State(
+                host: "peertube.cpy.re"
+            )
+        ) {
+            VideoChannelFeature()
+        }
+    )
+}

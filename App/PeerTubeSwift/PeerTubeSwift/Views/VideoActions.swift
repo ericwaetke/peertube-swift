@@ -158,3 +158,16 @@ struct VideoActionsView: View {
         }
     }
 }
+
+#Preview {
+    VideoActionsView(
+        store: Store(
+            initialState: VideoActionsFeature.State(
+                host: "peertube.cpy.re",
+                videoId: "eRbrxETVKN3gxKKD8bcaHK"
+            )
+        ) {
+            VideoActionsFeature()
+        }
+    )
+}

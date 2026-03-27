@@ -90,3 +90,13 @@ struct VideoDescriptionView: View {
         }
     }
 }
+
+#Preview {
+    VideoDescriptionView(
+        store: Store(
+            initialState: VideoDescriptionFeature.State()
+        ) {
+            VideoDescriptionFeature()
+        }
+    )
+}
