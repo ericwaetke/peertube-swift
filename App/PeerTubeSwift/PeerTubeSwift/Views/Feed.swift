@@ -28,6 +28,7 @@ struct FeedFeature {
         
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         var isLoadingVideos: Bool = false
+        var hasLoadedAtLeastOnce: Bool = false
         var order: FeedOrder = .descending
         var errorMessage: String? = nil
         
@@ -329,10 +330,12 @@ struct FeedFeature {
             case let .finishLoading(videos):
                 state.feed = videos
                 state.isLoadingVideos = false
+                state.hasLoadedAtLeastOnce = true
                 return .none
             case let .loadingFailed(message):
                 state.errorMessage = message
                 state.isLoadingVideos = false
+                state.hasLoadedAtLeastOnce = true
                 return .none
             case .pulledToRefresh:
                 return .send(.loadVideos)
@@ -355,10 +358,7 @@ struct Feed: View {
     var body: some View {
         ScrollView {
             ZStack {
-                if self.store.isLoadingVideos {
-                    ProgressView()
-                        .containerRelativeFrame([.horizontal, .vertical])
-                } else if let errorMessage = self.store.errorMessage {
+                if let errorMessage = self.store.errorMessage {
                     ContentUnavailableView {
                         Label("Error loading feed", systemImage: "exclamationmark.triangle")
                     } description: {
@@ -371,7 +371,7 @@ struct Feed: View {
                         }
                     }
                     .containerRelativeFrame([.horizontal, .vertical])
-                } else if self.store.feed.isEmpty {
+                } else if self.store.feed.isEmpty && self.store.hasLoadedAtLeastOnce {
                     if self.store.instances.isEmpty {
                         ContentUnavailableView {
                             Label("Your Feed is empty", systemImage: "video")
