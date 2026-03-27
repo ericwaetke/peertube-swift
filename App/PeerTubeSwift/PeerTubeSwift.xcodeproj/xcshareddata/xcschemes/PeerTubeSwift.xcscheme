@@ -74,18 +74,6 @@
             ReferencedContainer = "container:PeerTubeSwift.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "POSTHOG_PROJECT_TOKEN"
-            value = "phc_2WekNPmVaOzZwhYuXUfgimjGABpNEOem9JZvsm8JofP"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "POSTHOG_HOST"
-            value = "https://eu.i.posthog.com"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

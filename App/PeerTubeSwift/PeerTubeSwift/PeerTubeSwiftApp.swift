@@ -21,7 +21,8 @@ enum PostHogEnv: String {
     case apiKey = "POSTHOG_PROJECT_TOKEN"
     case host = "POSTHOG_HOST"
     var value: String {
-        guard let value = ProcessInfo.processInfo.environment[rawValue] else {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: rawValue) as? String else {
+//        guard let value = ProcessInfo.processInfo.environment[rawValue] else {
             fatalError("Set \(rawValue) in the Xcode scheme environment variables.")
         }
         return value

@@ -7,13 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F60CC6322F77099100E40D88 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = F60CC6312F77099100E40D88 /* Secrets.xcconfig */; };
 		F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F627376B2EF9A871001DAA70 /* TubeSDK */; };
 		F660BBFB2F0406070049A3BA /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = F660BBFA2F0406070049A3BA /* AppIcon.icon */; };
 		F66EE81F2F0140DB00793122 /* WebURL in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE81E2F0140DB00793122 /* WebURL */; };
 		F66EE8212F0140DB00793122 /* WebURLFoundationExtras in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE8202F0140DB00793122 /* WebURLFoundationExtras */; };
+		F6AA11132F100000001AA11A /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = F6AA11122F100000001AA11A /* PostHog */; };
 		F6BFCE672EFAEB890043499D /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE662EFAEB890043499D /* SQLiteData */; };
 		F6BFCE692EFAEB890043499D /* SQLiteDataTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE682EFAEB890043499D /* SQLiteDataTestSupport */; };
-		F6AA11132F100000001AA11A /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = F6AA11122F100000001AA11A /* PostHog */; };
 		F6DCA01C2EFD99C000A39CED /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
@@ -35,6 +36,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F60CC6312F77099100E40D88 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		F660BBF72F0404F00049A3BA /* peertubeswift.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = peertubeswift.icon; sourceTree = "<group>"; };
 		F660BBFA2F0406070049A3BA /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PeerTubeSwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -117,6 +119,7 @@
 		F67428D82EF4AFC6000600DB = {
 			isa = PBXGroup;
 			children = (
+				F60CC6312F77099100E40D88 /* Secrets.xcconfig */,
 				F6BF922F2EF860F6001EAFBD /* peertube-swift-sdk */,
 				F67428E32EF4AFC6000600DB /* PeerTubeSwift */,
 				F67428F52EF4AFC9000600DB /* PeerTubeSwiftTests */,
@@ -271,6 +274,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F660BBFB2F0406070049A3BA /* AppIcon.icon in Resources */,
+				F60CC6322F77099100E40D88 /* Secrets.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -330,6 +334,7 @@
 /* Begin XCBuildConfiguration section */
 		F67429062EF4AFC9000600DB /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F60CC6312F77099100E40D88 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -367,6 +372,7 @@
 		};
 		F67429072EF4AFC9000600DB /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F60CC6312F77099100E40D88 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -659,20 +665,20 @@
 				minimumVersion = 0.4.2;
 			};
 		};
-		F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/pointfreeco/sqlite-data";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.4.1;
-			};
-		};
 		F6AA11112F100000001AA11A /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/PostHog/posthog-ios";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 3.48.2;
+			};
+		};
+		F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/sqlite-data";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.4.1;
 			};
 		};
 		F6DCA01A2EFD99C000A39CED /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
@@ -700,6 +706,11 @@
 			package = F66EE81D2F0140DB00793122 /* XCRemoteSwiftPackageReference "swift-url" */;
 			productName = WebURLFoundationExtras;
 		};
+		F6AA11122F100000001AA11A /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F6AA11112F100000001AA11A /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
 		F6BFCE662EFAEB890043499D /* SQLiteData */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */;
@@ -709,11 +720,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */;
 			productName = SQLiteDataTestSupport;
-		};
-		F6AA11122F100000001AA11A /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F6AA11112F100000001AA11A /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
 		};
 		F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;
