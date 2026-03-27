@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 import TubeSDK
+import PostHog
 
 @Reducer
 struct VideoCommentsFeature {
@@ -39,6 +40,9 @@ struct VideoCommentsFeature {
                 return .none
             case .commentsVisibleChanged:
                 state.commentsVisible.toggle()
+                if state.commentsVisible {
+                    PostHogSDK.shared.capture("comments_viewed", properties: ["video_id": state.videoId])
+                }
                 return .none
             case .loadComments:
                 return .run { [client = state.client, videoId = state.videoId] send in
@@ -82,6 +86,7 @@ struct VideoCommentsFeature {
                 return .none
                 
             case .addCommentTapped:
+                PostHogSDK.shared.capture("comment_compose_started", properties: ["video_id": state.videoId, "type": "top_level"])
                 state.composeSheet = CommentComposeFeature.State(
                     videoId: state.videoId,
                     targetCommentId: nil,
@@ -90,15 +95,18 @@ struct VideoCommentsFeature {
                 return .none
                 
             case .toggleThreadCollapsed(let id):
-                if state.collapsedCommentIds.contains(id) {
-                    state.collapsedCommentIds.remove(id)
-                } else {
+                let willCollapse = !state.collapsedCommentIds.contains(id)
+                PostHogSDK.shared.capture("comment_thread_toggled", properties: ["video_id": state.videoId, "comment_id": id, "action": willCollapse ? "collapsed" : "expanded"])
+                if willCollapse {
                     state.collapsedCommentIds.insert(id)
+                } else {
+                    state.collapsedCommentIds.remove(id)
                 }
                 return .none
 
             case .replyTapped(let comment):
                 if let id = comment.id {
+                    PostHogSDK.shared.capture("comment_compose_started", properties: ["video_id": state.videoId, "type": "reply", "parent_comment_id": id])
                     let username = comment.account?.displayName ?? comment.account?.name ?? "Unknown"
                     state.composeSheet = CommentComposeFeature.State(
                         videoId: state.videoId,
@@ -245,7 +253,8 @@ struct CommentTreeView: View {
                                 } label: {
                                     HStack(spacing: 4) {
                                         Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
-                                        Text(isCollapsed ? "Show \(children.count) replies" : "Hide replies")
+                                        let replyCount = comment.totalReplies ?? children.count
+                                        Text(isCollapsed ? "Show ^[\(replyCount) reply](inflect: true)" : "Hide replies")
                                     }
                                     .font(.caption)
                                     .foregroundColor(.secondary)
