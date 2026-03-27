@@ -129,6 +129,8 @@ struct VideoActionsView: View {
                 
             }
             
+            Spacer()
+            
             if let playlist = store.state.videoDetails?.streamingPlaylists?.first,
                let qualities = playlist.files {
                 Menu {

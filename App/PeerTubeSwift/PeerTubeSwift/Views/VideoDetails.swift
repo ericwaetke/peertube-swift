@@ -226,6 +226,8 @@ struct VideoDetails: View {
                             
                             VideoActionsView(store: self.store.scope(state: \.actions, action: \.actions))
                             
+                            Divider()
+                            
                             VideoChannelView(store: self.store.scope(state: \.channel, action: \.channel))
 
                             Divider()
