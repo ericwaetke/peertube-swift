@@ -18,7 +18,7 @@ struct VideoChannelFeature {
         var isSubscribedToChannel = false
         var notifyOnNewVideo = false
     }
-
+    
     enum Action {
         case loadChannel(TubeSDK.VideoDetails)
         case saveChannel(VideoChannel)
@@ -28,7 +28,7 @@ struct VideoChannelFeature {
         case changeSubscriptionState(Bool)
         case subscriptionStateLoaded(Bool, Bool)
     }
-
+    
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
@@ -36,13 +36,13 @@ struct VideoChannelFeature {
                 return .run { [videoDetails = videoDetails, host = state.host, instance = state.instance] send in
                     @Dependency(\.defaultDatabase) var database
                     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
-
+                    
                     guard let channelDetails = videoDetails.channel,
                           let channelId = channelDetails.id,
                           let channelName = channelDetails.displayName,
                           let channelUsername = channelDetails.name,
                           let channelHost = channelDetails.host else { return }
-
+                    
                     let channel = await withErrorReporting {
                         let instanceObj = try await peertubeOrchestrator.syncInstanceInfo(channelHost, database)
                         
@@ -72,7 +72,7 @@ struct VideoChannelFeature {
                     }) {
                         localNotificationState = subscription.notifyOnNewVideo
                     }
-
+                    
                     if client.currentToken != nil {
                         if let isSubscribed = try? await client.checkSubscription(channelUri: channel.id) {
                             await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
@@ -126,14 +126,14 @@ struct VideoChannelFeature {
                     newSubscriptionState = newSubscriptionState
                 ] send in
                     @Dependency(\.defaultDatabase) var database
-
+                    
                     guard let videoDetails = videoDetails,
                           let channel = videoDetails.channel,
                           let channelUsername = channel.name,
                           let channelHost = channel.host else { return }
-
+                    
                     let channelId = "\(channelUsername)@\(channelHost)"
-
+                    
                     await withErrorReporting {
                         if newSubscriptionState {
                             try await database.write { db in
@@ -166,9 +166,9 @@ struct VideoChannelFeature {
 
 struct VideoChannelView: View {
     @Bindable var store: StoreOf<VideoChannelFeature>
-
+    
     var body: some View {
-        HStack {
+        VStack (alignment: .leading) {
             ZStack(alignment: .bottomLeading) {
                 HStack(alignment: .top) {
                     if let avatars = store.state.videoDetails?.channel?.avatars,
@@ -195,8 +195,14 @@ struct VideoChannelView: View {
                         .padding(.leading, 36)
                 }
             }
-            Spacer()
+            //            Spacer()
             HStack {
+                Button(store.state.isSubscribedToChannel ? "Unsubscribe" : "Subscribe") {
+                    store.send(.subscribeButtonTapped)
+                }
+                .buttonStyle(.bordered)
+                .foregroundStyle(.primary)
+                
                 if store.state.isSubscribedToChannel {
                     Button {
                         store.send(.toggleNotificationButtonTapped)
@@ -204,12 +210,8 @@ struct VideoChannelView: View {
                         Image(systemName: store.state.notifyOnNewVideo ? "bell.fill" : "bell")
                     }
                     .buttonStyle(.bordered)
+                    .foregroundStyle(.primary)
                 }
-
-                Button(store.state.isSubscribedToChannel ? "Unsubscribe" : "Subscribe") {
-                    store.send(.subscribeButtonTapped)
-                }
-                .buttonStyle(.bordered)
             }
         }
     }
@@ -220,7 +222,7 @@ struct VideoChannelView: View {
         try! $0.bootstrapDatabase()
         try! $0.defaultDatabase.seed()
     }
-
+    
     return VideoChannelView(
         store: Store(
             initialState: VideoChannelFeature.State(
