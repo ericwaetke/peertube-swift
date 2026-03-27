@@ -9,7 +9,7 @@ struct VideoCommentsFeature {
         let videoId: String
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         
-        var commentsVisible = true
+        var commentsVisible = false
         var comments: [TubeSDK.VideoComment] = []
         var videoDetails: TubeSDK.VideoDetails?
         
