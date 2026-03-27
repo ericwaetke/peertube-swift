@@ -37,10 +37,10 @@ struct AppFeature {
         case settingsTab(SettingsTabFeature.Action)
         case searchTab(SearchFeature.Action)
     }
-
+    
     @Dependency(\.authClient) var authClient
     @Dependency(\.urlSession) var urlSession
-
+    
     var body: some ReducerOf<AppFeature> {
         Reduce { state, action in
             switch action {
@@ -129,8 +129,6 @@ struct AppFeature {
                     return .none
                 }
                 state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
-//                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: videoRow.,
-//                                                                                    videoId: "18QZB6GTN1DRd1LtkeQm22")))
                 return .none
             case .feedTab(_), .exploreTab(_), .settingsTab(_), .searchTab(_):
                 return .none
