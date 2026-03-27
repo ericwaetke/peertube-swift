@@ -76,6 +76,11 @@ extension Instance {
     var notifyOnNewVideo: Bool = false
 }
 
+@Table struct PeertubeImage: Identifiable, Equatable {
+    let id: String
+    var data: Data
+}
+
 func appDatabase() throws -> any DatabaseWriter {
     let database = try SQLiteData.defaultDatabase()
     var migrator = DatabaseMigrator()
@@ -192,6 +197,18 @@ func appDatabase() throws -> any DatabaseWriter {
             ALTER TABLE "peertubeSubscriptions"
             ADD COLUMN "notifyOnNewVideo" INTEGER NOT NULL DEFAULT 0
         """)
+    }
+
+    migrator.registerMigration("Create peertubeImages") { db in
+        try #sql(
+            """
+                CREATE TABLE "peertubeImages" (
+                    "id" TEXT PRIMARY KEY NOT NULL ON CONFLICT REPLACE,
+                    "data" BLOB NOT NULL
+                ) STRICT
+            """
+        )
+        .execute(db)
     }
 
     try migrator.migrate(database)
