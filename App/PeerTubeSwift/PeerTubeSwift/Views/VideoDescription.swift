@@ -94,7 +94,15 @@ struct VideoDescriptionView: View {
 #Preview {
     VideoDescriptionView(
         store: Store(
-            initialState: VideoDescriptionFeature.State()
+            initialState: VideoDescriptionFeature.State(
+                videoDetails: TubeSDK.VideoDetails(
+                    description: """
+                    Here is a mocked description for the preview!
+                    
+                    You can jump to 1:23 or 2:45 to see cool parts of the video.
+                    """
+                )
+            )
         ) {
             VideoDescriptionFeature()
         }

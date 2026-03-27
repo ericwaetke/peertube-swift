@@ -222,7 +222,15 @@ struct VideoChannelView: View {
     return VideoChannelView(
         store: Store(
             initialState: VideoChannelFeature.State(
-                host: "peertube.cpy.re"
+                host: "peertube.cpy.re",
+                videoDetails: TubeSDK.VideoDetails(
+                    channel: TubeSDK.VideoChannel(
+                        id: 1,
+                        name: "chocopie",
+                        host: "peertube.cpy.re",
+                        displayName: "Choco Pie Channel"
+                    )
+                )
             )
         ) {
             VideoChannelFeature()

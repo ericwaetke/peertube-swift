@@ -112,7 +112,32 @@ struct VideoCommentsView: View {
     VideoCommentsView(
         store: Store(
             initialState: VideoCommentsFeature.State(
-                videoId: "eRbrxETVKN3gxKKD8bcaHK"
+                videoId: "eRbrxETVKN3gxKKD8bcaHK",
+                comments: [
+                    TubeSDK.VideoComment(
+                        id: 1,
+                        text: "This is a great video! Thanks for sharing.",
+                        createdAt: Date(),
+                        account: TubeSDK.Account(
+                            id: 1,
+                            name: "reviewer",
+                            displayName: "Reviewer 123"
+                        )
+                    ),
+                    TubeSDK.VideoComment(
+                        id: 2,
+                        text: "I really enjoyed the part where you explained the Composable Architecture.",
+                        createdAt: Date(),
+                        account: TubeSDK.Account(
+                            id: 2,
+                            name: "swiftfan",
+                            displayName: "Swift Fan"
+                        )
+                    )
+                ],
+                videoDetails: TubeSDK.VideoDetails(
+                    comments: 2
+                )
             )
         ) {
             VideoCommentsFeature()

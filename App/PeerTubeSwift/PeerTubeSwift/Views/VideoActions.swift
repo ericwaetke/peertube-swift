@@ -16,7 +16,7 @@ struct VideoActionsFeature {
         var videoDetails: TubeSDK.VideoDetails?
         var selectedQuality: TubeSDK.VideoFile?
     }
-
+    
     enum Action {
         case dislikeButtonTapped
         case likeButtonTapped
@@ -24,7 +24,7 @@ struct VideoActionsFeature {
         case ratingLoaded(TubeSDK.VideoRating)
         case newResolutionSelected(TubeSDK.VideoFile)
     }
-
+    
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
@@ -98,32 +98,35 @@ struct VideoActionsFeature {
 
 struct VideoActionsView: View {
     @Bindable var store: StoreOf<VideoActionsFeature>
-
+    
     var body: some View {
         HStack {
             if let likes = store.state.videoDetails?.likes,
                let dislikes = store.state.videoDetails?.dislikes {
-                ControlGroup {
-                    Button {
-                        self.store.send(.likeButtonTapped)
-                    } label: {
-                        HStack {
-                            Image(systemName: "hand.thumbsup")
-                            Text(likes.formatted())
-                        }
+                
+                Button {
+                    self.store.send(.likeButtonTapped)
+                } label: {
+                    HStack {
+                        Image(systemName: "hand.thumbsup")
+                        Text(likes.formatted())
+                            .contentTransition(.numericText())
                     }
-                    .tint(self.store.state.hasLiked ? .blue : .primary)
-                    Button {
-                        self.store.send(.dislikeButtonTapped)
-                    } label: {
-                        HStack {
-                            Image(systemName: "hand.thumbsdown")
-                            Text(dislikes.formatted())
-                        }
-                    }
-                    .tint(self.store.state.hasDisliked ? .blue : .primary)
                 }
-                .controlGroupStyle(.automatic)
+                .buttonStyle(.bordered)
+                .foregroundStyle(self.store.state.hasLiked ? .blue : .primary)
+                Button {
+                    self.store.send(.dislikeButtonTapped)
+                } label: {
+                    HStack {
+                        Image(systemName: "hand.thumbsdown")
+                        Text(dislikes.formatted())
+                            .contentTransition(.numericText())
+                    }
+                }
+                .buttonStyle(.bordered)
+                .foregroundStyle(self.store.state.hasDisliked ? .blue : .primary)
+                
             }
             
             if let playlist = store.state.videoDetails?.streamingPlaylists?.first,
@@ -150,10 +153,13 @@ struct VideoActionsView: View {
                     )
                 }
                 .buttonStyle(.bordered)
+                .foregroundStyle(.primary)
             }
-
+            
             if let url = URL(string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)") {
                 ShareLink(item: url)
+                    .buttonStyle(.bordered)
+                    .foregroundStyle(.primary)
             }
         }
     }
@@ -164,7 +170,32 @@ struct VideoActionsView: View {
         store: Store(
             initialState: VideoActionsFeature.State(
                 host: "peertube.cpy.re",
-                videoId: "eRbrxETVKN3gxKKD8bcaHK"
+                videoId: "eRbrxETVKN3gxKKD8bcaHK",
+                videoDetails: TubeSDK.VideoDetails(
+                    likes: 1234,
+                    dislikes: 12,
+                    streamingPlaylists: [
+                        TubeSDK.VideoStreamingPlaylists(
+                            files: [
+                                TubeSDK.VideoFile(
+                                    resolution: TubeSDK.VideoResolutionConstant(id: 1080, label: "1080p"),
+                                    hasAudio: true,
+                                    hasVideo: true
+                                ),
+                                TubeSDK.VideoFile(
+                                    resolution: TubeSDK.VideoResolutionConstant(id: 720, label: "720p"),
+                                    hasAudio: true,
+                                    hasVideo: true
+                                )
+                            ]
+                        )
+                    ]
+                ),
+                selectedQuality: TubeSDK.VideoFile(
+                    resolution: TubeSDK.VideoResolutionConstant(id: 1080, label: "1080p"),
+                    hasAudio: true,
+                    hasVideo: true
+                )
             )
         ) {
             VideoActionsFeature()
