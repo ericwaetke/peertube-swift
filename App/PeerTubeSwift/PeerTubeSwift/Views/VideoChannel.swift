@@ -168,7 +168,7 @@ struct VideoChannelView: View {
     @Bindable var store: StoreOf<VideoChannelFeature>
     
     var body: some View {
-        VStack (alignment: .leading) {
+        HStack {
             ZStack(alignment: .bottomLeading) {
                 HStack(alignment: .top) {
                     if let avatars = store.state.videoDetails?.channel?.avatars,
@@ -195,7 +195,7 @@ struct VideoChannelView: View {
                         .padding(.leading, 36)
                 }
             }
-            //            Spacer()
+            Spacer()
             HStack {
                 Button(store.state.isSubscribedToChannel ? "Unsubscribe" : "Subscribe") {
                     store.send(.subscribeButtonTapped)
