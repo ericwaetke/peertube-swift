@@ -7,23 +7,35 @@
 
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
 struct InstanceIndicator: View {
     let instanceName: String
     let instanceImage: String?
     
+    @State private var mainColor: Color = .accentColor
+
+    var foregroundColor: Color {
+        .primary.mix(with: mainColor, by: 0.3)
+    }
     
-    // IDEA: Get dominant color from image
-    let mainColor: Color = Color.accentColor
-    let foregroundColor: Color
-    let backgroundColor: Color
+    var backgroundColor: Color {
+        #if canImport(UIKit)
+        return Color(uiColor: UIColor.systemBackground).mix(with: mainColor, by: 0.2)
+        #elseif canImport(AppKit)
+        return Color(nsColor: NSColor.windowBackgroundColor).mix(with: mainColor, by: 0.2)
+        #else
+        return Color.white.mix(with: mainColor, by: 0.2)
+        #endif
+    }
 
     init(instanceName: String, instanceImage: String?) {
         self.instanceName = instanceName
         self.instanceImage = instanceImage
-        
-        let systemBackground: Color = Color(uiColor: UIColor.systemBackground)
-        foregroundColor = .primary.mix(with: mainColor, by: 0.3)
-        backgroundColor = systemBackground.mix(with: mainColor, by: 0.2)
     }
     
     var body: some View {
@@ -58,6 +70,38 @@ struct InstanceIndicator: View {
                 .background(backgroundColor)
                 .clipShape(.rect(cornerRadius: 4))
         }
+        .task(id: instanceImage) {
+            await extractColor()
+        }
+    }
+    
+    @MainActor
+    private func extractColor() async {
+        guard let urlString = instanceImage, let url = URL(string: urlString) else {
+            mainColor = .accentColor
+            return
+        }
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            #if canImport(UIKit)
+            if let uiImage = UIImage(data: data), let average = uiImage.averageColor {
+                mainColor = Color(uiColor: average)
+            } else {
+                mainColor = .accentColor
+            }
+            #elseif canImport(AppKit)
+            if let nsImage = NSImage(data: data), let average = nsImage.averageColor {
+                mainColor = Color(nsColor: average)
+            } else {
+                mainColor = .accentColor
+            }
+            #else
+            mainColor = .accentColor
+            #endif
+        } catch {
+            mainColor = .accentColor
+        }
     }
 }
 
@@ -65,3 +109,42 @@ struct InstanceIndicator: View {
     InstanceIndicator(instanceName: "example.com", instanceImage: nil)
     InstanceIndicator(instanceName: "example.com", instanceImage: "https://peertube.wtf/lazy-static/avatars/c8d8d77d-6761-4fcc-a83c-32dfea8c7777.png")
 }
+
+#if canImport(UIKit)
+import CoreImage
+
+extension UIImage {
+    var averageColor: UIColor? {
+        guard let inputImage = CIImage(image: self) else { return nil }
+        let extentVector = CIVector(x: inputImage.extent.origin.x, y: inputImage.extent.origin.y, z: inputImage.extent.size.width, w: inputImage.extent.size.height)
+        
+        guard let filter = CIFilter(name: "CIAreaAverage", parameters: [kCIInputImageKey: inputImage, kCIInputExtentKey: extentVector]) else { return nil }
+        guard let outputImage = filter.outputImage else { return nil }
+        
+        var bitmap = [UInt8](repeating: 0, count: 4)
+        let context = CIContext(options: [.workingColorSpace: kCFNull as Any])
+        context.render(outputImage, toBitmap: &bitmap, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8, colorSpace: nil)
+        
+        return UIColor(red: CGFloat(bitmap[0]) / 255.0, green: CGFloat(bitmap[1]) / 255.0, blue: CGFloat(bitmap[2]) / 255.0, alpha: CGFloat(bitmap[3]) / 255.0)
+    }
+}
+#elseif canImport(AppKit)
+import CoreImage
+
+extension NSImage {
+    var averageColor: NSColor? {
+        guard let cgImage = self.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        let inputImage = CIImage(cgImage: cgImage)
+        let extentVector = CIVector(x: inputImage.extent.origin.x, y: inputImage.extent.origin.y, z: inputImage.extent.size.width, w: inputImage.extent.size.height)
+        
+        guard let filter = CIFilter(name: "CIAreaAverage", parameters: [kCIInputImageKey: inputImage, kCIInputExtentKey: extentVector]) else { return nil }
+        guard let outputImage = filter.outputImage else { return nil }
+        
+        var bitmap = [UInt8](repeating: 0, count: 4)
+        let context = CIContext(options: [.workingColorSpace: kCFNull as Any])
+        context.render(outputImage, toBitmap: &bitmap, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8, colorSpace: nil)
+        
+        return NSColor(deviceRed: CGFloat(bitmap[0]) / 255.0, green: CGFloat(bitmap[1]) / 255.0, blue: CGFloat(bitmap[2]) / 255.0, alpha: CGFloat(bitmap[3]) / 255.0)
+    }
+}
+#endif
