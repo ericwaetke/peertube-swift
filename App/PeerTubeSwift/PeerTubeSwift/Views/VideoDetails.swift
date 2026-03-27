@@ -222,6 +222,7 @@ struct VideoDetails: View {
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
+                            .buttonStyle(.plain)
                             
                             VideoActionsView(store: self.store.scope(state: \.actions, action: \.actions))
                             

@@ -137,11 +137,10 @@ struct VideoActionsView: View {
                             Button {
                                 self.store.send(.newResolutionSelected(quality))
                             } label: {
-                                let string = "\(resolution) (A: \((quality.hasAudio ?? false) ? "✓" : "×"), V: \((quality.hasVideo ?? false) ? "✓" : "×"))"
                                 if self.store.state.selectedQuality == quality {
-                                    Label(string, systemImage: "checkmark")
+                                    Label(resolution, systemImage: "checkmark")
                                 } else {
-                                    Text(string)
+                                    Text(resolution)
                                 }
                             }
                         }
