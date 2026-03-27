@@ -107,3 +107,15 @@ struct VideoCommentsView: View {
         }
     }
 }
+
+#Preview {
+    VideoCommentsView(
+        store: Store(
+            initialState: VideoCommentsFeature.State(
+                videoId: "eRbrxETVKN3gxKKD8bcaHK"
+            )
+        ) {
+            VideoCommentsFeature()
+        }
+    )
+}
