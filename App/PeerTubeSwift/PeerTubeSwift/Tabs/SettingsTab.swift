@@ -7,6 +7,7 @@
 
 import SQLiteData
 import ComposableArchitecture
+import PostHog
 import SwiftUI
 import TubeSDK
 import WebURL
@@ -121,7 +122,12 @@ struct SettingsTabFeature {
                 }
             case let .setClient(client):
                 state.$client.withLock { $0 = client }
-                return .send(.checkInstanceHealth)
+                return .merge(
+                    .send(.checkInstanceHealth),
+                    .run { [host = client.instance.host] _ in
+                        PostHogSDK.shared.capture("instance_changed", properties: ["instance_host": host])
+                    }
+                )
             case .editInstance:
                 return .none
                 
@@ -144,6 +150,8 @@ struct SettingsTabFeature {
                 state.$client.withLock { $0.currentToken = nil }
                 return .run { _ in
                     try? await authClient.deleteSession()
+                    PostHogSDK.shared.capture("user_logged_out")
+                    PostHogSDK.shared.reset()
                 }
             }
         }
