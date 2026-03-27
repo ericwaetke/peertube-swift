@@ -78,6 +78,7 @@ struct VideoDescriptionView: View {
                             return .systemAction
                         })
                         .font(.subheadline)
+                        .multilineTextAlignment(.leading)
                     Spacer()
                 }
                 .padding(.top, 8)
