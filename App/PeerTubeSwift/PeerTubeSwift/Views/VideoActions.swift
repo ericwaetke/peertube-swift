@@ -156,6 +156,14 @@ struct VideoActionsView: View {
                 .buttonStyle(.bordered)
                 .foregroundStyle(.primary)
             }
+            
+            if let url = URL(string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)") {
+                ShareLink(item: url) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .buttonStyle(.bordered)
+                .foregroundStyle(.primary)
+            }
         }
     }
 }

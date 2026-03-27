@@ -254,14 +254,7 @@ struct VideoDetails: View {
                             VStack(alignment: .leading) {
                                 VideoCommentsView(store: self.store.scope(state: \.comments, action: \.comments))
                             }
-                            
-                            if let url = URL(string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)") {
-                                ShareLink(item: url)
-                                    .buttonStyle(.borderedProminent)
-                                    .controlSize(.large)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            
+
                             Spacer()
                         }
                         .padding()
