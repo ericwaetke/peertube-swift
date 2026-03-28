@@ -16,7 +16,6 @@ struct VideoCard: View {
     let openChannel: () -> Void
     
     @FetchOne var cachedThumbnail: PeertubeImage?
-    @FetchOne var cachedAvatar: PeertubeImage?
     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
     @Dependency(\.defaultDatabase) var database
 
@@ -33,12 +32,6 @@ struct VideoCard: View {
             self._cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnail })
         } else {
             self._cachedThumbnail = FetchOne(PeertubeImage.none)
-        }
-        
-        if let avatar = row.channel?.avatarUrl {
-            self._cachedAvatar = FetchOne(PeertubeImage.where { $0.id == avatar })
-        } else {
-            self._cachedAvatar = FetchOne(PeertubeImage.none)
         }
     }
     
@@ -131,36 +124,10 @@ struct VideoCard: View {
                 .clipShape(.rect(cornerRadius: 8))
             }
             HStack (alignment: .top) {
-                if let avatar = row.channel?.avatarUrl,
-                   let url = URL(string: avatar) {
-                    if let cachedData = cachedAvatar?.data, let uiImage = UIImage(data: cachedData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .frame(width: 48, height: 48)
-                            .clipShape(.circle)
-                            .onTapGesture {
-                                openChannel()
-                            }
-                    } else {
-                        AsyncImage(url: url) { image in
-                            image.resizable()
-                        } placeholder: {
-                            Color.secondary
-                        }
-                        .frame(width: 48, height: 48)
-                        .clipShape(.circle)
-                        .onTapGesture {
-                            openChannel()
-                        }
-                        .task {
-                            try? await peertubeOrchestrator.cacheImageIfNeeded(avatar, database)
-                        }
+                AvatarView(url: row.channel?.avatarUrl, name: row.channel?.name ?? "unknown")
+                    .onTapGesture {
+                        openChannel()
                     }
-                } else {
-                    Color.secondary
-                        .frame(width: 48, height: 48)
-                        .clipShape(.circle)
-                }
                 VStack (alignment: .leading) {
                     Text(row.video.name)
                         .fontWeight(.bold)
