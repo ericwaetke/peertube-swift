@@ -130,10 +130,23 @@ struct AppFeature {
                 return .none
             case .settingsSheet(.presented(.delegate(.didLogin))):
                 return .run { send in
+                    @Dependency(\.defaultDatabase) var database
+                    try? await database.write { db in
+                        try db.execute(sql: "DELETE FROM peertubeSubscriptions")
+                        try db.execute(sql: "DELETE FROM videoChannels")
+                        try db.execute(sql: "DELETE FROM videos")
+                    }
                     await send(.syncSubscriptions)
                 }
             case .settingsSheet(.presented(.delegate(.didLogout))):
-                return .none
+                return .run { _ in
+                    @Dependency(\.defaultDatabase) var database
+                    try? await database.write { db in
+                        try db.execute(sql: "DELETE FROM peertubeSubscriptions")
+                        try db.execute(sql: "DELETE FROM videoChannels")
+                        try db.execute(sql: "DELETE FROM videos")
+                    }
+                }
             case .searchTab(.videoFeed(.videoTapped(let row))):
                 state.selectedTab = .explore
                 guard let instance = row.instance else {
