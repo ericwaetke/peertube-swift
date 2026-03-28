@@ -120,13 +120,13 @@ struct AppFeature {
             case let .selectedTabChanged(tab):
                 state.selectedTab = tab
                 return .none
-            case .feedTab(_), .exploreTab(_):
-                return .none
             case .feedTab(.delegate(.openSettings)):
                 state.settingsSheet = SettingsTabFeature.State()
                 return .none
             case .exploreTab(.delegate(.openSettings)):
                 state.settingsSheet = SettingsTabFeature.State()
+                return .none
+            case .feedTab(_), .exploreTab(_):
                 return .none
             case .settingsSheet(.presented(.delegate(.didLogin))):
                 return .run { send in
