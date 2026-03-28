@@ -19,7 +19,7 @@ struct InstanceIndicator: View {
     }
     
     var backgroundColor: Color {
-        Color(uiColor: UIColor.systemBackground).mix(with: mainColor, by: 0.2)
+        Color(uiColor: UIColor.systemBackground).mix(with: mainColor, by: 0.4)
     }
 
     init(instanceName: String, instanceImage: String?) {
