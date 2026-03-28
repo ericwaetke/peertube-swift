@@ -3,7 +3,7 @@
     "agent": {
         "build": {
             "mode": "primary",
-            "model": "github-copilot/gemini-3.1-pro-preview",
+            "model": "opencode/big-pickle",
             "prompt": "The TubeSDK is located at /Users/ericwatke/Documents/GitHub/peertube-swift-sdk. To build, use the iPhone 17 Simulator.",
             "tools": {
                 "write": true,
@@ -13,7 +13,7 @@
         },
         "plan": {
             "mode": "primary",
-            "model": "github-copilot/gemini-3.1-pro-preview",
+            "model": "opencode/big-pickle",
             "prompt": "The TubeSDK is located at /Users/ericwatke/Documents/GitHub/peertube-swift-sdk. To build, use the iPhone 17 Simulator.",
             "tools": {
                 "write": false,
