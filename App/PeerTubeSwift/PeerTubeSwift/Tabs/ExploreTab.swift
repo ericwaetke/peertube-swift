@@ -125,6 +125,10 @@ struct ExploreTab: View {
                 "Newest",
                 state: ExploreTabFeature.Path.State.exploreFeed(FeedFeature.State(feedType: .exploreNewest))
             )
+            NavigationLink(
+                "Recommended",
+                state: ExploreTabFeature.Path.State.exploreFeed(FeedFeature.State(feedType: .recommended))
+            )
         }
         .navigationTitle("Explore")
         .searchable(text: $store.searchText.sending(\.setSearch), isPresented: $store.isSearchActive.sending(\.setSearchActive))
@@ -206,12 +210,25 @@ struct ExploreTab: View {
         switch pathStore.case {
         case let .exploreFeed(store):
             Feed(store: store)
-                .navigationTitle("Newest Videos")
+                .navigationTitle(navigationTitle(for: store))
         case let .searchResults(store):
             Feed(store: store)
                 .navigationTitle("Search Results")
         case let .videoDetail(store):
             VideoDetails(store: store)
+        }
+    }
+    
+    private func navigationTitle(for store: StoreOf<FeedFeature>) -> String {
+        switch store.feedType {
+        case .exploreNewest:
+            return "Newest Videos"
+        case .recommended:
+            return "Recommended"
+        case .subscriptions:
+            return "Subscriptions"
+        case .search:
+            return "Search Results"
         }
     }
 }
