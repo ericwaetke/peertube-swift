@@ -141,9 +141,10 @@ struct AppFeature {
                         reportIssue(error)
                     }
                     await send(.syncSubscriptions)
+                    await send(.feedTab(.subscriptionFeed(.loadVideos)))
                 }
             case .settingsSheet(.presented(.delegate(.didLogout))):
-                return .run { _ in
+                return .run { send in
                     @Dependency(\.defaultDatabase) var database
                     do {
                         try await database.write { db in
@@ -154,6 +155,7 @@ struct AppFeature {
                     } catch {
                         reportIssue(error)
                     }
+                    await send(.feedTab(.subscriptionFeed(.loadVideos)))
                 }
             case .searchTab(.videoFeed(.videoTapped(let row))):
                 state.selectedTab = .explore
