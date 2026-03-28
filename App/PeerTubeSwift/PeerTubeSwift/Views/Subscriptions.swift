@@ -220,20 +220,11 @@ struct Subscriptions: View {
                     List {
                         ForEach(self.store.records) { row in
                             HStack {
-                                if let avatarUrlString = row.channel?.avatarUrl,
-                                   let avatarUrl = URL(string: avatarUrlString) {
-                                    AsyncImage(url: avatarUrl) { image in
-                                        image.resizable()
-                                    } placeholder: {
-                                        Color.secondary
-                                    }
-                                    .frame(width: 36, height: 36)
-                                    .clipShape(.circle)
-                                } else {
-                                    Color.secondary
-                                        .frame(width: 36, height: 36)
-                                        .clipShape(.circle)
-                                }
+                                AvatarView(
+                                    url: row.channel?.avatarUrl,
+                                    name: row.channel?.name ?? "Channel Name Not Available",
+                                    size: 36
+                                )
                                 
                                 Text(row.channel?.name ?? "Channel Name Not Available")
 
@@ -263,13 +254,11 @@ struct Subscriptions: View {
                             LazyHStack {
                                 ForEach(self.store.recommendations.filter { $0.category == category }) { recommendation in
                                     VStack {
-                                        AsyncImage(url: recommendation.avatarUrl) { image in
-                                            image.resizable()
-                                        } placeholder: {
-                                            Color.secondary
-                                        }
-                                        .frame(width: 48, height: 48)
-                                        .clipShape(.circle)
+                                        AvatarView(
+                                            url: recommendation.avatarUrl.absoluteString,
+                                            name: recommendation.displayName,
+                                            size: 48
+                                        )
                                         
                                         Text(recommendation.displayName)
                                         

@@ -174,22 +174,10 @@ struct VideoChannelView: View {
         HStack {
             ZStack(alignment: .bottomLeading) {
                 HStack(alignment: .top) {
-                    if let avatars = store.state.videoDetails?.channel?.avatars,
-                       let avatar = avatars.first,
-                       let fileUrl = avatar.fileUrl,
-                       let url = URL(string: fileUrl) {
-                        AsyncImage(url: url) { image in
-                            image.resizable()
-                        } placeholder: {
-                            Color.secondary
-                        }
-                        .frame(width: 48, height: 48)
-                        .clipShape(.circle)
-                    } else {
-                        Color.secondary
-                            .frame(width: 48, height: 48)
-                            .clipShape(.circle)
-                    }
+                    AvatarView(
+                        url: store.state.videoDetails?.channel?.avatars?.first?.fileUrl,
+                        name: store.state.videoDetails?.channel?.displayName ?? "Unknown Channel"
+                    )
                     Text("\(store.state.videoDetails?.channel?.displayName ?? "Unknown Channel")")
                         .lineLimit(1)
                 }
