@@ -7,11 +7,13 @@ public struct UserSession: Codable, Equatable, Sendable {
     public var username: String
     public var host: String
     public var token: OAuthToken
+    public var avatarUrl: String?
     
-    public init(username: String, host: String, token: OAuthToken) {
+    public init(username: String, host: String, token: OAuthToken, avatarUrl: String? = nil) {
         self.username = username
         self.host = host
         self.token = token
+        self.avatarUrl = avatarUrl
     }
 }
 

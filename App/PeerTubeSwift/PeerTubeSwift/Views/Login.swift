@@ -50,7 +50,24 @@ public struct LoginFeature {
                         let credentials = try await client.getClientOAuthCredentials()
                         let token = try await client.login(username: username, password: password, client: credentials)
                         let session = UserSession(username: username, host: client.instance.host, token: token)
-                        await send(.loginResponse(.success(session)))
+                        
+                        // Fetch avatar from user/me
+                        var avatarUrl: String? = nil
+                        do {
+                            let user = try await client.getMe()
+                            avatarUrl = user.account?.avatars?.first?.fileUrl
+                        } catch {
+                            // Avatar fetching is optional, continue without it
+                            print("Failed to fetch avatar: \(error)")
+                        }
+                        
+                        let sessionWithAvatar = UserSession(
+                            username: session.username,
+                            host: session.host,
+                            token: session.token,
+                            avatarUrl: avatarUrl
+                        )
+                        await send(.loginResponse(.success(sessionWithAvatar)))
                     } catch {
                         await send(.loginResponse(.failure(error)))
                     }

@@ -19,10 +19,12 @@ struct AppFeature {
         
         var feedTab = FeedTabFeature.State()
         var exploreTab = ExploreTabFeature.State()
-        var settingsTab = SettingsTabFeature.State()
         var searchTab = SearchFeature.State()
         
+        @Presents var settingsSheet: SettingsTabFeature.State?
+        
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("session")) var session: UserSession?
     }
     
     enum Action {
@@ -34,8 +36,9 @@ struct AppFeature {
         
         case feedTab(FeedTabFeature.Action)
         case exploreTab(ExploreTabFeature.Action)
-        case settingsTab(SettingsTabFeature.Action)
         case searchTab(SearchFeature.Action)
+        
+        case settingsSheet(PresentationAction<SettingsTabFeature.Action>)
     }
     
     @Dependency(\.authClient) var authClient
@@ -51,6 +54,7 @@ struct AppFeature {
                 }
             case let .sessionLoaded(session):
                 state.isLoaded = true
+                state.$session.withLock { $0 = session }
                 if let session = session {
                     state.$client.withLock {
                         $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token, session: urlSession)
@@ -118,10 +122,17 @@ struct AppFeature {
             case let .selectedTabChanged(tab):
                 state.selectedTab = tab
                 return .none
-            case .settingsTab(.goToCCVideo):
-                state.selectedTab = .explore
-                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: "peertube.wtf",
-                                                                                    videoId: "18QZB6GTN1DRd1LtkeQm22")))
+            case .feedTab(.delegate(.openSettings)):
+                state.settingsSheet = SettingsTabFeature.State()
+                return .none
+            case .exploreTab(.delegate(.openSettings)):
+                state.settingsSheet = SettingsTabFeature.State()
+                return .none
+            case .settingsSheet(.presented(.delegate(.didLogin))):
+                return .run { send in
+                    await send(.syncSubscriptions)
+                }
+            case .settingsSheet(.presented(.delegate(.didLogout))):
                 return .none
             case .searchTab(.videoFeed(.videoTapped(let row))):
                 state.selectedTab = .explore
@@ -130,7 +141,9 @@ struct AppFeature {
                 }
                 state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
                 return .none
-            case .feedTab(_), .exploreTab(_), .settingsTab(_), .searchTab(_):
+            case .feedTab(_), .exploreTab(_), .searchTab(_):
+                return .none
+            case .settingsSheet:
                 return .none
             }
         }
@@ -141,11 +154,11 @@ struct AppFeature {
         Scope(state: \.exploreTab, action: \.exploreTab) {
             ExploreTabFeature()
         }
-        Scope(state: \.settingsTab, action: \.settingsTab) {
-            SettingsTabFeature()
-        }
         Scope(state: \.searchTab, action: \.searchTab) {
             SearchFeature()
+        }
+        .ifLet(\.$settingsSheet, action: \.settingsSheet) {
+            SettingsTabFeature()
         }
     }
 }
@@ -153,7 +166,6 @@ struct AppFeature {
 enum TubeTab {
     case feed
     case explore
-    case settings
     case search
 }
 
@@ -165,7 +177,6 @@ struct ContentView: View {
         Group {
             if store.isLoaded {
                 TabView(selection: $store.selectedTab.sending(\.selectedTabChanged)) {
-                    // Subscriptions Tab
                     Tab(
                         "Feed",
                         systemImage: "heart",
@@ -187,16 +198,6 @@ struct ContentView: View {
                     }
                     
                     Tab(
-                        "Settings",
-                        systemImage: "gear",
-                        value: .settings,
-                    ) {
-                        SettingsTab(
-                            store: self.store.scope(state: \.settingsTab, action: \.settingsTab)
-                        )
-                    }
-                    
-                    Tab(
                         "Search",
                         systemImage: "magnifyingglass",
                         value: .search,
@@ -214,6 +215,18 @@ struct ContentView: View {
         .task {
             await store.send(.task).finish()
         }
+        .sheet(item: $store.scope(state: \.settingsSheet, action: \.settingsSheet)) { store in
+            NavigationStack {
+                SettingsTab(store: store)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") {
+                                store.send(.dismiss)
+                            }
+                        }
+                    }
+            }
+        }
     }
 }
 
@@ -226,4 +239,3 @@ struct ContentView: View {
         AppFeature()
     })
 }
-
