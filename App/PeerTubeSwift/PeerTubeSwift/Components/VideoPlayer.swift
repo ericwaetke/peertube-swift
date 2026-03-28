@@ -15,7 +15,8 @@ struct SeekRequest: Equatable {
     let id = UUID()
 }
 
-struct VideoPlayerView: UIViewControllerRepresentable {
+struct VideoPlayerView: View {
+    @Binding var isPlayerReady: Bool
     var onTimeUpdate: ((Int) -> Void)? = nil
     let videoFiles: [TubeSDK.VideoFile]
     let selectedVideoFile: TubeSDK.VideoFile?
@@ -27,14 +28,9 @@ struct VideoPlayerView: UIViewControllerRepresentable {
 
     // Legacy initializer for single URL (backwards compatibility)
     init(videoURL: URL) {
-        // Create a temporary VideoFile from URL for backwards compatibility
-        let tempVideoFile = TubeSDK.VideoFile(
-            playlistUrl: videoURL.absoluteString,
-            hasAudio: true,
-            hasVideo: true
-        )
-        self.videoFiles = [tempVideoFile]
-        self.selectedVideoFile = tempVideoFile
+        self._isPlayerReady = .constant(false)
+        self.videoFiles = []
+        self.selectedVideoFile = nil
         self.startTime = nil
         self.seekRequest = nil
         self.videoTitle = nil
@@ -44,6 +40,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
 
     // New initializer for VideoFile arrays with quality selection
     init(
+        isPlayerReady: Binding<Bool> = .constant(false),
         onTimeUpdate: ((Int) -> Void)? = nil, 
         videoFiles: [TubeSDK.VideoFile], 
         selectedVideoFile: TubeSDK.VideoFile?, 
@@ -53,6 +50,7 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         channelName: String? = nil,
         thumbnailPath: String? = nil
     ) {
+        self._isPlayerReady = isPlayerReady
         self.onTimeUpdate = onTimeUpdate
         self.videoFiles = videoFiles
         self.selectedVideoFile = selectedVideoFile
@@ -63,16 +61,62 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         self.thumbnailPath = thumbnailPath
     }
 
+    var body: some View {
+        ZStack {
+            VideoPlayerViewControllerRepresentable(
+                isPlayerReady: $isPlayerReady,
+                onTimeUpdate: onTimeUpdate,
+                videoFiles: videoFiles,
+                selectedVideoFile: selectedVideoFile,
+                startTime: startTime,
+                seekRequest: seekRequest,
+                videoTitle: videoTitle,
+                channelName: channelName,
+                thumbnailPath: thumbnailPath
+            )
+            .allowsHitTesting(isPlayerReady)
+
+            if !isPlayerReady {
+                Color.black
+                    .ignoresSafeArea()
+
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(.white)
+                    .scaleEffect(1.2)
+            }
+        }
+        .onAppear {
+            isPlayerReady = false
+        }
+    }
+}
+
+// MARK: - UIViewControllerRepresentable Implementation
+
+private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresentable {
+    @Binding var isPlayerReady: Bool
+    var onTimeUpdate: ((Int) -> Void)? = nil
+    let videoFiles: [TubeSDK.VideoFile]
+    let selectedVideoFile: TubeSDK.VideoFile?
+    var startTime: Int? = nil
+    var seekRequest: SeekRequest? = nil
+    var videoTitle: String? = nil
+    var channelName: String? = nil
+    var thumbnailPath: String? = nil
+
     
     class Coordinator: NSObject {
-        var parent: VideoPlayerView
+        var parent: VideoPlayerViewControllerRepresentable
         var timeObserver: Any?
         var player: AVPlayer?
         var statusObservation: NSKeyValueObservation?
+        var timeControlObservation: NSKeyValueObservation?
         var initialSeekPerformed = false
         var lastSeekRequestId: UUID?
+        var hasNotifiedPlayerReady = false
 
-        init(_ parent: VideoPlayerView) {
+        init(_ parent: VideoPlayerViewControllerRepresentable) {
             self.parent = parent
         }
 
@@ -82,10 +126,30 @@ struct VideoPlayerView: UIViewControllerRepresentable {
             
             print("🎬 addObserver: parent.startTime = \(String(describing: parent.startTime)), initialSeekPerformed = \(initialSeekPerformed)")
             
-            if !initialSeekPerformed, let startTime = parent.startTime, startTime > 0 {
-                print("🎬 addObserver: Calling performSeekWhenReady with startTime \(startTime)")
-                performSeekWhenReady(time: CMTime(seconds: Double(startTime), preferredTimescale: 600))
-                initialSeekPerformed = true
+            // Observe timeControlStatus to detect when player starts playing (first frame ready)
+            timeControlObservation = player.observe(\.timeControlStatus) { [weak self] player, _ in
+                guard let self = self else { return }
+                print("🎬 addObserver: timeControlStatus changed to \(String(describing: player.timeControlStatus))")
+                
+                if player.timeControlStatus == .playing && !self.hasNotifiedPlayerReady {
+                    print("🎬 addObserver: First frame ready, setting isPlayerReady = true")
+                    self.hasNotifiedPlayerReady = true
+                    self.parent.isPlayerReady = true
+                    
+                    // Now that player is ready, perform initial seek if needed
+                    if let startTime = self.parent.startTime, startTime > 0, !self.initialSeekPerformed {
+                        print("🎬 addObserver: Performing initial seek to \(startTime)s")
+                        self.performSeekWhenReady(time: CMTime(seconds: Double(startTime), preferredTimescale: 600))
+                        self.initialSeekPerformed = true
+                    }
+                }
+            }
+            
+            // If player is already playing, handle it immediately
+            if player.timeControlStatus == .playing && !hasNotifiedPlayerReady {
+                print("🎬 addObserver: Player already playing on setup")
+                hasNotifiedPlayerReady = true
+                parent.isPlayerReady = true
             }
             
             let interval = CMTime(seconds: 5.0, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
@@ -134,6 +198,8 @@ struct VideoPlayerView: UIViewControllerRepresentable {
             }
             statusObservation?.invalidate()
             statusObservation = nil
+            timeControlObservation?.invalidate()
+            timeControlObservation = nil
         }
 
         deinit {
