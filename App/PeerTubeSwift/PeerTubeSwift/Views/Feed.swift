@@ -52,6 +52,7 @@ struct FeedFeature {
         case finishLoading([VideoRow])
         
         case loadVideosNewestOfInstance
+        case loadRecommendedVideos
         case loadChannelVideos
         case loadSubscriptionVideos
         case loadVideosBySearch(TubeSDK.SearchVideoQueryParameters)
@@ -62,6 +63,7 @@ struct FeedFeature {
     
     enum FeedFilter {
         case exploreNewest
+        case recommended
         case subscriptions
         case search
     }
@@ -79,7 +81,7 @@ struct FeedFeature {
         return await withErrorReporting {
             return try await database.read { db in
                 switch feedType {
-                case .exploreNewest:
+                case .exploreNewest, .recommended:
                     let orderedVideos = Video
                         .order { $0.publishDate.desc() }
                         .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
@@ -211,6 +213,8 @@ struct FeedFeature {
                 switch state.feedType {
                 case .exploreNewest:
                     return .send(.loadVideosNewestOfInstance)
+                case .recommended:
+                    return .send(.loadRecommendedVideos)
                 case .subscriptions:
                     return .send(.loadSubscriptionVideos)
                 case .search:
@@ -220,25 +224,41 @@ struct FeedFeature {
                 state.isLoadingVideos = isLoading
                 return .none
             case .loadVideosNewestOfInstance:
-                return .run { [client = state.client, feedType = state.feedType, stateFeedEmpty = state.feed.isEmpty] send in
-                    let localVideos = await self.fetchLocalVideos(for: feedType)
-                    
-                    if let localVideos, !localVideos.isEmpty {
-                        await send(.finishLoading(localVideos))
-                    } else if stateFeedEmpty {
-                        await send(.setLoading(true))
-                    }
+                return .run { [client = state.client, feedType = state.feedType] send in
+                    await send(.setLoading(true))
                     
                     print("Getting new videos from instance")
-                    // Get Videos from Peertube
+                    // Get Videos from Peertube (skip DB for Explore tab)
                     
                     let peertubeVideos = try await client.getVideos()
                     
-//                    await send(.saveVideos(peertubeVideos))
-                    let _ = try await self.saveVideos(videos: peertubeVideos, client: client)
+                    // Save to DB for caching and use returned VideoRows (preserves server order)
+                    let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
                     
-                    let videos = await self.fetchLocalVideos(for: feedType)
-                    await send(.finishLoading(videos ?? []))
+                    await send(.finishLoading(videos))
+                }
+            case .loadRecommendedVideos:
+                return .run { [client = state.client, feedType = state.feedType] send in
+                    await send(.setLoading(true))
+                    
+                    print("Getting recommended videos from instance")
+                    
+                    // Use -best for logged in users, -hot for not logged in
+                    let sort: TubeSDK.VideoSort
+                    if client.currentToken != nil {
+                        print("User is authenticated, using -best sort for personalized recommendations")
+                        sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+                    } else {
+                        print("User is not authenticated, using -hot sort")
+                        sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+                    }
+                    
+                    let peertubeVideos = try await client.getVideos(sort: sort)
+                    
+                    // Save to DB for caching and use returned VideoRows (preserves server order)
+                    let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                    
+                    await send(.finishLoading(videos))
                 }
             case .loadVideosBySearch(let searchParameters):
                 return .run { [client = state.client, searchParameters = searchParameters] send in
