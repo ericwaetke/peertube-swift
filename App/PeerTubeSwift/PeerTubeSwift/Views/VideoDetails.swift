@@ -175,6 +175,7 @@ struct VideoDetailsFeature {
 struct VideoDetails: View {
     let store: StoreOf<VideoDetailsFeature>
     let formatter = RelativeDateTimeFormatter()
+    @State private var isPlayerReady = false
 
     var body: some View {
         ZStack { 
@@ -191,6 +192,7 @@ struct VideoDetails: View {
                            !videoFiles.isEmpty {
 
                             VideoPlayerView(
+                                isPlayerReady: $isPlayerReady,
                                 onTimeUpdate: { time in self.store.send(.timeUpdate(time)) }, 
                                 videoFiles: videoFiles, 
                                 selectedVideoFile: self.store.actions.selectedQuality, 
