@@ -21,7 +21,7 @@ struct SettingsTabFeature {
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         @Presents var editInstance: InstanceManagerFeature.State?
         @Presents var login: LoginFeature.State?
-        var session: UserSession?
+        @Shared(.inMemory("session")) var session: UserSession?
         
         enum HealthStatus: Equatable {
             case loading
@@ -48,6 +48,15 @@ struct SettingsTabFeature {
         case loginButtonTapped
         case login(PresentationAction<LoginFeature.Action>)
         case logoutButtonTapped
+        
+        case dismiss
+        
+        case delegate(Delegate)
+        
+        enum Delegate {
+            case didLogin
+            case didLogout
+        }
     }
 
     @Reducer
@@ -58,6 +67,7 @@ struct SettingsTabFeature {
     }
     
     @Dependency(\.authClient) var authClient
+    @Dependency(\.dismiss) var dismiss
     
     var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -70,7 +80,7 @@ struct SettingsTabFeature {
                 }
                 
             case let .sessionLoaded(session):
-                state.session = session
+                state.$session.withLock { $0 = session }
                 if let session = session {
                     state.$client.withLock { 
                         $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
@@ -136,23 +146,37 @@ struct SettingsTabFeature {
                 return .none
                 
             case let .login(.presented(.delegate(.didLogin(session)))):
-                state.session = session
+                state.$session.withLock { $0 = session }
                 state.$client.withLock { 
                     $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
                 }
-                return .send(.checkInstanceHealth)
+                return .merge(
+                    .send(.checkInstanceHealth),
+                    .send(.delegate(.didLogin))
+                )
                 
             case .login:
                 return .none
                 
             case .logoutButtonTapped:
-                state.session = nil
+                state.$session.withLock { $0 = nil }
                 state.$client.withLock { $0.currentToken = nil }
-                return .run { _ in
-                    try? await authClient.deleteSession()
-                    PostHogSDK.shared.capture("user_logged_out")
-                    PostHogSDK.shared.reset()
+                return .merge(
+                    .run { _ in
+                        try? await authClient.deleteSession()
+                        PostHogSDK.shared.capture("user_logged_out")
+                        PostHogSDK.shared.reset()
+                    },
+                    .send(.delegate(.didLogout))
+                )
+                
+            case .dismiss:
+                return .run { [dismiss] _ in
+                    await dismiss()
                 }
+                
+            case .delegate:
+                return .none
             }
         }
         .ifLet(\.$editInstance, action: \.editInstance) {

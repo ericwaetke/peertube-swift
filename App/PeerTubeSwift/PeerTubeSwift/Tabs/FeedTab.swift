@@ -22,6 +22,8 @@ struct FeedTabFeature {
         var subscriptionFeed = FeedFeature.State(feedType: .subscriptions)
         
         @Presents var manageSubscriptions: SubscriptionFeature.State?
+        
+        @Shared(.inMemory("session")) var session: UserSession?
     }
     
     enum Action {
@@ -30,6 +32,12 @@ struct FeedTabFeature {
         case subscriptionFeed(FeedFeature.Action)
         case manageSubscriptionButtonTapped
         case manageSubsctiptions(PresentationAction<SubscriptionFeature.Action>)
+        
+        case delegate(Delegate)
+        
+        enum Delegate {
+            case openSettings
+        }
     }
     
     var body: some ReducerOf<Self> {
@@ -44,21 +52,8 @@ struct FeedTabFeature {
             case .manageSubsctiptions:
                 return .none
                 
-        
-                
-            case let .path(action):
+            case .path:
                 return .none
-//                switch action {
-//                case let .element(id: _, action: .fe(.videoTapped(row: row))):
-//                    guard let instance = row.instance else {
-//                        return .none
-//                    }
-//                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
-//                    return .none
-//                    
-//                default:
-//                    return .none
-//                }
             case let .subscriptionFeed(action):
                 switch action {
                     
@@ -72,6 +67,8 @@ struct FeedTabFeature {
                 default:
                     return .none
                 }
+            case .delegate:
+                return .none
             }
         }
         .forEach(\.path, action: \.path)
@@ -85,19 +82,57 @@ struct FeedTabFeature {
 
 struct FeedTab: View {
     @Bindable var store: StoreOf<FeedTabFeature>
+    
     var body: some View {
         NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
             Feed(store: self.store.scope(state: \.subscriptionFeed, action: \.subscriptionFeed))
                 .navigationTitle("Subscriptions")
                 .toolbar {
-                ToolbarItemGroup(placement: .secondaryAction) {
-                    Button {
-                        self.store.send(.manageSubscriptionButtonTapped)
-                    } label: {
-                        Label("Manage Subscriptions", systemImage: "heart")
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            if let session = store.state.session {
+                                VStack(alignment: .leading) {
+                                    Text(session.username)
+                                        .font(.headline)
+                                    Text(session.host)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Divider()
+                                
+                                Button {
+                                    self.store.send(.manageSubscriptionButtonTapped)
+                                } label: {
+                                    Label("Manage Subscriptions", systemImage: "heart")
+                                }
+                            } else {
+                                Text("Not logged in")
+                                    .font(.headline)
+                            }
+                            
+                            Divider()
+                            
+                            Button {
+                                self.store.send(.delegate(.openSettings))
+                            } label: {
+                                Label("Settings", systemImage: "gear")
+                            }
+                        } label: {
+                            if let session = store.state.session {
+                                AvatarView(
+                                    url: session.avatarUrl,
+                                    name: session.username,
+                                    size: 32
+                                )
+                            } else {
+                                Image(systemName: "person.circle.fill")
+                                    .resizable()
+                                    .frame(width: 32, height: 32)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
-            }
         } destination: { store in
             switch store.case {
             case let .videoDetail(store):
