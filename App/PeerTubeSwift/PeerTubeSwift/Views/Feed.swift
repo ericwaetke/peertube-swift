@@ -242,6 +242,8 @@ struct FeedFeature {
                 }
             case .loadVideosBySearch(let searchParameters):
                 return .run { [client = state.client, searchParameters = searchParameters] send in
+                    await send(.setLoading(true))
+                    
                     let searchResult = try await client.searchVideos(search: searchParameters)
                     
                     let videos = try await self.saveVideos(videos: searchResult, client: client)
@@ -371,6 +373,9 @@ struct Feed: View {
                         }
                     }
                     .containerRelativeFrame([.horizontal, .vertical])
+                } else if self.store.isLoadingVideos && self.store.feed.isEmpty {
+                    ProgressView()
+                        .containerRelativeFrame([.horizontal, .vertical])
                 } else if self.store.feed.isEmpty && self.store.hasLoadedAtLeastOnce {
                     if self.store.instances.isEmpty {
                         ContentUnavailableView {
