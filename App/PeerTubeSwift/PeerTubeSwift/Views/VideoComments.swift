@@ -192,22 +192,13 @@ struct CommentTreeView: View {
         if let comment = tree.comment {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .top) {
-                    if let avatars = comment.account?.avatars,
-                       let avatar = avatars.first(where: { $0.width == 48 }) ?? avatars.first,
-                       let avatarPath = avatar.path,
-                       let url = try? store.state.client.getImageUrl(path: avatarPath) {
-                        AsyncImage(url: url) { image in
-                            image.resizable().scaledToFill()
-                        } placeholder: {
-                            Color.gray.opacity(0.3)
-                        }
-                        .frame(width: 42, height: 42)
-                        .clipShape(Circle())
-                    } else {
-                        Circle()
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(width: 42, height: 42)
-                    }
+                    let avatar = comment.account?.avatars?.first(where: { $0.width == 48 }) ?? comment.account?.avatars?.first
+                    let urlStr = avatar?.path.flatMap { try? store.state.client.getImageUrl(path: $0).absoluteString }
+                    AvatarView(
+                        url: urlStr,
+                        name: comment.account?.displayName ?? comment.account?.name ?? "Unknown",
+                        size: 42
+                    )
                     
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
