@@ -19,7 +19,6 @@ struct AppFeature {
         
         var feedTab = FeedTabFeature.State()
         var exploreTab = ExploreTabFeature.State()
-        var searchTab = SearchFeature.State()
         
         @Presents var settingsSheet: SettingsTabFeature.State?
         
@@ -36,7 +35,6 @@ struct AppFeature {
         
         case feedTab(FeedTabFeature.Action)
         case exploreTab(ExploreTabFeature.Action)
-        case searchTab(SearchFeature.Action)
         
         case settingsSheet(PresentationAction<SettingsTabFeature.Action>)
     }
@@ -122,6 +120,8 @@ struct AppFeature {
             case let .selectedTabChanged(tab):
                 state.selectedTab = tab
                 return .none
+            case .feedTab(_), .exploreTab(_):
+                return .none
             case .feedTab(.delegate(.openSettings)):
                 state.settingsSheet = SettingsTabFeature.State()
                 return .none
@@ -157,15 +157,6 @@ struct AppFeature {
                     }
                     await send(.feedTab(.subscriptionFeed(.loadVideos)))
                 }
-            case .searchTab(.videoFeed(.videoTapped(let row))):
-                state.selectedTab = .explore
-                guard let instance = row.instance else {
-                    return .none
-                }
-                state.exploreTab.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
-                return .none
-            case .feedTab(_), .exploreTab(_), .searchTab(_):
-                return .none
             case .settingsSheet:
                 return .none
             }
@@ -177,9 +168,6 @@ struct AppFeature {
         Scope(state: \.exploreTab, action: \.exploreTab) {
             ExploreTabFeature()
         }
-        Scope(state: \.searchTab, action: \.searchTab) {
-            SearchFeature()
-        }
         .ifLet(\.$settingsSheet, action: \.settingsSheet) {
             SettingsTabFeature()
         }
@@ -189,7 +177,6 @@ struct AppFeature {
 enum TubeTab {
     case feed
     case explore
-    case search
 }
 
 
@@ -217,17 +204,6 @@ struct ContentView: View {
                     ) {
                         ExploreTab(
                             store: self.store.scope(state: \.exploreTab, action: \.exploreTab)
-                        )
-                    }
-                    
-                    Tab(
-                        "Search",
-                        systemImage: "magnifyingglass",
-                        value: .search,
-                        role: .search
-                    ) {
-                        SearchTab(
-                            store: self.store.scope(state: \.searchTab, action: \.searchTab)
                         )
                     }
                 }
