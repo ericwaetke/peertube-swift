@@ -90,7 +90,7 @@ struct FeedTab: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
-                            if let session = store.state.session {
+                            if let session = store.session {
                                 VStack(alignment: .leading) {
                                     Text(session.username)
                                         .font(.headline)
@@ -118,7 +118,7 @@ struct FeedTab: View {
                                 Label("Settings", systemImage: "gear")
                             }
                         } label: {
-                            if let session = store.state.session {
+                            if let session = store.session {
                                 AvatarView(
                                     url: session.avatarUrl,
                                     name: session.username,

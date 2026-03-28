@@ -182,7 +182,7 @@ struct ExploreTab: View {
                 
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        if let session = store.state.session {
+                        if let session = store.session {
                             VStack(alignment: .leading) {
                                 Text(session.username)
                                     .font(.headline)
@@ -204,7 +204,7 @@ struct ExploreTab: View {
                             Label("Settings", systemImage: "gear")
                         }
                     } label: {
-                        if let session = store.state.session {
+                        if let session = store.session {
                             AvatarView(
                                 url: session.avatarUrl,
                                 name: session.username,
