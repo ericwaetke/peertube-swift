@@ -131,20 +131,28 @@ struct AppFeature {
             case .settingsSheet(.presented(.delegate(.didLogin))):
                 return .run { send in
                     @Dependency(\.defaultDatabase) var database
-                    try? await database.write { db in
-                        try db.execute(sql: "DELETE FROM peertubeSubscriptions")
-                        try db.execute(sql: "DELETE FROM videoChannels")
-                        try db.execute(sql: "DELETE FROM videos")
+                    do {
+                        try await database.write { db in
+                            try db.execute(sql: "DELETE FROM peertubeSubscriptions")
+                            try db.execute(sql: "DELETE FROM videoChannels")
+                            try db.execute(sql: "DELETE FROM videos")
+                        }
+                    } catch {
+                        reportIssue(error)
                     }
                     await send(.syncSubscriptions)
                 }
             case .settingsSheet(.presented(.delegate(.didLogout))):
                 return .run { _ in
                     @Dependency(\.defaultDatabase) var database
-                    try? await database.write { db in
-                        try db.execute(sql: "DELETE FROM peertubeSubscriptions")
-                        try db.execute(sql: "DELETE FROM videoChannels")
-                        try db.execute(sql: "DELETE FROM videos")
+                    do {
+                        try await database.write { db in
+                            try db.execute(sql: "DELETE FROM peertubeSubscriptions")
+                            try db.execute(sql: "DELETE FROM videoChannels")
+                            try db.execute(sql: "DELETE FROM videos")
+                        }
+                    } catch {
+                        reportIssue(error)
                     }
                 }
             case .searchTab(.videoFeed(.videoTapped(let row))):
