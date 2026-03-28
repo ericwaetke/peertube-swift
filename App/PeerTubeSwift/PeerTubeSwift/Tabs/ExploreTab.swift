@@ -27,6 +27,7 @@ struct ExploreTabFeature {
         @Presents var addInstance: InstanceManagerFeature.State?
         
         @FetchAll var instances: [Instance] = []
+        @Shared(.inMemory("session")) var session: UserSession?
     }
     
     enum Action {
@@ -34,6 +35,11 @@ struct ExploreTabFeature {
         case addInstanceButtonPressed
         case addInstance(PresentationAction<InstanceManagerFeature.Action>)
         
+        case delegate(Delegate)
+        
+        enum Delegate {
+            case openSettings
+        }
     }
     
     var body: some ReducerOf<Self> {
@@ -79,6 +85,8 @@ struct ExploreTabFeature {
                 default:
                     return .none
                 }
+            case .delegate:
+                return .none
             }
         }
         .forEach(\.path, action: \.path)
@@ -171,6 +179,45 @@ struct ExploreTab: View {
                         Label("Add Instance", systemImage: "plus")
                     }
                 }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        if let session = store.state.session {
+                            VStack(alignment: .leading) {
+                                Text(session.username)
+                                    .font(.headline)
+                                Text(session.host)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Divider()
+                        } else {
+                            Text("Not logged in")
+                                .font(.headline)
+                        }
+                        
+                        Divider()
+                        
+                        Button {
+                            self.store.send(.delegate(.openSettings))
+                        } label: {
+                            Label("Settings", systemImage: "gear")
+                        }
+                    } label: {
+                        if let session = store.state.session {
+                            AvatarView(
+                                url: session.avatarUrl,
+                                name: session.username,
+                                size: 32
+                            )
+                        } else {
+                            Image(systemName: "person.circle.fill")
+                                .resizable()
+                                .frame(width: 32, height: 32)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
         } destination: { store in
             switch store.case {
@@ -192,7 +239,6 @@ struct ExploreTab: View {
                                 guard let url = store.state.instanceUrl else { return }
                                 
                                 store.send(.delegate(.saveNewInstance(url: url)))
-//                                parentStore.send(.saveNewInstance(scheme: scheme, host: host))
                             }
                             .disabled(!store.state.readyToSaveInstance)
                         }
