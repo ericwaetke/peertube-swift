@@ -68,6 +68,7 @@ struct SettingsTabFeature {
     
     @Dependency(\.authClient) var authClient
     @Dependency(\.dismiss) var dismiss
+    @Dependency(\.urlSession) var urlSession
     
     var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -83,7 +84,7 @@ struct SettingsTabFeature {
                 state.$session.withLock { $0 = session }
                 if let session = session {
                     state.$client.withLock { 
-                        $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
+                        $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token, session: urlSession)
                     }
                 } else {
                     state.$client.withLock { $0.currentToken = nil }
@@ -126,7 +127,7 @@ struct SettingsTabFeature {
                     return .run { send in
                         guard let host = url.host?.serialized else { return }
                         do {
-                            await send(.setClient(try TubeSDKClient(scheme: url.scheme, host: host)))
+                            await send(.setClient(try TubeSDKClient(scheme: url.scheme, host: host, session: urlSession)))
                         } catch {}
                     }
                 }
@@ -148,7 +149,7 @@ struct SettingsTabFeature {
             case let .login(.presented(.delegate(.didLogin(session)))):
                 state.$session.withLock { $0 = session }
                 state.$client.withLock { 
-                    $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token)
+                    $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token, session: urlSession)
                 }
                 return .merge(
                     .send(.checkInstanceHealth),
