@@ -15,6 +15,10 @@ import TubeSDK
         return lhs.video.id == rhs.video.id
     }
     
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(video.id)
+    }
+    
     let video: Video
     let channel: VideoChannel?
     let instance: Instance?
@@ -56,6 +60,7 @@ struct FeedFeature {
         case loadChannelVideos
         case loadSubscriptionVideos
         case loadVideosBySearch(TubeSDK.SearchVideoQueryParameters)
+        case loadContinueWatching
         
         case loadingFailed(String)
         case setLoading(Bool)
@@ -66,6 +71,7 @@ struct FeedFeature {
         case recommended
         case subscriptions
         case search
+        case continueWatching
     }
     
     enum FeedOrder {
@@ -114,8 +120,41 @@ struct FeedFeature {
                         .fetchAll(db)
                 case .search:
                     return []
+                case .continueWatching:
+                    // Query local DB for videos with watch progress
+                    // Filter: watched > 1 minute AND remaining > 3 minutes
+                    return try Self.fetchAllVideosWithProgress(db: db)
                 }
             }
+        }
+    }
+    
+    private static func fetchAllVideosWithProgress(db: Database) throws -> [VideoRow] {
+        // Fetch all videos ordered by publish date
+        let allVideos = Video
+            .order { $0.publishDate.desc() }
+            .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
+            .leftJoin(Instance.all) { $0.instanceID.eq($2.host) }
+        
+        let rows = try allVideos
+            .select {
+                VideoRow.Columns(
+                    video: $0,
+                    channel: $1,
+                    instance: $2
+                )
+            }
+            .fetchAll(db)
+        
+        // Filter for continue watching: watched > 1 minute AND remaining > 3 minutes
+        return rows.filter { row in
+            guard let currentTime = row.video.currentTime,
+                  let duration = row.video.duration,
+                  duration > 0 else {
+                return false
+            }
+            let remaining = duration - currentTime
+            return currentTime > 60 && remaining > 180
         }
     }
     
@@ -219,6 +258,8 @@ struct FeedFeature {
                     return .send(.loadSubscriptionVideos)
                 case .search:
                     return .send(.setLoading(false))
+                case .continueWatching:
+                    return .send(.loadContinueWatching)
                 }
             case .setLoading(let isLoading):
                 state.isLoadingVideos = isLoading
@@ -271,6 +312,48 @@ struct FeedFeature {
                 }
             case .loadChannelVideos:
                 return .none
+            case .loadContinueWatching:
+                return .run { [client = state.client, authClient = self.authClient] send in
+                    await send(.setLoading(true))
+                    
+                    // Only fetch if user is authenticated
+                    guard client.currentToken != nil else {
+                        print("User not authenticated, cannot fetch watch history")
+                        await send(.finishLoading([]))
+                        return
+                    }
+                    
+                    print("Fetching continue watching videos from server history")
+                    
+                    do {
+                        // Fetch watch history from server
+                        let historyVideos = try await client.getMyHistory(count: 20)
+                        
+                        // Save to DB and get VideoRows
+                        let videos = try await self.saveVideos(videos: historyVideos, client: client)
+                        
+                        // Filter: watched > 1 minute AND remaining > 3 minutes
+                        let continueWatchingVideos = videos.filter { row in
+                            guard let currentTime = row.video.currentTime,
+                                  let duration = row.video.duration,
+                                  duration > 0 else {
+                                return false
+                            }
+                            let remaining = duration - currentTime
+                            return currentTime > 60 && remaining > 180
+                        }
+                        
+                        await send(.finishLoading(continueWatchingVideos))
+                    } catch TubeError.unauthorized {
+                        print("Token expired while fetching history")
+                        try? await authClient.deleteSession()
+                        client.currentToken = nil
+                        await send(.finishLoading([]))
+                    } catch {
+                        print("Error fetching continue watching: \(error)")
+                        await send(.finishLoading([]))
+                    }
+                }
             case .loadSubscriptionVideos:
                 return .run { [client = state.client, authClient = self.authClient, feedType = state.feedType, stateFeedEmpty = state.feed.isEmpty] send in
                     let localVideos = await self.fetchLocalVideos(for: feedType)
