@@ -8,7 +8,7 @@
 import ComposableArchitecture
 import Dependencies
 import Combine
-import PostHog
+@_spi(Experimental) import PostHog
 import SwiftUI
 import BackgroundTasks
 import UserNotifications
@@ -17,56 +17,79 @@ import TubeSDK
 import OSLog
 import SQLiteData
 
-enum PostHogEnv: String {
-    case apiKey = "POSTHOG_PROJECT_TOKEN"
-    case host = "POSTHOG_HOST"
-    var value: String {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: rawValue) as? String else {
-//        guard let value = ProcessInfo.processInfo.environment[rawValue] else {
-            fatalError("Set \(rawValue) in the Xcode scheme environment variables.")
+enum Configuration {
+    enum Error: Swift.Error {
+        case missingKey, invalidValue
+    }
+
+    static func value<T>(for key: String) throws -> T where T: LosslessStringConvertible {
+        guard let object = Bundle.main.object(forInfoDictionaryKey:key) else {
+            throw Error.missingKey
         }
-        return value
+
+        switch object {
+        case let value as T:
+            return value
+        case let string as String:
+            guard let value = T(string) else { fallthrough }
+            return value
+        default:
+            throw Error.invalidValue
+        }
     }
 }
 
 @main
 struct PeerTubeSwiftApp: App {
     @Environment(\.scenePhase) var scenePhase
-
+    
     static let store = Store(initialState: AppFeature.State(), reducer: {
         AppFeature()
     })
-
+    
     init() {
-      let config = PostHogConfig(apiKey: PostHogEnv.apiKey.value, host: PostHogEnv.host.value)
-      config.captureApplicationLifecycleEvents = true
-      PostHogSDK.shared.setup(config)
-
-      prepareDependencies {
-          try! $0.bootstrapDatabase()
-      }
-      
-      BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.peertubeswift.refresh", using: nil) { task in
-          let refreshTask = Task {
-              await Self.handleAppRefresh()
-              task.setTaskCompleted(success: true)
-          }
-          task.expirationHandler = {
-              refreshTask.cancel()
-          }
-      }
+        guard let apiKey: String = try? Configuration.value(for: "POSTHOG_PROJECT_TOKEN") else {
+            fatalError("Set POSTHOG_PROJECT_TOKEN in the Xcode scheme environment variables.")
+        }
+        guard let host: String = try? Configuration.value(for: "POSTHOG_HOST") else {
+            fatalError("Set POSTHOG_HOST in the Xcode scheme environment variables.")
+        }
+        guard let url: URL = URL(string: "https://" + host) else {
+            fatalError("Set POSTHOG_HOST in the Xcode scheme environment variables.")
+        }
+        print(apiKey)
+        print(url.absoluteString)
+        let config = PostHogConfig(apiKey: apiKey, host: url.absoluteString)
+        config.captureApplicationLifecycleEvents = true
+        config.errorTrackingConfig.autoCapture = true
+        print(config)
+        PostHogSDK.shared.setup(config)
+        
+        prepareDependencies {
+            try! $0.bootstrapDatabase()
+        }
+        
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.peertubeswift.refresh", using: nil) { task in
+            let refreshTask = Task {
+                await Self.handleAppRefresh()
+                task.setTaskCompleted(success: true)
+            }
+            task.expirationHandler = {
+                refreshTask.cancel()
+            }
+        }
     }
-
-	var body: some Scene {
-		WindowGroup {
+    
+    var body: some Scene {
+        WindowGroup {
             ContentView(store: PeerTubeSwiftApp.store)
-		}
+        }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             if newPhase == .background {
                 Self.scheduleAppRefresh()
             }
         }
-	}
+    }
     
     static func scheduleAppRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: "com.peertubeswift.refresh")
