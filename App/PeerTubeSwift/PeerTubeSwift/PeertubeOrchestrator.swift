@@ -10,6 +10,39 @@ import TubeSDK
 import SwiftUI
 import SQLiteData
 
+// MARK: - Instance Cache Actor
+
+/// Actor-based cache for instance info to avoid redundant network requests
+actor InstanceCache {
+    private var cache: [String: (instance: Instance, timestamp: Date)] = [:]
+    private let ttl: TimeInterval = 300 // 5 minutes
+    
+    func get(_ host: String) -> Instance? {
+        guard let cached = cache[host],
+              Date().timeIntervalSince(cached.timestamp) < ttl else {
+            return nil
+        }
+        return cached.instance
+    }
+    
+    func set(_ host: String, instance: Instance) {
+        cache[host] = (instance, Date())
+    }
+    
+    func invalidate(_ host: String) {
+        cache.removeValue(forKey: host)
+    }
+    
+    func invalidateAll() {
+        cache.removeAll()
+    }
+}
+
+// Global cache instance - shared across all orchestrator operations
+private let instanceCache = InstanceCache()
+
+// MARK: - PeertubeOrchestratorClient
+
 struct PeertubeOrchestratorClient {
     var syncInstanceInfo: @Sendable (String, any DatabaseWriter) async throws -> Instance
     var cacheImageIfNeeded: @Sendable (String, any DatabaseWriter) async throws -> Void
@@ -20,7 +53,18 @@ import Dependencies
 extension PeertubeOrchestratorClient: DependencyKey {
     static let liveValue = Self(
         syncInstanceInfo: { host, database in
-            // 1. Ensure the instance exists in the database
+            // 1. Check in-memory cache first
+            if let cachedInstance = await instanceCache.get(host) {
+                // Still need to ensure it exists in DB
+                let existsInDB = try await database.read { db in
+                    try Instance.find(host).fetchOne(db) != nil
+                }
+                if existsInDB {
+                    return cachedInstance
+                }
+            }
+            
+            // 2. Ensure the instance exists in the database
             let existingInstance = try await database.read { db in
                 try Instance.find(host).fetchOne(db)
             }
@@ -33,7 +77,7 @@ extension PeertubeOrchestratorClient: DependencyKey {
                 }
             }
             
-            // 2. Fetch the latest config from the instance in the background (or block if needed, but we don't necessarily have to block). For now let's just do it directly so it can return updated Instance.
+            // 3. Fetch the latest config from the instance
             do {
                 let client = try TubeSDKClient(scheme: "https", host: host)
                 let config = try await client.instance.getConfig()
@@ -50,6 +94,9 @@ extension PeertubeOrchestratorClient: DependencyKey {
                 try await database.write { db in
                     try Instance.upsert { updatedInstance }.execute(db)
                 }
+                
+                // 4. Update in-memory cache
+                await instanceCache.set(host, instance: updatedInstance)
             } catch {
                 print("Failed to sync instance info for \(host): \(error)")
             }
