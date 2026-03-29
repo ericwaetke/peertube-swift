@@ -15,6 +15,7 @@ import SQLiteData
 /// Actor-based cache for instance info to avoid redundant network requests
 actor InstanceCache {
     private var cache: [String: (instance: Instance, timestamp: Date)] = [:]
+    private var pendingTasks: [String: Task<Instance?, Never>] = [:]
     private let ttl: TimeInterval = 300 // 5 minutes
     
     func get(_ host: String) -> Instance? {
@@ -25,16 +26,41 @@ actor InstanceCache {
         return cached.instance
     }
     
+    /// Get or create a task for syncing instance info, coalescing concurrent requests
+    /// for the same host to avoid redundant network calls
+    func getOrCreateSyncTask(
+        _ host: String,
+        syncBlock: @escaping () async -> Instance?
+    ) -> Task<Instance?, Never> {
+        // If there's already a pending task for this host, return it
+        if let existingTask = pendingTasks[host] {
+            return existingTask
+        }
+        
+        // Create a new task and store it
+        let task = Task<Instance?, Never> {
+            let result = await syncBlock()
+            // Remove from pending once complete
+            pendingTasks.removeValue(forKey: host)
+            return result
+        }
+        
+        pendingTasks[host] = task
+        return task
+    }
+    
     func set(_ host: String, instance: Instance) {
         cache[host] = (instance, Date())
     }
     
     func invalidate(_ host: String) {
         cache.removeValue(forKey: host)
+        pendingTasks.removeValue(forKey: host)
     }
     
     func invalidateAll() {
         cache.removeAll()
+        pendingTasks.removeAll()
     }
 }
 
@@ -46,6 +72,48 @@ private let instanceCache = InstanceCache()
 struct PeertubeOrchestratorClient {
     var syncInstanceInfo: @Sendable (String, any DatabaseWriter) async throws -> Instance
     var cacheImageIfNeeded: @Sendable (String, any DatabaseWriter) async throws -> Void
+}
+
+/// Helper function for instance sync - separated for use in task coalescing
+private func performInstanceSync(host: String, database: any DatabaseWriter) async -> Instance? {
+    // Ensure the instance exists in the database
+    let existingInstance = try await database.read { db in
+        try Instance.find(host).fetchOne(db)
+    }
+    
+    var instance = existingInstance ?? Instance(host: host, scheme: "https")
+    if existingInstance == nil {
+        let newInstance = instance
+        try await database.write { db in
+            try Instance.insert { newInstance }.execute(db)
+        }
+    }
+    
+    // Fetch the latest config from the instance
+    do {
+        let client = try TubeSDKClient(scheme: "https", host: host)
+        let config = try await client.instance.getConfig()
+        
+        instance.name = config.instance.name
+        if let avatar = config.instance.avatars?.first?.fileUrl {
+            instance.avatarUrl = avatar
+        } else if let avatar = config.instance.avatars?.first?.path {
+            // fallback to path if fileUrl is not available
+            instance.avatarUrl = try client.getImageUrl(path: avatar).absoluteString
+        }
+        
+        let updatedInstance = instance
+        try await database.write { db in
+            try Instance.upsert { updatedInstance }.execute(db)
+        }
+        
+        // Update in-memory cache
+        await instanceCache.set(host, instance: updatedInstance)
+        return updatedInstance
+    } catch {
+        print("Failed to sync instance info for \(host): \(error)")
+        return nil
+    }
 }
 
 import Dependencies
@@ -64,44 +132,21 @@ extension PeertubeOrchestratorClient: DependencyKey {
                 }
             }
             
-            // 2. Ensure the instance exists in the database
-            let existingInstance = try await database.read { db in
-                try Instance.find(host).fetchOne(db)
+            // 2. Use coalescing to avoid concurrent requests for the same host
+            let syncTask = await instanceCache.getOrCreateSyncTask(host) {
+                // This block runs only once even if multiple tasks request the same host
+                await performInstanceSync(host: host, database: database)
             }
             
-            var instance = existingInstance ?? Instance(host: host, scheme: "https")
-            if existingInstance == nil {
-                let newInstance = instance
-                try await database.write { db in
-                    try Instance.insert { newInstance }.execute(db)
-                }
+            // Wait for the task to complete (or return cached result if available)
+            if let result = await syncTask.value {
+                return result
             }
             
-            // 3. Fetch the latest config from the instance
-            do {
-                let client = try TubeSDKClient(scheme: "https", host: host)
-                let config = try await client.instance.getConfig()
-                
-                instance.name = config.instance.name
-                if let avatar = config.instance.avatars?.first?.fileUrl {
-                    instance.avatarUrl = avatar
-                } else if let avatar = config.instance.avatars?.first?.path {
-                    // fallback to path if fileUrl is not available
-                    instance.avatarUrl = try client.getImageUrl(path: avatar).absoluteString
-                }
-                
-                let updatedInstance = instance
-                try await database.write { db in
-                    try Instance.upsert { updatedInstance }.execute(db)
-                }
-                
-                // 4. Update in-memory cache
-                await instanceCache.set(host, instance: updatedInstance)
-            } catch {
-                print("Failed to sync instance info for \(host): \(error)")
+            // Fallback: try to get from DB if sync failed
+            return try await database.read { db in
+                try Instance.find(host).fetchOne(db) ?? Instance(host: host, scheme: "https")
             }
-            
-            return instance
         },
         cacheImageIfNeeded: { urlString, database in
             // Check if it already exists
