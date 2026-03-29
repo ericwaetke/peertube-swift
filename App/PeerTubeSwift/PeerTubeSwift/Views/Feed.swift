@@ -24,6 +24,92 @@ import TubeSDK
     let instance: Instance?
 }
 
+// MARK: - Feed Filter Types (Top-level to allow referencing from FeedCacheActor)
+
+enum FeedFilter: Equatable, Hashable {
+    case exploreNewest
+    case recommended
+    case subscriptions
+    case search
+    case continueWatching
+}
+
+enum FeedOrder: Equatable, Hashable {
+    case ascending
+    case descending
+}
+
+// MARK: - Feed Cache Types
+
+/// Cache entry storing videos and timestamp for TTL validation
+struct FeedCacheEntry: Equatable {
+    let videos: [VideoRow]
+    let timestamp: Date
+}
+
+/// Feed filter types that can be cached
+enum CachedFeedType: String, Equatable, Hashable {
+    case exploreNewest
+    case recommended
+    case subscriptions
+    case continueWatching
+    
+    init(from feedFilter: FeedFilter) {
+        switch feedFilter {
+        case .exploreNewest:
+            self = .exploreNewest
+        case .recommended:
+            self = .recommended
+        case .subscriptions:
+            self = .subscriptions
+        case .continueWatching:
+            self = .continueWatching
+        case .search:
+            self = .exploreNewest // Don't cache search results
+        }
+    }
+}
+
+/// Global actor-based cache for feed videos
+/// Lives outside of TCA State to survive navigation-based State recreation
+actor FeedCacheActor {
+    static let shared = FeedCacheActor()
+    
+    private var cache: [CachedFeedType: FeedCacheEntry] = [:]
+    private let ttl: TimeInterval = 300 // 5 minutes
+    
+    private init() {}
+    
+    /// Get cached videos for a feed type if valid
+    func get(_ feedType: FeedFilter) -> [VideoRow]? {
+        let cachedType = CachedFeedType(from: feedType)
+        guard let cached = cache[cachedType],
+              Date().timeIntervalSince(cached.timestamp) < ttl else {
+            return nil
+        }
+        return cached.videos
+    }
+    
+    /// Store videos in cache with current timestamp
+    func set(_ feedType: FeedFilter, videos: [VideoRow]) {
+        let cachedType = CachedFeedType(from: feedType)
+        cache[cachedType] = FeedCacheEntry(videos: videos, timestamp: Date())
+    }
+    
+    /// Invalidate cache for a specific feed type
+    func invalidate(_ feedType: FeedFilter) {
+        let cachedType = CachedFeedType(from: feedType)
+        cache.removeValue(forKey: cachedType)
+    }
+    
+    /// Invalidate all cached feeds
+    func invalidateAll() {
+        cache.removeAll()
+    }
+}
+
+// MARK: - FeedFeature
+
 @Reducer
 struct FeedFeature {
     @ObservableState
@@ -64,19 +150,6 @@ struct FeedFeature {
         
         case loadingFailed(String)
         case setLoading(Bool)
-    }
-    
-    enum FeedFilter {
-        case exploreNewest
-        case recommended
-        case subscriptions
-        case search
-        case continueWatching
-    }
-    
-    enum FeedOrder {
-        case ascending
-        case descending
     }
     
     @Dependency(\.defaultDatabase) var database
@@ -158,81 +231,118 @@ struct FeedFeature {
         }
     }
     
+    /// Process a single video and return a VideoRow (used by parallel saveVideos)
+    private func processVideo(
+        peertubeVideo: TubeSDK.Video,
+        client: TubeSDKClient
+    ) async -> VideoRow? {
+        guard let channel = peertubeVideo.channel,
+              let videoId = peertubeVideo.uuid,
+              let videoName = peertubeVideo.name,
+              let publishedAt = peertubeVideo.publishedAt,
+              let channelUsername = channel.name,
+              let channelDisplayName = channel.displayName,
+              let instanceHost = channel.host
+        else {
+            print("Error adding video")
+            return nil
+        }
+        
+        return await withErrorReporting {
+            let avatarUrl: String? = channel.avatars?.first?.fileUrl
+            
+            let instance = try await self.peertubeOrchestrator.syncInstanceInfo(instanceHost, database)
+            
+            return try await database.write { db in
+                let channel = try VideoChannel
+                    .upsert {
+                        VideoChannel(
+                            id: "\(channelUsername)@\(instanceHost)",
+                            name: channelDisplayName,
+                            avatarUrl: avatarUrl,
+                            instanceID: instance.id
+                        )
+                    }
+                    .returning(\.self)
+                    .fetchOne(db)
+                
+                var thumbnailUrl: String? = nil
+                if let thumbnailPath = peertubeVideo.thumbnailPath {
+                    do {
+                        thumbnailUrl = try client.getImageUrl(
+                            path: thumbnailPath
+                        ).absoluteString
+                    } catch {
+                        print("could not get thumbnail url")
+                    }
+                }
+                
+                let existingTime = try Video.find(videoId).fetchOne(db)?.currentTime
+                
+                let video = try Video
+                    .upsert {
+                        Video(
+                            id: videoId,
+                            channelID: "\(channelUsername)@\(instanceHost)",
+                            instanceID: instance.id,
+                            name: videoName,
+                            publishDate: publishedAt,
+                            duration: peertubeVideo.duration,
+                            currentTime: peertubeVideo.userHistory?.currentTime ?? existingTime,
+                            thumbnailUrl: thumbnailUrl
+                        )
+                    }
+                    .returning(\.self)
+                    .fetchOne(db)
+                
+                if let inserted = video {
+                    return VideoRow(video: inserted, channel: channel, instance: instance)
+                } else {
+                    return nil
+                }
+            }
+        }
+    }
+    
+    /// Save videos to database in parallel (Fix 1)
     func saveVideos(videos: [TubeSDK.Video], client: TubeSDKClient) async throws -> [VideoRow] {
-        var insertedVideos: [VideoRow] = []
-        for peertubeVideo in videos {
-            guard let channel = peertubeVideo.channel,
-                  let videoId = peertubeVideo.uuid,
-                  let videoName = peertubeVideo.name,
-                  let publishedAt = peertubeVideo.publishedAt,
-                  let channelUsername = channel.name,
-                  let channelDisplayName = channel.displayName,
-                  let instanceHost = channel.host
-            else {
-                print("Error adding video")
-                continue
+        await withTaskGroup(of: (Int, VideoRow?).self) { group in
+            for (index, peertubeVideo) in videos.enumerated() {
+                group.addTask {
+                    let row = await self.processVideo(peertubeVideo: peertubeVideo, client: client)
+                    return (index, row)
+                }
             }
             
-            let video: Optional<VideoRow> = await withErrorReporting {
-                let avatarUrl: String? = channel.avatars?.first?.fileUrl
-                
-                let instance = try await self.peertubeOrchestrator.syncInstanceInfo(instanceHost, database)
-                
-                return try await database.write { db in
-                    let channel = try VideoChannel
-                        .upsert {
-                            VideoChannel(
-                                id: "\(channelUsername)@\(instanceHost)",
-                                name: channelDisplayName,
-                                avatarUrl: avatarUrl,
-                                instanceID: instance.id
-                            )
-                        }
-                        .returning(\.self)
-                        .fetchOne(db)
-                    
-                    var thumbnailUrl: String? = nil
-                    if let thumbnailPath = peertubeVideo.thumbnailPath {
-                        do {
-                            thumbnailUrl = try client.getImageUrl(
-                                path: thumbnailPath
-                            ).absoluteString
-                        } catch {
-                            print("could not get thumbnail url")
-                        }
-                    }
-                    
-                    let existingTime = try Video.find(videoId).fetchOne(db)?.currentTime
-                    
-                    let video = try Video
-                        .upsert {
-                            Video(
-                                id: videoId,
-                                channelID: "\(channelUsername)@\(instanceHost)",
-                                instanceID: instance.id,
-                                name: videoName,
-                                publishDate: publishedAt,
-                                duration: peertubeVideo.duration,
-                                currentTime: peertubeVideo.userHistory?.currentTime ?? existingTime,
-                                thumbnailUrl: thumbnailUrl
-                            )
-                        }
-                        .returning(\.self)
-                        .fetchOne(db)
-                    
-                    if let inserted = video {
-                        return .some(VideoRow(video: inserted, channel: channel, instance: instance))
-                    } else {
-                        return .none
+            var results: [(Int, VideoRow?)] = []
+            for await result in group {
+                results.append(result)
+            }
+            
+            // Sort by original index to maintain API order, filter out nils
+            return results
+                .sorted { $0.0 < $1.0 }
+                .compactMap { $0.1 }
+        }
+    }
+    
+    /// Preload thumbnails in the background (fire-and-forget)
+    /// Does not block - runs independently of UI updates
+    private func preloadThumbnails(for videos: [VideoRow]) {
+        let thumbnailUrls = videos.compactMap { $0.video.thumbnailUrl }
+        let orchestrator = peertubeOrchestrator
+        let db = database
+        
+        // Fire-and-forget - don't block the caller
+        Task {
+            await withTaskGroup(of: Void.self) { group in
+                for url in thumbnailUrls.prefix(10) { // Only preload first 10 thumbnails
+                    group.addTask {
+                        try? await orchestrator.cacheImageIfNeeded(url, db)
                     }
                 }
             }
-            if let video = video {
-                insertedVideos.append(video)
-            }
         }
-        
-        return insertedVideos
     }
     
     var body: some ReducerOf<Self> {
@@ -268,13 +378,35 @@ struct FeedFeature {
                 return .run { [client = state.client, feedType = state.feedType] send in
                     await send(.setLoading(true))
                     
-                    print("Getting new videos from instance")
-                    // Get Videos from Peertube (skip DB for Explore tab)
+                    // Check global cache first
+                    if let cachedVideos = await FeedCacheActor.shared.get(feedType) {
+                        print("[CACHE] Using cached videos for explore newest")
+                        await send(.finishLoading(cachedVideos))
+                        return
+                    }
                     
-                    let peertubeVideos = try await client.getVideos()
+                    print("[TIMING] ExploreNewest: Starting fetch...")
+                    let fetchStart = Date()
                     
-                    // Save to DB for caching and use returned VideoRows (preserves server order)
+                    // Get Videos from Peertube with pagination
+                    let peertubeVideos = try await client.getVideos(count: 30)
+                    let apiTime = Date().timeIntervalSince(fetchStart)
+                    print("[TIMING] ExploreNewest: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
+                    
+                    // Save to DB for caching and use returned VideoRows
+                    let dbStart = Date()
                     let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                    let dbTime = Date().timeIntervalSince(dbStart)
+                    print("[TIMING] ExploreNewest: DB writes took \(String(format: "%.3f", dbTime))s")
+                    
+                    // Update global cache
+                    await FeedCacheActor.shared.set(feedType, videos: videos)
+                    
+                    // Fire-and-forget image preloading
+                    self.preloadThumbnails(for: videos)
+                    
+                    let totalTime = Date().timeIntervalSince(fetchStart)
+                    print("[TIMING] ExploreNewest: TOTAL \(String(format: "%.3f", totalTime))s")
                     
                     await send(.finishLoading(videos))
                 }
@@ -282,22 +414,43 @@ struct FeedFeature {
                 return .run { [client = state.client, feedType = state.feedType] send in
                     await send(.setLoading(true))
                     
-                    print("Getting recommended videos from instance")
+                    // Check global cache first
+                    if let cachedVideos = await FeedCacheActor.shared.get(feedType) {
+                        print("[CACHE] Using cached videos for recommended")
+                        await send(.finishLoading(cachedVideos))
+                        return
+                    }
                     
                     // Use -best for logged in users, -hot for not logged in
                     let sort: TubeSDK.VideoSort
                     if client.currentToken != nil {
-                        print("User is authenticated, using -best sort for personalized recommendations")
                         sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
                     } else {
-                        print("User is not authenticated, using -hot sort")
                         sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
                     }
                     
-                    let peertubeVideos = try await client.getVideos(sort: sort)
+                    print("[TIMING] Recommended: Starting fetch...")
+                    let fetchStart = Date()
                     
-                    // Save to DB for caching and use returned VideoRows (preserves server order)
+                    // Get videos with pagination
+                    let peertubeVideos = try await client.getVideos(sort: sort, count: 30)
+                    let apiTime = Date().timeIntervalSince(fetchStart)
+                    print("[TIMING] Recommended: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
+                    
+                    // Save to DB for caching and use returned VideoRows
+                    let dbStart = Date()
                     let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                    let dbTime = Date().timeIntervalSince(dbStart)
+                    print("[TIMING] Recommended: DB writes took \(String(format: "%.3f", dbTime))s")
+                    
+                    // Update global cache
+                    await FeedCacheActor.shared.set(feedType, videos: videos)
+                    
+                    // Fire-and-forget image preloading
+                    self.preloadThumbnails(for: videos)
+                    
+                    let totalTime = Date().timeIntervalSince(fetchStart)
+                    print("[TIMING] Recommended: TOTAL \(String(format: "%.3f", totalTime))s")
                     
                     await send(.finishLoading(videos))
                 }
@@ -443,7 +596,11 @@ struct FeedFeature {
                 state.hasLoadedAtLeastOnce = true
                 return .none
             case .pulledToRefresh:
-                return .send(.loadVideos)
+                return .run { [feedType = state.feedType] send in
+                    // Invalidate global cache on refresh
+                    await FeedCacheActor.shared.invalidate(feedType)
+                    await send(.loadVideos)
+                }
             case .channelTapped(let row):
                 let _ = row
                 return .none
