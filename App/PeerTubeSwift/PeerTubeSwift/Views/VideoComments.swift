@@ -70,12 +70,27 @@ struct VideoCommentsFeature {
                 }
                 trees.forEach(traverse)
                 
-                return .run { [uniqueHosts] send in
+                // Convert to array to avoid capturing mutable Set in async context
+                let hosts = Array(uniqueHosts)
+                
+                return .run { send in
                     @Dependency(\.defaultDatabase) var database
                     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
-                    for host in uniqueHosts {
-                        if let instance = try? await peertubeOrchestrator.syncInstanceInfo(host, database) {
-                            await send(.instanceAvatarLoaded(host: host, avatarUrl: instance.avatarUrl))
+                    
+                    await withTaskGroup(of: (String, String?).self) { group in
+                        for host in hosts {
+                            group.addTask { @Sendable in
+                                if let instance = try? await peertubeOrchestrator.syncInstanceInfo(host, database) {
+                                    return (host, instance.avatarUrl)
+                                }
+                                return (host, nil)
+                            }
+                        }
+                        
+                        for await (host, avatarUrl) in group {
+                            if let avatarUrl = avatarUrl {
+                                await send(.instanceAvatarLoaded(host: host, avatarUrl: avatarUrl))
+                            }
                         }
                     }
                 }

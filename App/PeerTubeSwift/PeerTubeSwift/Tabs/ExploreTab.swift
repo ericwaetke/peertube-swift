@@ -30,6 +30,7 @@ struct ExploreTabFeature {
         case exploreFeed(FeedFeature)
         case videoDetail(VideoDetailsFeature)
         case searchResults(FeedFeature)
+        case channelDetail(VideoChannelFeature)
     }
     
     @ObservableState
@@ -68,14 +69,60 @@ struct ExploreTabFeature {
                     }
                     state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
                     return .none
-                    
+
                 case let .element(id: _, action: .searchResults(.videoTapped(row: row))):
                     guard let instance = row.instance else {
                         return .none
                     }
                     state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
                     return .none
-                    
+
+                case let .element(id: _, action: .exploreFeed(.channelTapped(row: row))):
+                    guard let channel = row.channel,
+                          let instance = row.instance else {
+                        return .none
+                    }
+                    var channelState = VideoChannelFeature.State(host: instance.host)
+                    channelState.channelName = channel.name
+                    state.path.append(.channelDetail(channelState))
+                    // Capture path ID before async block
+                    let pathId = state.path.ids.last!
+                    return .run { send in
+                        await send(.path(.element(
+                            id: pathId,
+                            action: .channelDetail(.loadChannelFromRow(
+                                channelId: channel.id,
+                                channelName: channel.name,
+                                avatarUrl: channel.avatarUrl,
+                                description: channel.description,
+                                host: instance.host
+                            ))
+                        )))
+                    }
+
+                case let .element(id: _, action: .searchResults(.channelTapped(row: row))):
+                    guard let channel = row.channel,
+                          let instance = row.instance else {
+                        return .none
+                    }
+                    var channelState = VideoChannelFeature.State(host: instance.host)
+                    channelState.channelName = channel.name
+                    state.path.append(.channelDetail(channelState))
+                    // Capture path ID before async block
+                    let pathId = state.path.ids.last!
+                    return .run { send in
+                        await send(.path(.element(
+                            id: pathId,
+                            action: .channelDetail(.loadChannelFromRow(
+                                channelId: channel.id,
+                                channelName: channel.name,
+                                avatarUrl: channel.avatarUrl,
+                                description: channel.description,
+                                host: instance.host
+                            ))
+                        )))
+                    }
+
                 default:
                     return .none
                 }
@@ -199,6 +246,8 @@ struct ExploreTab: View {
                 .navigationTitle("Search Results")
         case let .videoDetail(store):
             VideoDetails(store: store)
+        case let .channelDetail(store):
+            VideoChannelView(store: store)
         }
     }
     

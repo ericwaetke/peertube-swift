@@ -24,7 +24,7 @@ struct VideoDetailsFeature {
         var videoDetails: TubeSDK.VideoDetails?
         
         var actions: VideoActionsFeature.State
-        var channel: VideoChannelFeature.State
+        var channelPreview: ChannelPreviewFeature.State
         var description: VideoDescriptionFeature.State
         var comments: VideoCommentsFeature.State
         var isNotFound: Bool = false
@@ -33,7 +33,7 @@ struct VideoDetailsFeature {
             self.host = host
             self.videoId = videoId
             self.actions = VideoActionsFeature.State(host: host, videoId: videoId)
-            self.channel = VideoChannelFeature.State(host: host)
+            self.channelPreview = ChannelPreviewFeature.State(host: host)
             self.description = VideoDescriptionFeature.State()
             self.comments = VideoCommentsFeature.State(videoId: videoId)
         }
@@ -49,7 +49,7 @@ struct VideoDetailsFeature {
         case videoLoadFailed
 
         case actions(VideoActionsFeature.Action)
-        case channel(VideoChannelFeature.Action)
+        case channelPreview(ChannelPreviewFeature.Action)
         case description(VideoDescriptionFeature.Action)
         case comments(VideoCommentsFeature.Action)
     }
@@ -58,8 +58,8 @@ struct VideoDetailsFeature {
         Scope(state: \.actions, action: \.actions) {
             VideoActionsFeature()
         }
-        Scope(state: \.channel, action: \.channel) {
-            VideoChannelFeature()
+        Scope(state: \.channelPreview, action: \.channelPreview) {
+            ChannelPreviewFeature()
         }
         Scope(state: \.description, action: \.description) {
             VideoDescriptionFeature()
@@ -104,7 +104,7 @@ struct VideoDetailsFeature {
                 }
                 
             case .instanceLoaded(let instance):
-                state.channel.instance = instance
+                state.channelPreview.instance = instance
                 return .run { [client = state.client, videoId = state.videoId] send in
                     print("running side-effect screen loaded")
                     var videoDetails = try await client.getVideo(
@@ -140,7 +140,7 @@ struct VideoDetailsFeature {
                 state.videoDetails = videoDetails
                 
                 state.actions.videoDetails = videoDetails
-                state.channel.videoDetails = videoDetails
+                state.channelPreview.videoDetails = videoDetails
                 state.description.videoDetails = videoDetails
                 state.comments.videoDetails = videoDetails
                 
@@ -151,7 +151,7 @@ struct VideoDetailsFeature {
                 }
                 
                 return .merge(
-                    .send(.channel(.loadChannel(videoDetails))),
+                    .send(.channelPreview(.loadChannelPreview(videoDetails))),
                     .send(.actions(.loadUserRating)),
                     .send(.comments(.loadComments)),
                     .run { [videoDetails] _ in
@@ -165,7 +165,7 @@ struct VideoDetailsFeature {
             case .description(.delegate(.seekTo(let time))):
                 return .send(.seekTo(time))
                 
-            case .actions, .channel, .description, .comments:
+            case .actions, .channelPreview, .description, .comments:
                 return .none
             }
         }
@@ -256,7 +256,7 @@ struct VideoDetails: View {
                             
                             Divider()
                             
-                            VideoChannelView(store: self.store.scope(state: \.channel, action: \.channel))
+                            ChannelPreviewView(store: self.store.scope(state: \.channelPreview, action: \.channelPreview))
 
                             Divider()
 

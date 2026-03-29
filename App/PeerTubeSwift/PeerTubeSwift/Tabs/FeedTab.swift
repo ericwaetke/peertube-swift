@@ -14,6 +14,7 @@ struct FeedTabFeature {
     @Reducer
     enum Path {
         case videoDetail(VideoDetailsFeature)
+        case channelDetail(VideoChannelFeature)
     }
     
     @ObservableState
@@ -56,14 +57,37 @@ struct FeedTabFeature {
                 return .none
             case let .subscriptionFeed(action):
                 switch action {
-                    
+
                 case .videoTapped(row: let row):
                     guard let instance = row.instance else {
                         return .none
                     }
                     state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
                     return .none
-                    
+
+                case .channelTapped(row: let row):
+                    guard let channel = row.channel,
+                          let instance = row.instance else {
+                        return .none
+                    }
+                    var channelState = VideoChannelFeature.State(host: instance.host)
+                    channelState.channelName = channel.name
+                    state.path.append(.channelDetail(channelState))
+                    // Load channel data from the row - capture path ID before async block
+                    let pathId = state.path.ids.last!
+                    return .run { send in
+                        await send(.path(.element(
+                            id: pathId,
+                            action: .channelDetail(.loadChannelFromRow(
+                                channelId: channel.id,
+                                channelName: channel.name,
+                                avatarUrl: channel.avatarUrl,
+                                description: channel.description,
+                                host: instance.host
+                            ))
+                        )))
+                    }
+
                 default:
                     return .none
                 }
@@ -137,6 +161,8 @@ struct FeedTab: View {
             switch store.case {
             case let .videoDetail(store):
                 VideoDetails(store: store)
+            case let .channelDetail(store):
+                VideoChannelView(store: store)
             }
         }
         .sheet(item: $store.scope(state: \.manageSubscriptions, action: \.manageSubsctiptions)) { store in

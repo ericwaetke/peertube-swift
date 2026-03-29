@@ -251,10 +251,13 @@ struct FeedFeature {
         }
         
         // Phase 2: Batch DB writes in a single transaction to avoid SQLite lock contention
-        var videoRows: [VideoRow] = []
-        try await database.write { db in
+        let videoRows: [VideoRow] = try await database.write { db -> [VideoRow] in
+            var rows: [VideoRow] = []
             for (_, peertubeVideo, data) in processedVideos {
-                guard let data = data else { continue }
+                guard let data = data,
+                      let videoId = peertubeVideo.uuid,
+                      let videoName = peertubeVideo.name,
+                      let publishedAt = peertubeVideo.publishedAt else { continue }
                 
                 let channel = try VideoChannel
                     .upsert {
@@ -262,6 +265,7 @@ struct FeedFeature {
                             id: "\(data.channelUsername)@\(data.instanceHost)",
                             name: data.channelDisplayName,
                             avatarUrl: data.avatarUrl,
+                            description: data.channelDescription,
                             instanceID: data.instance.id
                         )
                     }
@@ -279,16 +283,16 @@ struct FeedFeature {
                     }
                 }
                 
-                let existingTime = try Video.find(peertubeVideo.uuid).fetchOne(db)?.currentTime
+                let existingTime = try Video.find(videoId).fetchOne(db)?.currentTime
                 
                 let video = try Video
                     .upsert {
                         Video(
-                            id: peertubeVideo.uuid,
+                            id: videoId,
                             channelID: "\(data.channelUsername)@\(data.instanceHost)",
                             instanceID: data.instance.id,
-                            name: peertubeVideo.name,
-                            publishDate: peertubeVideo.publishedAt,
+                            name: videoName,
+                            publishDate: publishedAt,
                             duration: peertubeVideo.duration,
                             currentTime: peertubeVideo.userHistory?.currentTime ?? existingTime,
                             thumbnailUrl: thumbnailUrl
@@ -298,9 +302,10 @@ struct FeedFeature {
                     .fetchOne(db)
                 
                 if let inserted = video {
-                    videoRows.append(VideoRow(video: inserted, channel: channel, instance: data.instance))
+                    rows.append(VideoRow(video: inserted, channel: channel, instance: data.instance))
                 }
             }
+            return rows
         }
         
         return videoRows
@@ -311,6 +316,7 @@ struct FeedFeature {
         let channelUsername: String
         let channelDisplayName: String
         let avatarUrl: String?
+        let channelDescription: String?
         let instanceHost: String
         let instance: Instance
     }
@@ -334,13 +340,16 @@ struct FeedFeature {
         
         return await withErrorReporting {
             let avatarUrl: String? = channel.avatars?.first?.fileUrl
-            
+            // Note: VideoChannelSummary doesn't have description - it's only available in full VideoChannel
+            // Description will be fetched when navigating to channel detail
+
             let instance = try await self.peertubeOrchestrator.syncInstanceInfo(instanceHost, database)
-            
+
             return ProcessedVideoData(
                 channelUsername: channelUsername,
                 channelDisplayName: channelDisplayName,
                 avatarUrl: avatarUrl,
+                channelDescription: nil,
                 instanceHost: instanceHost,
                 instance: instance
             )

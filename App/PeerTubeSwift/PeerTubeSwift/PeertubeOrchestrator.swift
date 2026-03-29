@@ -75,7 +75,7 @@ struct PeertubeOrchestratorClient {
 }
 
 /// Helper function for instance sync - separated for use in task coalescing
-private func performInstanceSync(host: String, database: any DatabaseWriter) async -> Instance? {
+private func performInstanceSync(host: String, database: any DatabaseWriter) async throws -> Instance? {
     // Ensure the instance exists in the database
     let existingInstance = try await database.read { db in
         try Instance.find(host).fetchOne(db)
@@ -135,7 +135,12 @@ extension PeertubeOrchestratorClient: DependencyKey {
             // 2. Use coalescing to avoid concurrent requests for the same host
             let syncTask = await instanceCache.getOrCreateSyncTask(host) {
                 // This block runs only once even if multiple tasks request the same host
-                await performInstanceSync(host: host, database: database)
+                do {
+                    return try await performInstanceSync(host: host, database: database)
+                } catch {
+                    print("Failed to sync instance: \(error)")
+                    return nil
+                }
             }
             
             // Wait for the task to complete (or return cached result if available)
