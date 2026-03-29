@@ -11,7 +11,13 @@ import TubeSDK
 import Dependencies
 
 struct VideoCard: View {
-    let row: VideoRow
+    let row: VideoRow?
+    let video: TubeSDK.Video?
+    let channelName: String?
+    let channelAvatarUrl: String?
+    let instanceHost: String?
+    let instanceAvatarUrl: String?
+    let client: TubeSDKClient?
     let onVideoTap: () -> Void
     let openChannel: () -> Void
     
@@ -25,6 +31,12 @@ struct VideoCard: View {
         openChannel: @escaping () -> Void
     ) {
         self.row = row
+        self.video = nil
+        self.channelName = nil
+        self.channelAvatarUrl = nil
+        self.instanceHost = nil
+        self.instanceAvatarUrl = nil
+        self.client = nil
         self.onVideoTap = onVideoTap
         self.openChannel = openChannel
         
@@ -34,18 +46,85 @@ struct VideoCard: View {
             self._cachedThumbnail = FetchOne(PeertubeImage.none)
         }
     }
-    
-//    @FetchOne
-//    var channel: VideoChannel?
-//    
-//    @FetchOne(PeertubeImage.where { $0.id == video.thumbnailID }) var thumbnail: PeertubeImage?
+
+    init(
+        video: TubeSDK.Video,
+        channelName: String,
+        channelAvatarUrl: String?,
+        instanceHost: String,
+        instanceAvatarUrl: String?,
+        client: TubeSDKClient?,
+        onVideoTap: @escaping () -> Void,
+        openChannel: @escaping () -> Void
+    ) {
+        self.row = nil
+        self.video = video
+        self.channelName = channelName
+        self.channelAvatarUrl = channelAvatarUrl
+        self.instanceHost = instanceHost
+        self.instanceAvatarUrl = instanceAvatarUrl
+        self.client = client
+        self.onVideoTap = onVideoTap
+        self.openChannel = openChannel
+
+        // Use client.getImageUrl for proper thumbnail URL construction
+        if let thumbnailPath = video.thumbnailPath, let client = client {
+            let thumbnailUrl = (try? client.getImageUrl(path: thumbnailPath).absoluteString)
+            self._cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnailUrl })
+        } else {
+            self._cachedThumbnail = FetchOne(PeertubeImage.none)
+        }
+    }
     
     let formatter = RelativeDateTimeFormatter()
-    
+
+    private var videoName: String {
+        row?.video.name ?? video?.name ?? "Unknown"
+    }
+
+    private var videoThumbnailUrl: String? {
+        if let url = row?.video.thumbnailUrl {
+            return url
+        }
+        // Use client.getImageUrl for proper thumbnail URL construction
+        if let thumbnailPath = video?.thumbnailPath, let client = client {
+            return try? client.getImageUrl(path: thumbnailPath).absoluteString
+        }
+        return nil
+    }
+
+    private var videoDuration: Int? {
+        row?.video.duration ?? video?.duration
+    }
+
+    private var videoCurrentTime: Int? {
+        row?.video.currentTime ?? video?.userHistory?.currentTime
+    }
+
+    private var videoPublishDate: Date? {
+        row?.video.publishDate ?? video?.publishedAt
+    }
+
+    private var channelDisplayName: String {
+        row?.channel?.name ?? channelName ?? "unknown"
+    }
+
+    private var channelDisplayAvatarUrl: String? {
+        row?.channel?.avatarUrl ?? channelAvatarUrl
+    }
+
+    private var instanceDisplayHost: String {
+        row?.instance?.host ?? instanceHost ?? ""
+    }
+
+    private var instanceDisplayAvatarUrl: String? {
+        row?.instance?.avatarUrl ?? instanceAvatarUrl
+    }
+
     var body: some View {
         VStack {
-            if let thumbnail = row.video.thumbnailUrl,
-                let url = URL(string: thumbnail) {
+            if let thumbnailUrl = videoThumbnailUrl,
+                let url = URL(string: thumbnailUrl) {
                 ZStack(alignment: .topLeading) {
                     if let cachedData = cachedThumbnail?.data, let uiImage = UIImage(data: cachedData) {
                         Image(uiImage: uiImage)
@@ -73,32 +152,31 @@ struct VideoCard: View {
                         .aspectRatio(16 / 9, contentMode: .fit)
                         .clipShape(.rect(cornerRadius: 8))
                         .task {
-                            try? await peertubeOrchestrator.cacheImageIfNeeded(thumbnail, database)
+                            try? await peertubeOrchestrator.cacheImageIfNeeded(thumbnailUrl, database)
                         }
                     }
-                    
+
                     VStack(alignment: .leading) {
-                        if let instanceName = row.instance?.host {
-                            InstanceIndicator(instanceName: instanceName, instanceImage: row.instance?.avatarUrl)
-                            .padding(8)
+                        if !instanceDisplayHost.isEmpty {
+                            InstanceIndicator(instanceName: instanceDisplayHost, instanceImage: instanceDisplayAvatarUrl)
+                                .padding(8)
                         }
-                        
+
                         Spacer()
-                        
+
                         HStack {
                             Spacer()
-                            if let durationInt = row.video.duration {
+                            if let durationInt = videoDuration {
                                 Text(Duration.seconds(durationInt).formatted())
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
-//                                    .clipShape(.rect(cornerRadius: 4))
                                     .padding(8)
                             }
                         }
                     }
-                    
-                    if let duration = row.video.duration, let currentTime = row.video.currentTime, duration > 0, currentTime > 0 {
+
+                    if let duration = videoDuration, let currentTime = videoCurrentTime, duration > 0, currentTime > 0 {
                         VStack {
                             Spacer()
                             GeometryReader { geometry in
@@ -108,37 +186,39 @@ struct VideoCard: View {
                             }
                             .frame(height: 4)
                         }
-                        .clipShape(.rect(cornerRadius: 8)) // Ensure progress bar follows corner radius at bottom
+                        .clipShape(.rect(cornerRadius: 8))
                     }
                 }
                 .aspectRatio(16 / 9, contentMode: .fit)
             } else {
-            Color.secondary
-                .frame(
-                    minWidth: 0,
-                    maxWidth: .infinity,
-                    minHeight: 100,
-                    maxHeight: .infinity
-                )
-                .aspectRatio(16 / 9, contentMode: .fit)
-                .clipShape(.rect(cornerRadius: 8))
+                Color.secondary
+                    .frame(
+                        minWidth: 0,
+                        maxWidth: .infinity,
+                        minHeight: 100,
+                        maxHeight: .infinity
+                    )
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .clipShape(.rect(cornerRadius: 8))
             }
             HStack (alignment: .top) {
-                AvatarView(url: row.channel?.avatarUrl, name: row.channel?.name ?? "unknown")
+                AvatarView(url: channelDisplayAvatarUrl, name: channelDisplayName)
                     .onTapGesture {
                         openChannel()
                     }
                 VStack (alignment: .leading) {
-                    Text(row.video.name)
+                    Text(videoName)
                         .fontWeight(.bold)
                     HStack {
-                        Text(row.channel?.name ?? "unknown channel")
+                        Text(channelDisplayName)
                             .font(.caption)
-                        
-                            Text("·")
-                        Text(formatter.localizedString(for: row.video.publishDate, relativeTo: Date.now))
+
+                        Text("·")
+                        if let publishDate = videoPublishDate {
+                            Text(formatter.localizedString(for: publishDate, relativeTo: Date.now))
                                 .font(.caption)
-                        
+                        }
+
                     }
                 }
                 Spacer()
@@ -152,6 +232,6 @@ struct VideoCard: View {
 }
 
 #Preview {
-//    VideoCard(host: "example.com", video: VideoMockData)
-//        .environment(AppState())
+    // VideoCard(host: "example.com", video: VideoMockData)
+    //        .environment(AppState())
 }

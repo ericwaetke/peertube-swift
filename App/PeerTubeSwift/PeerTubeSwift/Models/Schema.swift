@@ -23,6 +23,7 @@ import SQLiteData
     var name: String
 
     var avatarUrl: String?
+    var description: String?
     var instanceID: Instance.ID
 }
 
@@ -122,7 +123,8 @@ func appDatabase() throws -> any DatabaseWriter {
                     "id" TEXT PRIMARY KEY NOT NULL UNIQUE,
                     "name" TEXT NOT NULL,
                     "instanceID" TEXT NOT NULL REFERENCES "instances"("host") ON DELETE CASCADE,
-                    "avatarUrl" TEXT
+                    "avatarUrl" TEXT,
+                    "description" TEXT
                 ) STRICT
             """
         )
