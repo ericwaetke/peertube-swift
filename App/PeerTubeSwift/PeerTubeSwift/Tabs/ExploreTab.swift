@@ -120,6 +120,14 @@ struct ExploreTab: View {
     @ViewBuilder
     private var contentView: some View {
         Form {
+            if store.session != nil {
+                // Only show Continue Watching for logged-in users
+                NavigationLink(
+                    "Continue Watching",
+                    state: ExploreTabFeature.Path.State.exploreFeed(FeedFeature.State(feedType: .continueWatching))
+                )
+            }
+            
             channelsSection
             NavigationLink(
                 "Newest",
@@ -229,6 +237,8 @@ struct ExploreTab: View {
             return "Subscriptions"
         case .search:
             return "Search Results"
+        case .continueWatching:
+            return "Continue Watching"
         }
     }
 }
