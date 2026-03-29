@@ -127,8 +127,6 @@ struct ExploreTab: View {
                     state: ExploreTabFeature.Path.State.exploreFeed(FeedFeature.State(feedType: .continueWatching))
                 )
             }
-            
-            channelsSection
             NavigationLink(
                 "Newest",
                 state: ExploreTabFeature.Path.State.exploreFeed(FeedFeature.State(feedType: .exploreNewest))
@@ -147,29 +145,6 @@ struct ExploreTab: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 settingsMenu
-            }
-        }
-    }
-    
-    private var channelsSection: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Channels")
-                    .font(.title2)
-                    .padding(.horizontal, 16)
-                ScrollView(.horizontal) {
-                    HStack {
-                        ForEach(0...12, id: \.self) { i in
-                            VStack(alignment: .leading) {
-                                Color.secondary
-                                    .frame(width: 128, height: 128)
-                                    .clipShape(.circle)
-                                Text("Channel \(i)")
-                            }
-                        }
-                    }
-                }
-                .contentMargins(.horizontal, 16)
             }
         }
     }
