@@ -86,9 +86,6 @@ struct VideoPlayerView: View {
                     .scaleEffect(1.2)
             }
         }
-        .onAppear {
-            isPlayerReady = false
-        }
     }
 }
 
@@ -280,6 +277,10 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
         }
 
         print("🎬 VideoPlayer: URL changed, updating player...")
+
+        // Reset player ready state so loading overlay appears during stream change
+        context.coordinator.hasNotifiedPlayerReady = false
+        self.isPlayerReady = false
 
         // Store current playback state
         let currentTime = uiViewController.player?.currentTime()

@@ -150,6 +150,7 @@
 				F67428DD2EF4AFC6000600DB /* Sources */,
 				F67428DE2EF4AFC6000600DB /* Frameworks */,
 				F67428DF2EF4AFC6000600DB /* Resources */,
+				F6DE52E42F781E3600F19AAD /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -294,6 +295,26 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		F6DE52E42F781E3600F19AAD /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\n${BUILD_DIR%/Build/*}/SourcePackages/checkouts/posthog-ios/build-tools/upload-symbols.sh\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		F67428DD2EF4AFC6000600DB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -343,6 +364,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 855632PAQ8;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PeerTubeSwift/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "PeerTube Swift";
@@ -381,6 +403,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 855632PAQ8;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PeerTubeSwift/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "PeerTube Swift";
