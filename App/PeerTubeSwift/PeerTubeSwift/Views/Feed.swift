@@ -231,36 +231,38 @@ struct FeedFeature {
         }
     }
     
-    /// Process a single video and return a VideoRow (used by parallel saveVideos)
-    private func processVideo(
-        peertubeVideo: TubeSDK.Video,
-        client: TubeSDKClient
-    ) async -> VideoRow? {
-        guard let channel = peertubeVideo.channel,
-              let videoId = peertubeVideo.uuid,
-              let videoName = peertubeVideo.name,
-              let publishedAt = peertubeVideo.publishedAt,
-              let channelUsername = channel.name,
-              let channelDisplayName = channel.displayName,
-              let instanceHost = channel.host
-        else {
-            print("Error adding video")
-            return nil
+    /// Save videos to database with parallel network calls but serialized DB writes
+    /// This avoids SQLite "database is locked" errors from concurrent writes
+    func saveVideos(videos: [TubeSDK.Video], client: TubeSDKClient) async throws -> [VideoRow] {
+        // Phase 1: Process all videos concurrently for network calls (syncInstanceInfo)
+        let processedVideos = await withTaskGroup(of: (Int, TubeSDK.Video, ProcessedVideoData?).self) { group in
+            for (index, peertubeVideo) in videos.enumerated() {
+                group.addTask {
+                    let data = await self.processVideoNetwork(peertubeVideo: peertubeVideo, client: client)
+                    return (index, peertubeVideo, data)
+                }
+            }
+            
+            var results: [(Int, TubeSDK.Video, ProcessedVideoData?)] = []
+            for await result in group {
+                results.append(result)
+            }
+            return results.sorted { $0.0 < $1.0 }
         }
         
-        return await withErrorReporting {
-            let avatarUrl: String? = channel.avatars?.first?.fileUrl
-            
-            let instance = try await self.peertubeOrchestrator.syncInstanceInfo(instanceHost, database)
-            
-            return try await database.write { db in
+        // Phase 2: Batch DB writes in a single transaction to avoid SQLite lock contention
+        var videoRows: [VideoRow] = []
+        try await database.write { db in
+            for (_, peertubeVideo, data) in processedVideos {
+                guard let data = data else { continue }
+                
                 let channel = try VideoChannel
                     .upsert {
                         VideoChannel(
-                            id: "\(channelUsername)@\(instanceHost)",
-                            name: channelDisplayName,
-                            avatarUrl: avatarUrl,
-                            instanceID: instance.id
+                            id: "\(data.channelUsername)@\(data.instanceHost)",
+                            name: data.channelDisplayName,
+                            avatarUrl: data.avatarUrl,
+                            instanceID: data.instance.id
                         )
                     }
                     .returning(\.self)
@@ -277,16 +279,16 @@ struct FeedFeature {
                     }
                 }
                 
-                let existingTime = try Video.find(videoId).fetchOne(db)?.currentTime
+                let existingTime = try Video.find(peertubeVideo.uuid).fetchOne(db)?.currentTime
                 
                 let video = try Video
                     .upsert {
                         Video(
-                            id: videoId,
-                            channelID: "\(channelUsername)@\(instanceHost)",
-                            instanceID: instance.id,
-                            name: videoName,
-                            publishDate: publishedAt,
+                            id: peertubeVideo.uuid,
+                            channelID: "\(data.channelUsername)@\(data.instanceHost)",
+                            instanceID: data.instance.id,
+                            name: peertubeVideo.name,
+                            publishDate: peertubeVideo.publishedAt,
                             duration: peertubeVideo.duration,
                             currentTime: peertubeVideo.userHistory?.currentTime ?? existingTime,
                             thumbnailUrl: thumbnailUrl
@@ -296,33 +298,52 @@ struct FeedFeature {
                     .fetchOne(db)
                 
                 if let inserted = video {
-                    return VideoRow(video: inserted, channel: channel, instance: instance)
-                } else {
-                    return nil
+                    videoRows.append(VideoRow(video: inserted, channel: channel, instance: data.instance))
                 }
             }
         }
+        
+        return videoRows
     }
     
-    /// Save videos to database in parallel (Fix 1)
-    func saveVideos(videos: [TubeSDK.Video], client: TubeSDKClient) async throws -> [VideoRow] {
-        await withTaskGroup(of: (Int, VideoRow?).self) { group in
-            for (index, peertubeVideo) in videos.enumerated() {
-                group.addTask {
-                    let row = await self.processVideo(peertubeVideo: peertubeVideo, client: client)
-                    return (index, row)
-                }
-            }
+    /// Intermediate data structure for processed video info
+    private struct ProcessedVideoData {
+        let channelUsername: String
+        let channelDisplayName: String
+        let avatarUrl: String?
+        let instanceHost: String
+        let instance: Instance
+    }
+    
+    /// Process video network calls (instance sync) - called in parallel
+    private func processVideoNetwork(
+        peertubeVideo: TubeSDK.Video,
+        client: TubeSDKClient
+    ) async -> ProcessedVideoData? {
+        guard let channel = peertubeVideo.channel,
+              let videoId = peertubeVideo.uuid,
+              let videoName = peertubeVideo.name,
+              let publishedAt = peertubeVideo.publishedAt,
+              let channelUsername = channel.name,
+              let channelDisplayName = channel.displayName,
+              let instanceHost = channel.host
+        else {
+            print("Error adding video: missing required fields")
+            return nil
+        }
+        
+        return await withErrorReporting {
+            let avatarUrl: String? = channel.avatars?.first?.fileUrl
             
-            var results: [(Int, VideoRow?)] = []
-            for await result in group {
-                results.append(result)
-            }
+            let instance = try await self.peertubeOrchestrator.syncInstanceInfo(instanceHost, database)
             
-            // Sort by original index to maintain API order, filter out nils
-            return results
-                .sorted { $0.0 < $1.0 }
-                .compactMap { $0.1 }
+            return ProcessedVideoData(
+                channelUsername: channelUsername,
+                channelDisplayName: channelDisplayName,
+                avatarUrl: avatarUrl,
+                instanceHost: instanceHost,
+                instance: instance
+            )
         }
     }
     
@@ -333,12 +354,16 @@ struct FeedFeature {
         let orchestrator = peertubeOrchestrator
         let db = database
         
-        // Fire-and-forget - don't block the caller
+        // Fire-and-forget - don't block the caller, but log errors for debugging
         Task {
             await withTaskGroup(of: Void.self) { group in
                 for url in thumbnailUrls.prefix(10) { // Only preload first 10 thumbnails
                     group.addTask {
-                        try? await orchestrator.cacheImageIfNeeded(url, db)
+                        do {
+                            try await orchestrator.cacheImageIfNeeded(url, db)
+                        } catch {
+                            print("[PRELOAD] Failed to cache thumbnail \(url): \(error)")
+                        }
                     }
                 }
             }
