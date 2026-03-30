@@ -27,6 +27,7 @@ struct ChannelPreviewFeature {
         case updateNotificationState(Bool)
         case changeSubscriptionState(Bool)
         case subscriptionStateLoaded(Bool, Bool)
+        case channelTapped
     }
 
     var body: some ReducerOf<Self> {
@@ -162,6 +163,8 @@ struct ChannelPreviewFeature {
                 state.isSubscribedToChannel = isSubscribed
                 state.notifyOnNewVideo = notifyOnNewVideo
                 return .none
+            case .channelTapped:
+                return .none
             }
         }
     }
@@ -176,26 +179,31 @@ struct ChannelPreviewView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                AvatarView(
-                    url: store.state.videoDetails?.channel?.avatars?.first?.fileUrl,
-                    name: store.state.videoDetails?.channel?.displayName ?? "Unknown Channel",
-                    size: 60
-                )
+            Button {
+                store.send(.channelTapped)
+            } label: {
+                HStack(alignment: .top) {
+                    AvatarView(
+                        url: store.state.videoDetails?.channel?.avatars?.first?.fileUrl,
+                        name: store.state.videoDetails?.channel?.displayName ?? "Unknown Channel",
+                        size: 60
+                    )
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(store.state.videoDetails?.channel?.displayName ?? "Unknown Channel")
-                        .font(.headline)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(store.state.videoDetails?.channel?.displayName ?? "Unknown Channel")
+                            .font(.headline)
 
-                    if let instanceHost = store.state.videoDetails?.channel?.host {
-                        InstanceIndicator(instanceName: instanceHost, instanceImage: store.state.instance?.avatarUrl)
+                        if let instanceHost = store.state.videoDetails?.channel?.host {
+                            InstanceIndicator(instanceName: instanceHost, instanceImage: store.state.instance?.avatarUrl)
+                        }
                     }
+
+                    Spacer()
                 }
-
-                Spacer()
-
-                subscribeButton
             }
+            .buttonStyle(.plain)
+
+            subscribeButton
         }
     }
 

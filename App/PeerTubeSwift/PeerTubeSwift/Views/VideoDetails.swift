@@ -52,6 +52,12 @@ struct VideoDetailsFeature {
         case channelPreview(ChannelPreviewFeature.Action)
         case description(VideoDescriptionFeature.Action)
         case comments(VideoCommentsFeature.Action)
+
+        case delegate(Delegate)
+
+        enum Delegate {
+            case navigateToChannel(host: String, channelName: String)
+        }
     }
 
     var body: some ReducerOf<Self> {
@@ -164,6 +170,16 @@ struct VideoDetailsFeature {
                 
             case .description(.delegate(.seekTo(let time))):
                 return .send(.seekTo(time))
+                
+            case .channelPreview(.channelTapped):
+                guard let channel = state.channelPreview.videoDetails?.channel,
+                      let channelName = channel.name else {
+                    return .none
+                }
+                return .send(.delegate(.navigateToChannel(host: state.host, channelName: channelName)))
+                
+            case .delegate:
+                return .none
                 
             case .actions, .channelPreview, .description, .comments:
                 return .none
