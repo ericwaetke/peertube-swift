@@ -122,6 +122,11 @@ struct FeedFeature {
         var order: FeedOrder = .descending
         var errorMessage: String? = nil
         
+        // Pagination state
+        var currentOffset: Int = 0
+        var isLoadingMore: Bool = false
+        var hasMoreVideos: Bool = true
+        
         @FetchAll var instances: [Instance] = []
         
         //        @FetchAll(VideoRow.none)
@@ -140,6 +145,13 @@ struct FeedFeature {
         
         case loadVideos
         case finishLoading([VideoRow])
+        
+        // Pagination actions
+        case loadInitialVideos
+        case loadSecondBatch
+        case loadMoreVideos
+        case finishLoadingMore([VideoRow])
+        case setLoadingMore(Bool)
         
         case loadVideosNewestOfInstance
         case loadRecommendedVideos
@@ -392,12 +404,14 @@ struct FeedFeature {
                 return .send(.loadVideos)
             case .loadVideos:
                 state.errorMessage = nil
+                state.currentOffset = 0
+                state.hasMoreVideos = true
                 
                 switch state.feedType {
                 case .exploreNewest:
-                    return .send(.loadVideosNewestOfInstance)
+                    return .send(.loadInitialVideos)
                 case .recommended:
-                    return .send(.loadRecommendedVideos)
+                    return .send(.loadInitialVideos)
                 case .subscriptions:
                     return .send(.loadSubscriptionVideos)
                 case .search:
@@ -408,74 +422,49 @@ struct FeedFeature {
             case .setLoading(let isLoading):
                 state.isLoadingVideos = isLoading
                 return .none
-            case .loadVideosNewestOfInstance:
+            case .loadInitialVideos:
                 return .run { [client = state.client, feedType = state.feedType] send in
                     await send(.setLoading(true))
                     
                     // Check global cache first
                     if let cachedVideos = await FeedCacheActor.shared.get(feedType) {
-                        print("[CACHE] Using cached videos for explore newest")
+                        print("[CACHE] Using cached videos for initial load")
                         await send(.finishLoading(cachedVideos))
                         return
                     }
                     
-                    print("[TIMING] ExploreNewest: Starting fetch...")
+                    // Determine sort based on feed type
+                    let sort: TubeSDK.VideoSort?
+                    switch feedType {
+                    case .recommended:
+                        // Use -best for logged in users, -hot for not logged in
+                        if client.currentToken != nil {
+                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+                        } else {
+                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+                        }
+                    default:
+                        sort = nil
+                    }
+                    
+                    print("[TIMING] InitialLoad: Starting fetch (4 videos)...")
                     let fetchStart = Date()
                     
-                    // Get Videos from Peertube with pagination
-                    let peertubeVideos = try await client.getVideos(count: 30)
-                    let apiTime = Date().timeIntervalSince(fetchStart)
-                    print("[TIMING] ExploreNewest: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
-                    
-                    // Save to DB for caching and use returned VideoRows
-                    let dbStart = Date()
-                    let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
-                    let dbTime = Date().timeIntervalSince(dbStart)
-                    print("[TIMING] ExploreNewest: DB writes took \(String(format: "%.3f", dbTime))s")
-                    
-                    // Update global cache
-                    await FeedCacheActor.shared.set(feedType, videos: videos)
-                    
-                    // Fire-and-forget image preloading
-                    self.preloadThumbnails(for: videos)
-                    
-                    let totalTime = Date().timeIntervalSince(fetchStart)
-                    print("[TIMING] ExploreNewest: TOTAL \(String(format: "%.3f", totalTime))s")
-                    
-                    await send(.finishLoading(videos))
-                }
-            case .loadRecommendedVideos:
-                return .run { [client = state.client, feedType = state.feedType] send in
-                    await send(.setLoading(true))
-                    
-                    // Check global cache first
-                    if let cachedVideos = await FeedCacheActor.shared.get(feedType) {
-                        print("[CACHE] Using cached videos for recommended")
-                        await send(.finishLoading(cachedVideos))
-                        return
-                    }
-                    
-                    // Use -best for logged in users, -hot for not logged in
-                    let sort: TubeSDK.VideoSort
-                    if client.currentToken != nil {
-                        sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+                    // Load first 4 videos with pagination
+                    let peertubeVideos: [TubeSDK.Video]
+                    if let sort = sort {
+                        peertubeVideos = try await client.getVideos(sort: sort, count: 4, start: 0)
                     } else {
-                        sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+                        peertubeVideos = try await client.getVideos(count: 4, start: 0)
                     }
-                    
-                    print("[TIMING] Recommended: Starting fetch...")
-                    let fetchStart = Date()
-                    
-                    // Get videos with pagination
-                    let peertubeVideos = try await client.getVideos(sort: sort, count: 30)
                     let apiTime = Date().timeIntervalSince(fetchStart)
-                    print("[TIMING] Recommended: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
+                    print("[TIMING] InitialLoad: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
                     
                     // Save to DB for caching and use returned VideoRows
                     let dbStart = Date()
                     let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
                     let dbTime = Date().timeIntervalSince(dbStart)
-                    print("[TIMING] Recommended: DB writes took \(String(format: "%.3f", dbTime))s")
+                    print("[TIMING] InitialLoad: DB writes took \(String(format: "%.3f", dbTime))s")
                     
                     // Update global cache
                     await FeedCacheActor.shared.set(feedType, videos: videos)
@@ -484,10 +473,71 @@ struct FeedFeature {
                     self.preloadThumbnails(for: videos)
                     
                     let totalTime = Date().timeIntervalSince(fetchStart)
-                    print("[TIMING] Recommended: TOTAL \(String(format: "%.3f", totalTime))s")
+                    print("[TIMING] InitialLoad: TOTAL \(String(format: "%.3f", totalTime))s")
                     
                     await send(.finishLoading(videos))
+                    
+                    // Automatically load second batch (11 more videos)
+                    await send(.loadSecondBatch)
                 }
+            case .loadSecondBatch:
+                return .run { [client = state.client, feedType = state.feedType] send in
+                    // Show loading spinner for second batch
+                    await send(.setLoadingMore(true))
+                    
+                    // Determine sort based on feed type
+                    let sort: TubeSDK.VideoSort?
+                    
+                    switch feedType {
+                    case .recommended:
+                        // Use -best for logged in users, -hot for not logged in
+                        if client.currentToken != nil {
+                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+                        } else {
+                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+                        }
+                    default:
+                        sort = nil
+                    }
+                    
+                    print("[TIMING] SecondBatch: Starting fetch (11 videos at offset 4)...")
+                    let fetchStart = Date()
+                    
+                    // Load 11 more videos starting at offset 4
+                    let peertubeVideos: [TubeSDK.Video]
+                    if let sort = sort {
+                        peertubeVideos = try await client.getVideos(sort: sort, count: 11, start: 4)
+                    } else {
+                        peertubeVideos = try await client.getVideos(count: 11, start: 4)
+                    }
+                    
+                    let apiTime = Date().timeIntervalSince(fetchStart)
+                    print("[TIMING] SecondBatch: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
+                    
+                    // Save to DB for caching and use returned VideoRows
+                    let dbStart = Date()
+                    let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                    let dbTime = Date().timeIntervalSince(dbStart)
+                    print("[TIMING] SecondBatch: DB writes took \(String(format: "%.3f", dbTime))s")
+                    
+                    // Update global cache with combined results
+                    let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []
+                    let combinedVideos = currentFeed + videos
+                    await FeedCacheActor.shared.set(feedType, videos: combinedVideos)
+                    
+                    // Fire-and-forget image preloading
+                    self.preloadThumbnails(for: videos)
+                    
+                    let totalTime = Date().timeIntervalSince(fetchStart)
+                    print("[TIMING] SecondBatch: TOTAL \(String(format: "%.3f", totalTime))s")
+                    
+                    await send(.finishLoadingMore(videos))
+                }
+            // Legacy actions - functionality moved to loadInitialVideos/loadSecondBatch
+            case .loadVideosNewestOfInstance:
+                return .none
+            case .loadRecommendedVideos:
+                return .none
             case .loadVideosBySearch(let searchParameters):
                 return .run { [client = state.client, searchParameters = searchParameters] send in
                     await send(.setLoading(true))
@@ -620,9 +670,81 @@ struct FeedFeature {
                     await send(.finishLoading(videos ?? []))
                 }
             case let .finishLoading(videos):
-                state.feed = videos
+                // First load (offset 0): replace feed
+                if state.currentOffset == 0 {
+                    state.feed = videos
+                    state.currentOffset = videos.count
+                } 
+                // Second batch or more: append to existing feed
+                else {
+                    state.feed.append(contentsOf: videos)
+                    state.currentOffset += videos.count
+                }
                 state.isLoadingVideos = false
                 state.hasLoadedAtLeastOnce = true
+                // If we got any videos, there might be more
+                state.hasMoreVideos = videos.count > 0
+                return .none
+            case .loadMoreVideos:
+                return .run { [client = state.client, feedType = state.feedType, offset = state.currentOffset] send in
+                    await send(.setLoadingMore(true))
+                    
+                    // Determine sort based on feed type
+                    let sort: TubeSDK.VideoSort?
+                    
+                    switch feedType {
+                    case .recommended:
+                        if client.currentToken != nil {
+                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+                        } else {
+                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+                        }
+                    default:
+                        sort = nil
+                    }
+                    
+                    print("[TIMING] LoadMore: Starting fetch at offset \(offset) (15 videos)...")
+                    let fetchStart = Date()
+                    
+                    // Load 15 more videos with current offset
+                    let peertubeVideos: [TubeSDK.Video]
+                    if let sort = sort {
+                        peertubeVideos = try await client.getVideos(sort: sort, count: 15, start: offset)
+                    } else {
+                        peertubeVideos = try await client.getVideos(count: 15, start: offset)
+                    }
+                    
+                    let apiTime = Date().timeIntervalSince(fetchStart)
+                    print("[TIMING] LoadMore: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
+                    
+                    // Save to DB for caching and use returned VideoRows
+                    let dbStart = Date()
+                    let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                    let dbTime = Date().timeIntervalSince(dbStart)
+                    print("[TIMING] LoadMore: DB writes took \(String(format: "%.3f", dbTime))s")
+                    
+                    // Update global cache with combined results
+                    let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []
+                    let combinedVideos = currentFeed + videos
+                    await FeedCacheActor.shared.set(feedType, videos: combinedVideos)
+                    
+                    // Fire-and-forget image preloading
+                    self.preloadThumbnails(for: videos)
+                    
+                    let totalTime = Date().timeIntervalSince(fetchStart)
+                    print("[TIMING] LoadMore: TOTAL \(String(format: "%.3f", totalTime))s")
+                    
+                    await send(.finishLoadingMore(videos))
+                }
+            case let .finishLoadingMore(videos):
+                state.feed.append(contentsOf: videos)
+                state.currentOffset += videos.count
+                state.isLoadingMore = false
+                // If we got any videos, there might be more
+                state.hasMoreVideos = videos.count > 0
+                return .none
+            case let .setLoadingMore(isLoading):
+                state.isLoadingMore = isLoading
                 return .none
             case let .loadingFailed(message):
                 state.errorMessage = message
@@ -697,16 +819,37 @@ struct Feed: View {
                         
                     }
                 } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12) {
-                        ForEach(self.store.feed, id: \.self) { row in
-                            VideoCard(row: row) {
-                                self.store.send(.videoTapped(row: row))
-                            } openChannel: {
-                                self.store.send(.channelTapped(row: row))
+                    VStack(spacing: 0) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12) {
+                            ForEach(self.store.feed, id: \.self) { row in
+                                VideoCard(row: row) {
+                                    self.store.send(.videoTapped(row: row))
+                                } openChannel: {
+                                    self.store.send(.channelTapped(row: row))
+                                }
+                            }
+                        }
+                        .padding()
+                        
+                        // Load More Button
+                        if self.store.hasMoreVideos && self.store.hasLoadedAtLeastOnce {
+                            Group {
+                                if self.store.isLoadingMore {
+                                    ProgressView("Loading more...")
+                                        .padding()
+                                } else {
+                                    Button {
+                                        self.store.send(.loadMoreVideos)
+                                    } label: {
+                                        Label("Load More", systemImage: "arrow.down.circle")
+                                            .padding()
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .padding(.bottom)
+                                }
                             }
                         }
                     }
-                    .padding()
                 }
             }
         }

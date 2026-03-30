@@ -123,6 +123,12 @@ struct ExploreTabFeature {
                         )))
                     }
 
+                case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channelName: channelName)))):
+                    var channelState = VideoChannelFeature.State(host: host)
+                    channelState.channelName = channelName
+                    state.path.append(.channelDetail(channelState))
+                    return .none
+
                 default:
                     return .none
                 }

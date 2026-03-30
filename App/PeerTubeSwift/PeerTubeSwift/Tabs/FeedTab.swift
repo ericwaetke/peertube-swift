@@ -53,8 +53,17 @@ struct FeedTabFeature {
             case .manageSubsctiptions:
                 return .none
                 
-            case .path:
-                return .none
+            case let .path(action):
+                switch action {
+                case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channelName: channelName)))):
+                    var channelState = VideoChannelFeature.State(host: host)
+                    channelState.channelName = channelName
+                    state.path.append(.channelDetail(channelState))
+                    return .none
+
+                default:
+                    return .none
+                }
             case let .subscriptionFeed(action):
                 switch action {
 
