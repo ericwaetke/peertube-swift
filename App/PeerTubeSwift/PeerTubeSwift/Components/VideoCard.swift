@@ -101,6 +101,10 @@ struct VideoCard: View {
         row?.video.publishDate ?? video?.publishedAt
     }
 
+    private var videoViews: Int? {
+        row?.video.views ?? video?.views
+    }
+
     private var channelDisplayName: String {
         row?.channel?.name ?? channelName ?? "unknown"
     }
@@ -209,6 +213,12 @@ struct VideoCard: View {
                     HStack {
                         Text(channelDisplayName)
                             .font(.caption)
+
+                        Text("·")
+                        if let views = videoViews {
+                            Text("^[\(views) View](inflect: true)")
+                                .font(.caption)
+                        }
 
                         Text("·")
                         if let publishDate = videoPublishDate {

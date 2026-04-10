@@ -302,6 +302,7 @@ struct FeedFeature {
                             publishDate: publishedAt,
                             duration: peertubeVideo.duration,
                             currentTime: peertubeVideo.userHistory?.currentTime ?? existingTime,
+                            views: peertubeVideo.views ?? 0,
                             thumbnailUrl: thumbnailUrl
                         )
                     }
