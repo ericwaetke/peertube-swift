@@ -5,8 +5,8 @@
 //  Created by Eric Wätke on 26.12.25.
 //
 
-import SQLiteData
 import ComposableArchitecture
+import SQLiteData
 import SwiftUI
 
 @Reducer
@@ -16,31 +16,31 @@ struct FeedTabFeature {
         case videoDetail(VideoDetailsFeature)
         case channelDetail(VideoChannelFeature)
     }
-    
+
     @ObservableState
     struct State: Equatable {
         var path = StackState<Path.State>()
         var subscriptionFeed = FeedFeature.State(feedType: .subscriptions)
-        
+
         @Presents var manageSubscriptions: SubscriptionFeature.State?
-        
+
         @Shared(.inMemory("session")) var session: UserSession?
     }
-    
+
     enum Action {
         case path(StackActionOf<Path>)
-        
+
         case subscriptionFeed(FeedFeature.Action)
         case manageSubscriptionButtonTapped
         case manageSubsctiptions(PresentationAction<SubscriptionFeature.Action>)
-        
+
         case delegate(Delegate)
-        
+
         enum Delegate {
             case openSettings
         }
     }
-    
+
     var body: some ReducerOf<Self> {
         Scope(state: \.subscriptionFeed, action: \.subscriptionFeed) {
             FeedFeature()
@@ -52,7 +52,6 @@ struct FeedTabFeature {
                 return .none
             case .manageSubsctiptions:
                 return .none
-                
             case let .path(action):
                 switch action {
                 case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channelName: channelName)))):
@@ -66,17 +65,17 @@ struct FeedTabFeature {
                 }
             case let .subscriptionFeed(action):
                 switch action {
-
-                case .videoTapped(row: let row):
+                case let .videoTapped(row: row):
                     guard let instance = row.instance else {
                         return .none
                     }
                     state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
                     return .none
 
-                case .channelTapped(row: let row):
+                case let .channelTapped(row: row):
                     guard let channel = row.channel,
-                          let instance = row.instance else {
+                          let instance = row.instance
+                    else {
                         return .none
                     }
                     var channelState = VideoChannelFeature.State(host: instance.host)
@@ -111,11 +110,9 @@ struct FeedTabFeature {
     }
 }
 
-
-
 struct FeedTab: View {
     @Bindable var store: StoreOf<FeedTabFeature>
-    
+
     var body: some View {
         NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
             Feed(store: self.store.scope(state: \.subscriptionFeed, action: \.subscriptionFeed))
@@ -132,7 +129,7 @@ struct FeedTab: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Divider()
-                                
+
                                 Button {
                                     self.store.send(.manageSubscriptionButtonTapped)
                                 } label: {
@@ -142,9 +139,9 @@ struct FeedTab: View {
                                 Text("Not logged in")
                                     .font(.headline)
                             }
-                            
+
                             Divider()
-                            
+
                             Button {
                                 self.store.send(.delegate(.openSettings))
                             } label: {
@@ -184,13 +181,12 @@ struct FeedTab: View {
     }
 }
 
-
 #Preview {
     let _ = prepareDependencies {
         try! $0.bootstrapDatabase()
         try! $0.defaultDatabase.seed()
     }
-    
+
     FeedTab(
         store: Store(initialState: FeedTabFeature.State()) {
             FeedTabFeature()

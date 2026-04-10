@@ -18,24 +18,24 @@ struct VideoDetailsFeature {
     struct State: Equatable {
         let host: String
         let videoId: String
-        var seekRequest: SeekRequest? = nil
+        var seekRequest: SeekRequest?
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
-        
+
         var videoDetails: TubeSDK.VideoDetails?
-        
+
         var actions: VideoActionsFeature.State
         var channelPreview: ChannelPreviewFeature.State
         var description: VideoDescriptionFeature.State
         var comments: VideoCommentsFeature.State
         var isNotFound: Bool = false
-        
+
         init(host: String, videoId: String) {
             self.host = host
             self.videoId = videoId
-            self.actions = VideoActionsFeature.State(host: host, videoId: videoId)
-            self.channelPreview = ChannelPreviewFeature.State(host: host)
-            self.description = VideoDescriptionFeature.State()
-            self.comments = VideoCommentsFeature.State(videoId: videoId)
+            actions = VideoActionsFeature.State(host: host, videoId: videoId)
+            channelPreview = ChannelPreviewFeature.State(host: host)
+            description = VideoDescriptionFeature.State()
+            comments = VideoCommentsFeature.State(videoId: videoId)
         }
     }
 
@@ -73,17 +73,17 @@ struct VideoDetailsFeature {
         Scope(state: \.comments, action: \.comments) {
             VideoCommentsFeature()
         }
-        
+
         Reduce { state, action in
             switch action {
-            case .seekTo(let time):
+            case let .seekTo(time):
                 state.seekRequest = SeekRequest(time: time)
                 return .none
-                
-            case .timeUpdate(let time):
-                return .run { [client = state.client, videoId = state.videoId, videoDetails = state.videoDetails] send in
+
+            case let .timeUpdate(time):
+                return .run { [client = state.client, videoId = state.videoId, videoDetails = state.videoDetails] _ in
                     try? await client.pingVideoWatchingInProgress(videoID: videoId, currentTime: time)
-                    
+
                     if let uuid = videoDetails?.uuid {
                         @Dependency(\.defaultDatabase) var database
                         try? await database.write { db in
@@ -94,10 +94,10 @@ struct VideoDetailsFeature {
                         }
                     }
                 }
-                
+
             case .screenLoaded:
                 return .send(.loadInstance)
-                
+
             case .loadInstance:
                 return .run { [host = state.host] send in
                     @Dependency(\.defaultDatabase) var database
@@ -108,14 +108,15 @@ struct VideoDetailsFeature {
                         await send(.instanceLoaded(instance))
                     }
                 }
-                
-            case .instanceLoaded(let instance):
+
+            case let .instanceLoaded(instance):
                 state.channelPreview.instance = instance
                 return .run { [client = state.client, videoId = state.videoId] send in
                     print("running side-effect screen loaded")
                     var videoDetails = try await client.getVideo(
-                        host: client.instance.host, id: videoId)
-                        
+                        host: client.instance.host, id: videoId
+                    )
+
                     if videoDetails.userHistory == nil {
                         if let uuid = videoDetails.uuid {
                             @Dependency(\.defaultDatabase) var database
@@ -127,7 +128,7 @@ struct VideoDetailsFeature {
                             }
                         }
                     }
-                        
+
                     await send(.loadVideo(videoDetails))
                 } catch: { error, send in
                     print("Error loading video: \(error)")
@@ -137,25 +138,25 @@ struct VideoDetailsFeature {
                         await send(.videoLoadFailed)
                     }
                 }
-                
+
             case .videoLoadFailed:
                 state.isNotFound = true
                 return .none
-                
-            case .loadVideo(let videoDetails):
+
+            case let .loadVideo(videoDetails):
                 state.videoDetails = videoDetails
-                
+
                 state.actions.videoDetails = videoDetails
                 state.channelPreview.videoDetails = videoDetails
                 state.description.videoDetails = videoDetails
                 state.comments.videoDetails = videoDetails
-                
+
                 if state.actions.selectedQuality == nil {
                     if let quality = videoDetails.streamingPlaylists?.first?.files?.first {
                         state.actions.selectedQuality = quality
                     }
                 }
-                
+
                 return .merge(
                     .send(.channelPreview(.loadChannelPreview(videoDetails))),
                     .send(.actions(.loadUserRating)),
@@ -163,24 +164,25 @@ struct VideoDetailsFeature {
                     .run { [videoDetails] _ in
                         PostHogSDK.shared.capture("video_viewed", properties: [
                             "video_id": videoDetails.uuid?.uuidString ?? "",
-                            "video_name": videoDetails.name ?? ""
+                            "video_name": videoDetails.name ?? "",
                         ])
                     }
                 )
-                
-            case .description(.delegate(.seekTo(let time))):
+
+            case let .description(.delegate(.seekTo(time))):
                 return .send(.seekTo(time))
-                
+
             case .channelPreview(.channelTapped):
                 guard let channel = state.channelPreview.videoDetails?.channel,
-                      let channelName = channel.name else {
+                      let channelName = channel.name
+                else {
                     return .none
                 }
                 return .send(.delegate(.navigateToChannel(host: state.host, channelName: channelName)))
-                
+
             case .delegate:
                 return .none
-                
+
             case .actions, .channelPreview, .description, .comments:
                 return .none
             }
@@ -194,7 +196,7 @@ struct VideoDetails: View {
     @State private var isPlayerReady = false
 
     var body: some View {
-        ZStack { 
+        ZStack {
             if self.store.isNotFound {
                 ContentUnavailableView(
                     "Video Not Found",
@@ -205,13 +207,13 @@ struct VideoDetails: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         if let videoFiles = videoDetails.streamingPlaylists?.first?.files,
-                           !videoFiles.isEmpty {
-
+                           !videoFiles.isEmpty
+                        {
                             VideoPlayerView(
                                 isPlayerReady: $isPlayerReady,
-                                onTimeUpdate: { time in self.store.send(.timeUpdate(time)) }, 
-                                videoFiles: videoFiles, 
-                                selectedVideoFile: self.store.actions.selectedQuality, 
+                                onTimeUpdate: { time in self.store.send(.timeUpdate(time)) },
+                                videoFiles: videoFiles,
+                                selectedVideoFile: self.store.actions.selectedQuality,
                                 startTime: videoDetails.userHistory?.currentTime,
                                 seekRequest: self.store.seekRequest,
                                 videoTitle: videoDetails.name,
@@ -249,10 +251,11 @@ struct VideoDetails: View {
                                             Text("·")
                                             Text(
                                                 formatter.localizedString(
-                                                    for: publishedAt, relativeTo: Date.now)
+                                                    for: publishedAt, relativeTo: Date.now
+                                                )
                                             )
                                         }
-                                        
+
                                         if !self.store.state.description.descriptionVisible {
                                             Text("... more")
                                                 .fontWeight(.semibold)
@@ -261,17 +264,17 @@ struct VideoDetails: View {
                                     .font(.callout)
                                     .opacity(0.5)
                                     .foregroundStyle(.primary)
-                                    
+
                                     VideoDescriptionView(store: self.store.scope(state: \.description, action: \.description))
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .buttonStyle(.plain)
-                            
+
                             VideoActionsView(store: self.store.scope(state: \.actions, action: \.actions))
-                            
+
                             Divider()
-                            
+
                             ChannelPreviewView(store: self.store.scope(state: \.channelPreview, action: \.channelPreview))
 
                             Divider()
@@ -296,7 +299,6 @@ struct VideoDetails: View {
     }
 }
 
-
 #Preview {
     let _ = prepareDependencies {
         try! $0.bootstrapDatabase()
@@ -307,7 +309,8 @@ struct VideoDetails: View {
         VideoDetails(
             store: Store(
                 initialState: VideoDetailsFeature.State(
-                    host: "peertube.cpy.re", videoId: "eRbrxETVKN3gxKKD8bcaHK")
+                    host: "peertube.cpy.re", videoId: "eRbrxETVKN3gxKKD8bcaHK"
+                )
             ) {
                 VideoDetailsFeature()
             })

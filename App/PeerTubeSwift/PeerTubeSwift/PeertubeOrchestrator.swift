@@ -6,9 +6,9 @@
 //
 
 import Foundation
-import TubeSDK
-import SwiftUI
 import SQLiteData
+import SwiftUI
+import TubeSDK
 
 // MARK: - Instance Cache Actor
 
@@ -17,15 +17,16 @@ actor InstanceCache {
     private var cache: [String: (instance: Instance, timestamp: Date)] = [:]
     private var pendingTasks: [String: Task<Instance?, Never>] = [:]
     private let ttl: TimeInterval = 300 // 5 minutes
-    
+
     func get(_ host: String) -> Instance? {
         guard let cached = cache[host],
-              Date().timeIntervalSince(cached.timestamp) < ttl else {
+              Date().timeIntervalSince(cached.timestamp) < ttl
+        else {
             return nil
         }
         return cached.instance
     }
-    
+
     /// Get or create a task for syncing instance info, coalescing concurrent requests
     /// for the same host to avoid redundant network calls
     func getOrCreateSyncTask(
@@ -36,7 +37,7 @@ actor InstanceCache {
         if let existingTask = pendingTasks[host] {
             return existingTask
         }
-        
+
         // Create a new task and store it
         let task = Task<Instance?, Never> {
             let result = await syncBlock()
@@ -44,20 +45,20 @@ actor InstanceCache {
             pendingTasks.removeValue(forKey: host)
             return result
         }
-        
+
         pendingTasks[host] = task
         return task
     }
-    
+
     func set(_ host: String, instance: Instance) {
         cache[host] = (instance, Date())
     }
-    
+
     func invalidate(_ host: String) {
         cache.removeValue(forKey: host)
         pendingTasks.removeValue(forKey: host)
     }
-    
+
     func invalidateAll() {
         cache.removeAll()
         pendingTasks.removeAll()
@@ -80,7 +81,7 @@ private func performInstanceSync(host: String, database: any DatabaseWriter) asy
     let existingInstance = try await database.read { db in
         try Instance.find(host).fetchOne(db)
     }
-    
+
     var instance = existingInstance ?? Instance(host: host, scheme: "https")
     if existingInstance == nil {
         let newInstance = instance
@@ -88,12 +89,12 @@ private func performInstanceSync(host: String, database: any DatabaseWriter) asy
             try Instance.insert { newInstance }.execute(db)
         }
     }
-    
+
     // Fetch the latest config from the instance
     do {
         let client = try TubeSDKClient(scheme: "https", host: host)
         let config = try await client.instance.getConfig()
-        
+
         instance.name = config.instance.name
         if let avatar = config.instance.avatars?.first?.fileUrl {
             instance.avatarUrl = avatar
@@ -101,12 +102,12 @@ private func performInstanceSync(host: String, database: any DatabaseWriter) asy
             // fallback to path if fileUrl is not available
             instance.avatarUrl = try client.getImageUrl(path: avatar).absoluteString
         }
-        
+
         let updatedInstance = instance
         try await database.write { db in
             try Instance.upsert { updatedInstance }.execute(db)
         }
-        
+
         // Update in-memory cache
         await instanceCache.set(host, instance: updatedInstance)
         return updatedInstance
@@ -131,7 +132,7 @@ extension PeertubeOrchestratorClient: DependencyKey {
                     return cachedInstance
                 }
             }
-            
+
             // 2. Use coalescing to avoid concurrent requests for the same host
             let syncTask = await instanceCache.getOrCreateSyncTask(host) {
                 // This block runs only once even if multiple tasks request the same host
@@ -142,12 +143,12 @@ extension PeertubeOrchestratorClient: DependencyKey {
                     return nil
                 }
             }
-            
+
             // Wait for the task to complete (or return cached result if available)
             if let result = await syncTask.value {
                 return result
             }
-            
+
             // Fallback: try to get from DB if sync failed
             return try await database.read { db in
                 try Instance.find(host).fetchOne(db) ?? Instance(host: host, scheme: "https")
@@ -159,11 +160,11 @@ extension PeertubeOrchestratorClient: DependencyKey {
                 try PeertubeImage.find(urlString).fetchOne(db) != nil
             }
             if exists { return }
-            
+
             // Download data
             guard let url = URL(string: urlString) else { return }
             let (data, _) = try await URLSession.shared.data(from: url)
-            
+
             // Save to database
             let image = PeertubeImage(id: urlString, data: data)
             try await database.write { db in
@@ -173,11 +174,9 @@ extension PeertubeOrchestratorClient: DependencyKey {
     )
 }
 
-
 extension DependencyValues {
     var peertubeOrchestrator: PeertubeOrchestratorClient {
         get { self[PeertubeOrchestratorClient.self] }
         set { self[PeertubeOrchestratorClient.self] = newValue }
     }
 }
-

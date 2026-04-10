@@ -7,8 +7,8 @@
 
 import ComposableArchitecture
 import SwiftUI
-import WebURL
 import TubeSDK
+import WebURL
 
 @Reducer
 struct InstanceManagerFeature {
@@ -18,26 +18,26 @@ struct InstanceManagerFeature {
         var instanceUrl: WebURL?
         var readyToSaveInstance: Bool = false
         var tryingInstanceConnection: Bool = false
-        
+
         var connectionError: String?
     }
-    
+
     enum Action {
         case instanceUrlChanged(String)
         case attemptConnectionButtonPressed
         case delegate(Delegate)
         case textFieldSubmitButtonPressed
-        
+
         case testConnection
         case connectionResponse(Result<ServerConfig, NetworkError>)
         case setInstanceUrl(WebURL)
-        
+
         @CasePathable
         enum Delegate {
             case saveNewInstance(url: WebURL)
         }
     }
-    
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
@@ -53,10 +53,8 @@ struct InstanceManagerFeature {
                 return .send(.testConnection)
             case .textFieldSubmitButtonPressed:
                 return .send(.testConnection)
-                
-            case .delegate(_):
+            case .delegate:
                 return .none
-                
             case .testConnection:
                 state.tryingInstanceConnection = true
                 return .run { [instanceUrl = state.instanceUrlString] send in
@@ -75,7 +73,7 @@ struct InstanceManagerFeature {
                 }
             case let .connectionResponse(response):
                 state.tryingInstanceConnection = false
-                
+
                 switch response {
                 case let .success(config):
                     state.readyToSaveInstance = true
@@ -83,7 +81,7 @@ struct InstanceManagerFeature {
                 case let .failure(error):
                     state.connectionError = error.localizedDescription
                 }
-                
+
                 return .none
             case let .setInstanceUrl(url):
                 state.instanceUrl = url
@@ -99,19 +97,19 @@ enum NetworkError: Error, Equatable {
 }
 
 extension NetworkError: LocalizedError {
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
-            case .badURL:
-                return String(localized: "The Instance URL doesn’t seem to be valid.")
-            case let .connectionFailed(error):
-                return String(localized: "Connection failed: \(error)")
+        case .badURL:
+            return String(localized: "The Instance URL doesn’t seem to be valid.")
+        case let .connectionFailed(error):
+            return String(localized: "Connection failed: \(error)")
         }
     }
 }
 
 struct InstanceManager: View {
     @Bindable var store: StoreOf<InstanceManagerFeature>
-    
+
     var body: some View {
         Form {
             Section("Instance Details") {
@@ -123,7 +121,7 @@ struct InstanceManager: View {
                         self.store.send(.textFieldSubmitButtonPressed)
                     }
             }
-            
+
             Section("Connection") {
                 Button {
                     self.store.send(.attemptConnectionButtonPressed)
@@ -137,18 +135,17 @@ struct InstanceManager: View {
                     }
                 }
                 .disabled(self.store.state.instanceUrlString == "" || self.store.state.tryingInstanceConnection)
-                
+
                 if let connectionError = self.store.state.connectionError {
                     Text(connectionError)
                         .monospaced()
                         .foregroundStyle(self.store.state.readyToSaveInstance ? .green : .red)
                 }
-                
+
                 if self.store.state.readyToSaveInstance {
                     Label("Instance is working fine, ready to add", systemImage: "checkmark")
                 }
             }
-        
         }
     }
 }

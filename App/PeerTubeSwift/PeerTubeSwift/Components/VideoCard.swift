@@ -5,10 +5,10 @@
 //  Created by Eric Wätke on 22.12.25.
 //
 
+import Dependencies
 import SQLiteData
 import SwiftUI
 import TubeSDK
-import Dependencies
 
 struct VideoCard: View {
     let row: VideoRow?
@@ -20,7 +20,7 @@ struct VideoCard: View {
     let client: TubeSDKClient?
     let onVideoTap: () -> Void
     let openChannel: () -> Void
-    
+
     @FetchOne var cachedThumbnail: PeertubeImage?
     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
     @Dependency(\.defaultDatabase) var database
@@ -31,19 +31,19 @@ struct VideoCard: View {
         openChannel: @escaping () -> Void
     ) {
         self.row = row
-        self.video = nil
-        self.channelName = nil
-        self.channelAvatarUrl = nil
-        self.instanceHost = nil
-        self.instanceAvatarUrl = nil
-        self.client = nil
+        video = nil
+        channelName = nil
+        channelAvatarUrl = nil
+        instanceHost = nil
+        instanceAvatarUrl = nil
+        client = nil
         self.onVideoTap = onVideoTap
         self.openChannel = openChannel
-        
+
         if let thumbnail = row.video.thumbnailUrl {
-            self._cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnail })
+            _cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnail })
         } else {
-            self._cachedThumbnail = FetchOne(PeertubeImage.none)
+            _cachedThumbnail = FetchOne(PeertubeImage.none)
         }
     }
 
@@ -57,7 +57,7 @@ struct VideoCard: View {
         onVideoTap: @escaping () -> Void,
         openChannel: @escaping () -> Void
     ) {
-        self.row = nil
+        row = nil
         self.video = video
         self.channelName = channelName
         self.channelAvatarUrl = channelAvatarUrl
@@ -69,9 +69,9 @@ struct VideoCard: View {
 
         // Use bestThumbnailUrl for proper thumbnail URL construction
         let thumbnailUrl = client.flatMap { video.bestThumbnailUrl(client: $0, size: .medium) }
-        self._cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnailUrl })
+        _cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnailUrl })
     }
-    
+
     let formatter = RelativeDateTimeFormatter()
 
     private var videoName: String {
@@ -120,7 +120,8 @@ struct VideoCard: View {
     var body: some View {
         VStack {
             if let thumbnailUrl = videoThumbnailUrl,
-                let url = URL(string: thumbnailUrl) {
+               let url = URL(string: thumbnailUrl)
+            {
                 ZStack(alignment: .topLeading) {
                     if let cachedData = cachedThumbnail?.data, let uiImage = UIImage(data: cachedData) {
                         Image(uiImage: uiImage)
@@ -197,12 +198,12 @@ struct VideoCard: View {
                     .aspectRatio(16 / 9, contentMode: .fit)
                     .clipShape(.rect(cornerRadius: 8))
             }
-            HStack (alignment: .top) {
+            HStack(alignment: .top) {
                 AvatarView(url: channelDisplayAvatarUrl, name: channelDisplayName)
                     .onTapGesture {
                         openChannel()
                     }
-                VStack (alignment: .leading) {
+                VStack(alignment: .leading) {
                     Text(videoName)
                         .fontWeight(.bold)
                     HStack {
@@ -214,7 +215,6 @@ struct VideoCard: View {
                             Text(formatter.localizedString(for: publishDate, relativeTo: Date.now))
                                 .font(.caption)
                         }
-
                     }
                 }
                 Spacer()

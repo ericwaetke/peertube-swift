@@ -3,15 +3,15 @@
 //  PeerTubeSwift
 //
 
-import SwiftUI
-import SQLiteData
 import Dependencies
+import SQLiteData
+import SwiftUI
 
 struct AvatarView: View {
     let url: String?
     let name: String
     let size: CGFloat
-    
+
     @FetchOne var cachedAvatar: PeertubeImage?
     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
     @Dependency(\.defaultDatabase) var database
@@ -20,14 +20,14 @@ struct AvatarView: View {
         self.url = url
         self.name = name
         self.size = size
-        
+
         if let avatarUrl = url {
-            self._cachedAvatar = FetchOne(PeertubeImage.where { $0.id == avatarUrl })
+            _cachedAvatar = FetchOne(PeertubeImage.where { $0.id == avatarUrl })
         } else {
-            self._cachedAvatar = FetchOne(PeertubeImage.none)
+            _cachedAvatar = FetchOne(PeertubeImage.none)
         }
     }
-    
+
     var body: some View {
         if let avatarUrl = url, let imageUrl = URL(string: avatarUrl) {
             if let cachedData = cachedAvatar?.data, let uiImage = UIImage(data: cachedData) {
@@ -54,7 +54,7 @@ struct AvatarView: View {
             fallbackView
         }
     }
-    
+
     @ViewBuilder
     private var fallbackView: some View {
         ZStack {

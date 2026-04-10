@@ -5,9 +5,9 @@
 //  Created by Eric Wätke on 26.12.25.
 //
 
+import ComposableArchitecture
 import Dependencies
 import SQLiteData
-import ComposableArchitecture
 import SwiftUI
 import TubeSDK
 import WebURL
@@ -16,7 +16,7 @@ extension View {
     @ViewBuilder
     func minimizedSearch() -> some View {
         if #available(iOS 26.0, *) {
-            self.searchToolbarBehavior(.minimize)
+            searchToolbarBehavior(.minimize)
         } else {
             self
         }
@@ -32,32 +32,32 @@ struct ExploreTabFeature {
         case searchResults(FeedFeature)
         case channelDetail(VideoChannelFeature)
     }
-    
+
     @ObservableState
     struct State: Equatable {
         var path = StackState<Path.State>()
-        
+
         var searchText = String()
         var isSearchActive = false
-        
+
         @Shared(.inMemory("session")) var session: UserSession?
     }
-    
+
     enum Action {
         case path(StackActionOf<Path>)
-        
+
         case setSearch(String)
         case startSearch
         case activateSearch
         case setSearchActive(Bool)
-        
+
         case delegate(Delegate)
-        
+
         enum Delegate {
             case openSettings
         }
     }
-    
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
@@ -79,7 +79,8 @@ struct ExploreTabFeature {
 
                 case let .element(id: _, action: .exploreFeed(.channelTapped(row: row))):
                     guard let channel = row.channel,
-                          let instance = row.instance else {
+                          let instance = row.instance
+                    else {
                         return .none
                     }
                     var channelState = VideoChannelFeature.State(host: instance.host)
@@ -102,7 +103,8 @@ struct ExploreTabFeature {
 
                 case let .element(id: _, action: .searchResults(.channelTapped(row: row))):
                     guard let channel = row.channel,
-                          let instance = row.instance else {
+                          let instance = row.instance
+                    else {
                         return .none
                     }
                     var channelState = VideoChannelFeature.State(host: instance.host)
@@ -132,22 +134,23 @@ struct ExploreTabFeature {
                 default:
                     return .none
                 }
+
             case .delegate:
                 return .none
-                
+
             case let .setSearch(text):
                 state.searchText = text
                 return .none
-                
+
             case .startSearch:
                 guard !state.searchText.isEmpty else { return .none }
                 state.path.append(.searchResults(FeedFeature.State(feedType: .search)))
                 return .send(.path(.element(id: state.path.ids.last!, action: .searchResults(.loadVideosBySearch(TubeSDK.SearchVideoQueryParameters(search: state.searchText))))))
-                
+
             case .activateSearch:
                 state.isSearchActive = true
                 return .none
-                
+
             case let .setSearchActive(active):
                 state.isSearchActive = active
                 return .none
@@ -156,12 +159,12 @@ struct ExploreTabFeature {
         .forEach(\.path, action: \.path)
     }
 }
-extension ExploreTabFeature.Path.State: Equatable {}
 
+extension ExploreTabFeature.Path.State: Equatable {}
 
 struct ExploreTab: View {
     @Bindable var store: StoreOf<ExploreTabFeature>
-    
+
     var body: some View {
         NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
             contentView
@@ -169,7 +172,7 @@ struct ExploreTab: View {
             destinationView(for: pathStore)
         }
     }
-    
+
     @ViewBuilder
     private var contentView: some View {
         Form {
@@ -201,7 +204,7 @@ struct ExploreTab: View {
             }
         }
     }
-    
+
     private var settingsMenu: some View {
         Menu {
             if let session = store.session {
@@ -217,9 +220,9 @@ struct ExploreTab: View {
                 Text("Not logged in")
                     .font(.headline)
             }
-            
+
             Divider()
-            
+
             Button {
                 self.store.send(.delegate(.openSettings))
             } label: {
@@ -240,7 +243,7 @@ struct ExploreTab: View {
             }
         }
     }
-    
+
     @ViewBuilder
     private func destinationView(for pathStore: StoreOf<ExploreTabFeature.Path>) -> some View {
         switch pathStore.case {
@@ -256,7 +259,7 @@ struct ExploreTab: View {
             VideoChannelView(store: store)
         }
     }
-    
+
     private func navigationTitle(for store: StoreOf<FeedFeature>) -> String {
         switch store.feedType {
         case .exploreNewest:
@@ -278,7 +281,7 @@ struct ExploreTab: View {
         try! $0.bootstrapDatabase()
         try! $0.defaultDatabase.seed()
     }
-    
+
     ExploreTab(
         store: Store(initialState: ExploreTabFeature.State()) {
             ExploreTabFeature()

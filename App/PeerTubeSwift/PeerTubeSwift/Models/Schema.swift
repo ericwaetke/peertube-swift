@@ -1,5 +1,5 @@
 //
-//  VideoChannel.swift
+//  Schema.swift
 //  PeerTubeSwift
 //
 //  Created by Eric Wätke on 23.12.25.
@@ -38,11 +38,11 @@ import SQLiteData
 
 extension Instance {
     var id: String {
-        self.host
+        host
     }
 }
 
-//@Table struct Comment: Identifiable {
+// @Table struct Comment: Identifiable {
 //    let id: UUID
 //    let accountID: Account.ID
 //
@@ -51,7 +51,7 @@ extension Instance {
 //
 //    var likes: Int
 //    var dislikes: Int
-//}
+// }
 
 @Table struct Video: Identifiable, Hashable {
     let id: UUID

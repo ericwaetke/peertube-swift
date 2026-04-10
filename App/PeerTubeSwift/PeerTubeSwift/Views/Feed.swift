@@ -11,14 +11,14 @@ import SwiftUI
 import TubeSDK
 
 @Selection struct VideoRow: Hashable, Equatable {
-    public static func == (lhs: VideoRow, rhs: VideoRow) -> Bool {
+    static func == (lhs: VideoRow, rhs: VideoRow) -> Bool {
         return lhs.video.id == rhs.video.id
     }
-    
-    public func hash(into hasher: inout Hasher) {
+
+    func hash(into hasher: inout Hasher) {
         hasher.combine(video.id)
     }
-    
+
     let video: Video
     let channel: VideoChannel?
     let instance: Instance?
@@ -53,7 +53,7 @@ enum CachedFeedType: String, Equatable, Hashable {
     case recommended
     case subscriptions
     case continueWatching
-    
+
     init(from feedFilter: FeedFilter) {
         switch feedFilter {
         case .exploreNewest:
@@ -74,34 +74,35 @@ enum CachedFeedType: String, Equatable, Hashable {
 /// Lives outside of TCA State to survive navigation-based State recreation
 actor FeedCacheActor {
     static let shared = FeedCacheActor()
-    
+
     private var cache: [CachedFeedType: FeedCacheEntry] = [:]
     private let ttl: TimeInterval = 300 // 5 minutes
-    
+
     private init() {}
-    
+
     /// Get cached videos for a feed type if valid
     func get(_ feedType: FeedFilter) -> [VideoRow]? {
         let cachedType = CachedFeedType(from: feedType)
         guard let cached = cache[cachedType],
-              Date().timeIntervalSince(cached.timestamp) < ttl else {
+              Date().timeIntervalSince(cached.timestamp) < ttl
+        else {
             return nil
         }
         return cached.videos
     }
-    
+
     /// Store videos in cache with current timestamp
     func set(_ feedType: FeedFilter, videos: [VideoRow]) {
         let cachedType = CachedFeedType(from: feedType)
         cache[cachedType] = FeedCacheEntry(videos: videos, timestamp: Date())
     }
-    
+
     /// Invalidate cache for a specific feed type
     func invalidate(_ feedType: FeedFilter) {
         let cachedType = CachedFeedType(from: feedType)
         cache.removeValue(forKey: cachedType)
     }
-    
+
     /// Invalidate all cached feeds
     func invalidateAll() {
         cache.removeAll()
@@ -115,69 +116,69 @@ struct FeedFeature {
     @ObservableState
     struct State: Equatable {
         let feedType: FeedFilter
-        
+
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         var isLoadingVideos: Bool = false
         var hasLoadedAtLeastOnce: Bool = false
         var order: FeedOrder = .descending
         var errorMessage: String? = nil
-        
+
         // Pagination state
         var currentOffset: Int = 0
         var isLoadingMore: Bool = false
         var hasMoreVideos: Bool = true
-        
+
         @FetchAll var instances: [Instance] = []
-        
+
         //        @FetchAll(VideoRow.none)
         var feed: [VideoRow] = []
     }
-    
+
     enum Action {
         case videoTapped(row: VideoRow)
         case videoOverflowMenuTapped(row: VideoRow, host: String)
         case initialScreenLoad
         case pulledToRefresh
-        
+
         case channelTapped(row: VideoRow)
         case instanceTapped
         case addInstanceButtonTapped
-        
+
         case loadVideos
         case finishLoading([VideoRow])
-        
+
         // Pagination actions
         case loadInitialVideos
         case loadSecondBatch
         case loadMoreVideos
         case finishLoadingMore([VideoRow])
         case setLoadingMore(Bool)
-        
+
         case loadVideosNewestOfInstance
         case loadRecommendedVideos
         case loadChannelVideos
         case loadSubscriptionVideos
         case loadVideosBySearch(TubeSDK.SearchVideoQueryParameters)
         case loadContinueWatching
-        
+
         case loadingFailed(String)
         case setLoading(Bool)
     }
-    
+
     @Dependency(\.defaultDatabase) var database
     @Dependency(\.authClient) var authClient
     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
-    
+
     func fetchLocalVideos(for feedType: FeedFilter) async -> [VideoRow]? {
         return await withErrorReporting {
-            return try await database.read { db in
+            try await database.read { db in
                 switch feedType {
                 case .exploreNewest, .recommended:
                     let orderedVideos = Video
                         .order { $0.publishDate.desc() }
                         .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
                         .leftJoin(Instance.all) { $0.instanceID.eq($2.host) }
-                    
+
                     return try orderedVideos
                         .select {
                             VideoRow.Columns(
@@ -193,7 +194,7 @@ struct FeedFeature {
                         .join(PeertubeSubscription.all) { $0.channelID.eq($1.channelID) }
                         .leftJoin(VideoChannel.all) { $0.channelID.eq($2.id) }
                         .leftJoin(Instance.all) { $0.instanceID.eq($3.host) }
-                    
+
                     return try orderedVideos
                         .select {
                             VideoRow.Columns(
@@ -213,14 +214,14 @@ struct FeedFeature {
             }
         }
     }
-    
+
     private static func fetchAllVideosWithProgress(db: Database) throws -> [VideoRow] {
         // Fetch all videos ordered by publish date
         let allVideos = Video
             .order { $0.publishDate.desc() }
             .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
             .leftJoin(Instance.all) { $0.instanceID.eq($2.host) }
-        
+
         let rows = try allVideos
             .select {
                 VideoRow.Columns(
@@ -230,19 +231,20 @@ struct FeedFeature {
                 )
             }
             .fetchAll(db)
-        
+
         // Filter for continue watching: watched > 1 minute AND remaining > 3 minutes
         return rows.filter { row in
             guard let currentTime = row.video.currentTime,
                   let duration = row.video.duration,
-                  duration > 0 else {
+                  duration > 0
+            else {
                 return false
             }
             let remaining = duration - currentTime
             return currentTime > 60 && remaining > 180
         }
     }
-    
+
     /// Save videos to database with parallel network calls but serialized DB writes
     /// This avoids SQLite "database is locked" errors from concurrent writes
     func saveVideos(videos: [TubeSDK.Video], client: TubeSDKClient) async throws -> [VideoRow] {
@@ -254,14 +256,14 @@ struct FeedFeature {
                     return (index, peertubeVideo, data)
                 }
             }
-            
+
             var results: [(Int, TubeSDK.Video, ProcessedVideoData?)] = []
             for await result in group {
                 results.append(result)
             }
             return results.sorted { $0.0 < $1.0 }
         }
-        
+
         // Phase 2: Batch DB writes in a single transaction to avoid SQLite lock contention
         let videoRows: [VideoRow] = try await database.write { db -> [VideoRow] in
             var rows: [VideoRow] = []
@@ -270,7 +272,7 @@ struct FeedFeature {
                       let videoId = peertubeVideo.uuid,
                       let videoName = peertubeVideo.name,
                       let publishedAt = peertubeVideo.publishedAt else { continue }
-                
+
                 let channel = try VideoChannel
                     .upsert {
                         VideoChannel(
@@ -283,13 +285,13 @@ struct FeedFeature {
                     }
                     .returning(\.self)
                     .fetchOne(db)
-                
+
                 var thumbnailUrl: String? = nil
                 // Use bestThumbnailUrl for highest resolution available
                 thumbnailUrl = peertubeVideo.bestThumbnailUrl(client: client, size: .medium)
-                
+
                 let existingTime = try Video.find(videoId).fetchOne(db)?.currentTime
-                
+
                 let video = try Video
                     .upsert {
                         Video(
@@ -305,17 +307,17 @@ struct FeedFeature {
                     }
                     .returning(\.self)
                     .fetchOne(db)
-                
+
                 if let inserted = video {
                     rows.append(VideoRow(video: inserted, channel: channel, instance: data.instance))
                 }
             }
             return rows
         }
-        
+
         return videoRows
     }
-    
+
     /// Intermediate data structure for processed video info
     private struct ProcessedVideoData {
         let channelUsername: String
@@ -325,11 +327,11 @@ struct FeedFeature {
         let instanceHost: String
         let instance: Instance
     }
-    
+
     /// Process video network calls (instance sync) - called in parallel
     private func processVideoNetwork(
         peertubeVideo: TubeSDK.Video,
-        client: TubeSDKClient
+        client _: TubeSDKClient
     ) async -> ProcessedVideoData? {
         guard let channel = peertubeVideo.channel,
               let videoId = peertubeVideo.uuid,
@@ -342,7 +344,7 @@ struct FeedFeature {
             print("Error adding video: missing required fields")
             return nil
         }
-        
+
         return await withErrorReporting {
             let avatarUrl: String? = channel.avatars?.first?.fileUrl
             // Note: VideoChannelSummary doesn't have description - it's only available in full VideoChannel
@@ -360,14 +362,14 @@ struct FeedFeature {
             )
         }
     }
-    
+
     /// Preload thumbnails in the background (fire-and-forget)
     /// Does not block - runs independently of UI updates
     private func preloadThumbnails(for videos: [VideoRow]) {
         let thumbnailUrls = videos.compactMap { $0.video.thumbnailUrl }
         let orchestrator = peertubeOrchestrator
         let db = database
-        
+
         // Fire-and-forget - don't block the caller, but log errors for debugging
         Task {
             await withTaskGroup(of: Void.self) { group in
@@ -383,14 +385,14 @@ struct FeedFeature {
             }
         }
     }
-    
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .videoTapped(let row):
+            case let .videoTapped(row):
                 let _ = row
                 return .none
-            case .videoOverflowMenuTapped(let row, let host):
+            case let .videoOverflowMenuTapped(row, host):
                 let _ = row
                 return .none
             case .initialScreenLoad:
@@ -399,7 +401,7 @@ struct FeedFeature {
                 state.errorMessage = nil
                 state.currentOffset = 0
                 state.hasMoreVideos = true
-                
+
                 switch state.feedType {
                 case .exploreNewest:
                     return .send(.loadInitialVideos)
@@ -412,20 +414,20 @@ struct FeedFeature {
                 case .continueWatching:
                     return .send(.loadContinueWatching)
                 }
-            case .setLoading(let isLoading):
+            case let .setLoading(isLoading):
                 state.isLoadingVideos = isLoading
                 return .none
             case .loadInitialVideos:
                 return .run { [client = state.client, feedType = state.feedType] send in
                     await send(.setLoading(true))
-                    
+
                     // Check global cache first
                     if let cachedVideos = await FeedCacheActor.shared.get(feedType) {
                         print("[CACHE] Using cached videos for initial load")
                         await send(.finishLoading(cachedVideos))
                         return
                     }
-                    
+
                     // Determine sort based on feed type
                     let sort: TubeSDK.VideoSort?
                     switch feedType {
@@ -439,10 +441,10 @@ struct FeedFeature {
                     default:
                         sort = nil
                     }
-                    
+
                     print("[TIMING] InitialLoad: Starting fetch (4 videos)...")
                     let fetchStart = Date()
-                    
+
                     // Load first 4 videos with pagination
                     let peertubeVideos: [TubeSDK.Video]
                     if let sort = sort {
@@ -452,24 +454,24 @@ struct FeedFeature {
                     }
                     let apiTime = Date().timeIntervalSince(fetchStart)
                     print("[TIMING] InitialLoad: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
-                    
+
                     // Save to DB for caching and use returned VideoRows
                     let dbStart = Date()
                     let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
                     let dbTime = Date().timeIntervalSince(dbStart)
                     print("[TIMING] InitialLoad: DB writes took \(String(format: "%.3f", dbTime))s")
-                    
+
                     // Update global cache
                     await FeedCacheActor.shared.set(feedType, videos: videos)
-                    
+
                     // Fire-and-forget image preloading
                     self.preloadThumbnails(for: videos)
-                    
+
                     let totalTime = Date().timeIntervalSince(fetchStart)
                     print("[TIMING] InitialLoad: TOTAL \(String(format: "%.3f", totalTime))s")
-                    
+
                     await send(.finishLoading(videos))
-                    
+
                     // Automatically load second batch (11 more videos)
                     await send(.loadSecondBatch)
                 }
@@ -477,10 +479,10 @@ struct FeedFeature {
                 return .run { [client = state.client, feedType = state.feedType] send in
                     // Show loading spinner for second batch
                     await send(.setLoadingMore(true))
-                    
+
                     // Determine sort based on feed type
                     let sort: TubeSDK.VideoSort?
-                    
+
                     switch feedType {
                     case .recommended:
                         // Use -best for logged in users, -hot for not logged in
@@ -492,10 +494,10 @@ struct FeedFeature {
                     default:
                         sort = nil
                     }
-                    
+
                     print("[TIMING] SecondBatch: Starting fetch (11 videos at offset 4)...")
                     let fetchStart = Date()
-                    
+
                     // Load 11 more videos starting at offset 4
                     let peertubeVideos: [TubeSDK.Video]
                     if let sort = sort {
@@ -503,27 +505,27 @@ struct FeedFeature {
                     } else {
                         peertubeVideos = try await client.getVideos(count: 11, start: 4)
                     }
-                    
+
                     let apiTime = Date().timeIntervalSince(fetchStart)
                     print("[TIMING] SecondBatch: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
-                    
+
                     // Save to DB for caching and use returned VideoRows
                     let dbStart = Date()
                     let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
                     let dbTime = Date().timeIntervalSince(dbStart)
                     print("[TIMING] SecondBatch: DB writes took \(String(format: "%.3f", dbTime))s")
-                    
+
                     // Update global cache with combined results
                     let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []
                     let combinedVideos = currentFeed + videos
                     await FeedCacheActor.shared.set(feedType, videos: combinedVideos)
-                    
+
                     // Fire-and-forget image preloading
                     self.preloadThumbnails(for: videos)
-                    
+
                     let totalTime = Date().timeIntervalSince(fetchStart)
                     print("[TIMING] SecondBatch: TOTAL \(String(format: "%.3f", totalTime))s")
-                    
+
                     await send(.finishLoadingMore(videos))
                 }
             // Legacy actions - functionality moved to loadInitialVideos/loadSecondBatch
@@ -531,12 +533,12 @@ struct FeedFeature {
                 return .none
             case .loadRecommendedVideos:
                 return .none
-            case .loadVideosBySearch(let searchParameters):
+            case let .loadVideosBySearch(searchParameters):
                 return .run { [client = state.client, searchParameters = searchParameters] send in
                     await send(.setLoading(true))
-                    
+
                     let searchResult = try await client.searchVideos(search: searchParameters)
-                    
+
                     let videos = try await self.saveVideos(videos: searchResult, client: client)
                     await send(.finishLoading(videos ?? []))
                 }
@@ -545,34 +547,35 @@ struct FeedFeature {
             case .loadContinueWatching:
                 return .run { [client = state.client, authClient = self.authClient] send in
                     await send(.setLoading(true))
-                    
+
                     // Only fetch if user is authenticated
                     guard client.currentToken != nil else {
                         print("User not authenticated, cannot fetch watch history")
                         await send(.finishLoading([]))
                         return
                     }
-                    
+
                     print("Fetching continue watching videos from server history")
-                    
+
                     do {
                         // Fetch watch history from server
                         let historyVideos = try await client.getMyHistory(count: 20)
-                        
+
                         // Save to DB and get VideoRows
                         let videos = try await self.saveVideos(videos: historyVideos, client: client)
-                        
+
                         // Filter: watched > 1 minute AND remaining > 3 minutes
                         let continueWatchingVideos = videos.filter { row in
                             guard let currentTime = row.video.currentTime,
                                   let duration = row.video.duration,
-                                  duration > 0 else {
+                                  duration > 0
+                            else {
                                 return false
                             }
                             let remaining = duration - currentTime
                             return currentTime > 60 && remaining > 180
                         }
-                        
+
                         await send(.finishLoading(continueWatchingVideos))
                     } catch TubeError.unauthorized {
                         print("Token expired while fetching history")
@@ -587,15 +590,15 @@ struct FeedFeature {
             case .loadSubscriptionVideos:
                 return .run { [client = state.client, authClient = self.authClient, feedType = state.feedType, stateFeedEmpty = state.feed.isEmpty] send in
                     let localVideos = await self.fetchLocalVideos(for: feedType)
-                    
+
                     if let localVideos, !localVideos.isEmpty {
                         await send(.finishLoading(localVideos))
                     } else if stateFeedEmpty {
                         await send(.setLoading(true))
                     }
-                    
+
                     print("Getting new videos from subscriptions")
-                    
+
                     if client.currentToken != nil {
                         print("User is authenticated, fetching native subscription feed")
                         do {
@@ -612,7 +615,7 @@ struct FeedFeature {
                                     var newSession = session
                                     newSession.token = newToken
                                     try await authClient.saveSession(newSession)
-                                    
+
                                     // Retry
                                     let peertubeVideos = try await client.getMySubscriptionVideos()
                                     let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
@@ -635,7 +638,7 @@ struct FeedFeature {
                         }
                         return
                     }
-                    
+
                     // Fallback for unauthenticated users
                     let subscriptions = try await database.read { db in
                         try PeertubeSubscription
@@ -648,16 +651,16 @@ struct FeedFeature {
                             }
                             .fetchAll(db)
                     }
-                    
+
                     for subscription in subscriptions {
                         guard let channel = subscription.channel else {
                             continue
                         }
-                        
+
                         let videos = try await client.getVideos(channelIdentifier: channel.id)
                         let _ = try await self.saveVideos(videos: videos, client: client)
                     }
-                    
+
                     // Query the database
                     let videos = await self.fetchLocalVideos(for: feedType)
                     await send(.finishLoading(videos ?? []))
@@ -667,7 +670,7 @@ struct FeedFeature {
                 if state.currentOffset == 0 {
                     state.feed = videos
                     state.currentOffset = videos.count
-                } 
+                }
                 // Second batch or more: append to existing feed
                 else {
                     state.feed.append(contentsOf: videos)
@@ -681,10 +684,10 @@ struct FeedFeature {
             case .loadMoreVideos:
                 return .run { [client = state.client, feedType = state.feedType, offset = state.currentOffset] send in
                     await send(.setLoadingMore(true))
-                    
+
                     // Determine sort based on feed type
                     let sort: TubeSDK.VideoSort?
-                    
+
                     switch feedType {
                     case .recommended:
                         if client.currentToken != nil {
@@ -695,10 +698,10 @@ struct FeedFeature {
                     default:
                         sort = nil
                     }
-                    
+
                     print("[TIMING] LoadMore: Starting fetch at offset \(offset) (15 videos)...")
                     let fetchStart = Date()
-                    
+
                     // Load 15 more videos with current offset
                     let peertubeVideos: [TubeSDK.Video]
                     if let sort = sort {
@@ -706,27 +709,27 @@ struct FeedFeature {
                     } else {
                         peertubeVideos = try await client.getVideos(count: 15, start: offset)
                     }
-                    
+
                     let apiTime = Date().timeIntervalSince(fetchStart)
                     print("[TIMING] LoadMore: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
-                    
+
                     // Save to DB for caching and use returned VideoRows
                     let dbStart = Date()
                     let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
                     let dbTime = Date().timeIntervalSince(dbStart)
                     print("[TIMING] LoadMore: DB writes took \(String(format: "%.3f", dbTime))s")
-                    
+
                     // Update global cache with combined results
                     let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []
                     let combinedVideos = currentFeed + videos
                     await FeedCacheActor.shared.set(feedType, videos: combinedVideos)
-                    
+
                     // Fire-and-forget image preloading
                     self.preloadThumbnails(for: videos)
-                    
+
                     let totalTime = Date().timeIntervalSince(fetchStart)
                     print("[TIMING] LoadMore: TOTAL \(String(format: "%.3f", totalTime))s")
-                    
+
                     await send(.finishLoadingMore(videos))
                 }
             case let .finishLoadingMore(videos):
@@ -750,7 +753,7 @@ struct FeedFeature {
                     await FeedCacheActor.shared.invalidate(feedType)
                     await send(.loadVideos)
                 }
-            case .channelTapped(let row):
+            case let .channelTapped(row):
                 let _ = row
                 return .none
             case .instanceTapped:
@@ -765,7 +768,7 @@ struct FeedFeature {
 struct Feed: View {
     //    @Environment(AppState.self) private var appState: AppState
     let store: StoreOf<FeedFeature>
-    
+
     var body: some View {
         ScrollView {
             ZStack {
@@ -809,7 +812,6 @@ struct Feed: View {
                             }
                         }
                         .containerRelativeFrame([.horizontal, .vertical])
-                        
                     }
                 } else {
                     VStack(spacing: 0) {
@@ -823,7 +825,7 @@ struct Feed: View {
                             }
                         }
                         .padding()
-                        
+
                         // Load More Button
                         if self.store.hasMoreVideos && self.store.hasLoadedAtLeastOnce {
                             Group {
@@ -852,7 +854,6 @@ struct Feed: View {
         .refreshable {
             await self.store.send(.pulledToRefresh).finish()
         }
-        
     }
 }
 
@@ -861,7 +862,7 @@ struct Feed: View {
         try! $0.bootstrapDatabase()
         try! $0.defaultDatabase.seed()
     }
-    
+
     NavigationStack {
         Feed(
             store: Store(initialState: FeedFeature.State(feedType: .subscriptions)) {

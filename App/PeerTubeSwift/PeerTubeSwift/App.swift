@@ -5,8 +5,8 @@
 //  Created by Eric Wätke on 26.12.25.
 //
 
-import SQLiteData
 import ComposableArchitecture
+import SQLiteData
 import SwiftUI
 import TubeSDK
 
@@ -16,32 +16,32 @@ struct AppFeature {
     struct State: Equatable {
         var isLoaded = false
         var selectedTab: TubeTab = .feed
-        
+
         var feedTab = FeedTabFeature.State()
         var exploreTab = ExploreTabFeature.State()
-        
+
         @Presents var settingsSheet: SettingsTabFeature.State?
-        
+
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         @Shared(.inMemory("session")) var session: UserSession?
     }
-    
+
     enum Action {
         case task
         case sessionLoaded(UserSession?)
         case syncSubscriptions
-        
+
         case selectedTabChanged(TubeTab)
-        
+
         case feedTab(FeedTabFeature.Action)
         case exploreTab(ExploreTabFeature.Action)
-        
+
         case settingsSheet(PresentationAction<SettingsTabFeature.Action>)
     }
-    
+
     @Dependency(\.authClient) var authClient
     @Dependency(\.urlSession) var urlSession
-    
+
     var body: some ReducerOf<AppFeature> {
         Reduce { state, action in
             switch action {
@@ -72,16 +72,16 @@ struct AppFeature {
                                 guard let host = channel.host, let username = channel.name else { continue }
                                 let id = "\(username)@\(host)"
                                 remoteIds.insert(id)
-                                
+
                                 let instance = try Instance
                                     .upsert {
                                         Instance(host: host, scheme: "https")
                                     }
                                     .returning(\.self)
                                     .fetchOne(db)
-                                
+
                                 guard let instance = instance else { continue }
-                                
+
                                 try VideoChannel
                                     .upsert {
                                         VideoChannel(
@@ -92,18 +92,19 @@ struct AppFeature {
                                         )
                                     }
                                     .execute(db)
-                                
+
                                 let exists = try PeertubeSubscription.where { $0.channelID == id }.fetchOne(db) != nil
                                 if !exists {
                                     try PeertubeSubscription
                                         .insert {
                                             PeertubeSubscription.Draft(
-                                                channelID: id, createdAt: channel.createdAt ?? .now)
+                                                channelID: id, createdAt: channel.createdAt ?? .now
+                                            )
                                         }
                                         .execute(db)
                                 }
                             }
-                            
+
                             // Delete local subscriptions that are not in the remote list
                             let localSubs = try PeertubeSubscription.all.fetchAll(db)
                             for localSub in localSubs {
@@ -126,7 +127,7 @@ struct AppFeature {
             case .exploreTab(.delegate(.openSettings)):
                 state.settingsSheet = SettingsTabFeature.State()
                 return .none
-            case .feedTab(_), .exploreTab(_):
+            case .feedTab(_), .exploreTab:
                 return .none
             case .settingsSheet(.presented(.delegate(.didLogin))):
                 return .run { send in
@@ -161,7 +162,7 @@ struct AppFeature {
                 return .none
             }
         }
-        
+
         Scope(state: \.feedTab, action: \.feedTab) {
             FeedTabFeature()
         }
@@ -179,10 +180,9 @@ enum TubeTab {
     case explore
 }
 
-
 struct ContentView: View {
     @Bindable var store: StoreOf<AppFeature>
-    
+
     var body: some View {
         Group {
             if store.isLoaded {
@@ -196,7 +196,7 @@ struct ContentView: View {
                             store: self.store.scope(state: \.feedTab, action: \.feedTab)
                         )
                     }
-                    
+
                     Tab(
                         "Explore",
                         systemImage: "play.tv",

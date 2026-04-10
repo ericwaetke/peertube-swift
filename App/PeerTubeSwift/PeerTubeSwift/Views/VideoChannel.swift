@@ -54,7 +54,7 @@ struct VideoChannelFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .loadChannel(let videoDetails):
+            case let .loadChannel(videoDetails):
                 return .run { [videoDetails = videoDetails, host = state.host, instance = state.instance] send in
                     @Dependency(\.defaultDatabase) var database
                     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
@@ -73,8 +73,8 @@ struct VideoChannelFeature {
                     }
 
                     let channel = await withErrorReporting {
-                        return try await database.write { db in
-                            return try VideoChannel.upsert {
+                        try await database.write { db in
+                            try VideoChannel.upsert {
                                 VideoChannel(
                                     id: channelId,
                                     name: channelName,
@@ -92,7 +92,7 @@ struct VideoChannelFeature {
                     await send(.loadVideos)
                 }
 
-            case .loadChannelFromRow(let channelId, let channelName, let avatarUrl, let description, let host):
+            case let .loadChannelFromRow(channelId, channelName, avatarUrl, description, host):
                 // Set channel name immediately for navigation title
                 state.channelName = channelName
 
@@ -136,9 +136,9 @@ struct VideoChannelFeature {
                             await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
                         }
                     } else {
-                        let hasLocalSub = try? await database.read({ db in
+                        let hasLocalSub = try? await database.read { db in
                             try PeertubeSubscription.find(channelId).fetchOne(db) != nil
-                        })
+                        }
                         await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
                     }
 
@@ -146,7 +146,7 @@ struct VideoChannelFeature {
                     await send(.loadVideos)
                 }
 
-            case .channelDetailsLoaded(let channelId, let channelName, let avatarUrl, let description, let host):
+            case let .channelDetailsLoaded(channelId, channelName, avatarUrl, description, host):
                 // Update channel name if we got a better one from API
                 if channelName != state.channelName {
                     state.channelName = channelName
@@ -173,7 +173,7 @@ struct VideoChannelFeature {
                 )
                 return .none
 
-            case .saveChannel(let channel):
+            case let .saveChannel(channel):
                 state.videoChannel = channel
                 return .run { [client = state.client, channel = channel] send in
                     @Dependency(\.defaultDatabase) var database
@@ -189,14 +189,14 @@ struct VideoChannelFeature {
                             await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
                         }
                     } else {
-                        let hasLocalSub = try? await database.read({ db in
+                        let hasLocalSub = try? await database.read { db in
                             try PeertubeSubscription.find(channel.id).fetchOne(db) != nil
-                        })
+                        }
                         await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
                     }
                 }
 
-            case .instanceLoaded(let instance):
+            case let .instanceLoaded(instance):
                 state.instance = instance
                 return .none
 
@@ -220,7 +220,7 @@ struct VideoChannelFeature {
                     }
                 }
 
-            case .updateNotificationState(let notify):
+            case let .updateNotificationState(notify):
                 state.notifyOnNewVideo = notify
                 return .run { [channel = state.videoChannel, notify = notify] _ in
                     guard let channelId = channel?.id else { return }
@@ -233,7 +233,7 @@ struct VideoChannelFeature {
                     }
                 }
 
-            case .changeSubscriptionState(let newSubscriptionState):
+            case let .changeSubscriptionState(newSubscriptionState):
                 state.isSubscribedToChannel = newSubscriptionState
                 // Capture videoChannel before async block to avoid mutable capture error
                 let videoChannel = state.videoChannel
@@ -242,14 +242,15 @@ struct VideoChannelFeature {
                     videoDetails = state.videoDetails,
                     newSubscriptionState = newSubscriptionState,
                     videoChannel = videoChannel
-                ] send in
+                ] _ in
                     @Dependency(\.defaultDatabase) var database
 
                     let channelId: String
                     if let videoDetails = videoDetails,
                        let channel = videoDetails.channel,
                        let channelUsername = channel.name,
-                       let channelHost = channel.host {
+                       let channelHost = channel.host
+                    {
                         channelId = "\(channelUsername)@\(channelHost)"
                     } else if let channel = videoChannel {
                         channelId = channel.id
@@ -280,7 +281,7 @@ struct VideoChannelFeature {
                     }
                 }
 
-            case .subscriptionStateLoaded(let isSubscribed, let notifyOnNewVideo):
+            case let .subscriptionStateLoaded(isSubscribed, notifyOnNewVideo):
                 state.isSubscribedToChannel = isSubscribed
                 state.notifyOnNewVideo = notifyOnNewVideo
                 return .none
@@ -293,7 +294,8 @@ struct VideoChannelFeature {
                 if let videoDetails = state.videoDetails,
                    let channel = videoDetails.channel,
                    let channelUsername = channel.name,
-                   let channelHost = channel.host {
+                   let channelHost = channel.host
+                {
                     channelId = "\(channelUsername)@\(channelHost)"
                 } else if let channel = state.videoChannel {
                     channelId = channel.id
@@ -318,11 +320,12 @@ struct VideoChannelFeature {
                     }
                 }
 
-            case .loadMoreVideosIfNeeded(let currentItem):
+            case let .loadMoreVideosIfNeeded(currentItem):
                 // Load more when user scrolls near the end
                 guard let currentItem = currentItem,
                       state.hasMoreVideos,
-                      !state.isLoadingVideos else {
+                      !state.isLoadingVideos
+                else {
                     return .none
                 }
 
@@ -337,7 +340,8 @@ struct VideoChannelFeature {
                 if let videoDetails = state.videoDetails,
                    let channel = videoDetails.channel,
                    let channelUsername = channel.name,
-                   let channelHost = channel.host {
+                   let channelHost = channel.host
+                {
                     channelId = "\(channelUsername)@\(channelHost)"
                 } else if let channel = state.videoChannel {
                     channelId = channel.id
@@ -361,7 +365,7 @@ struct VideoChannelFeature {
                     }
                 }
 
-            case .finishLoadingVideos(let newVideos):
+            case let .finishLoadingVideos(newVideos):
                 if state.currentPage == 0 {
                     state.videos = newVideos
                 } else {
@@ -373,7 +377,7 @@ struct VideoChannelFeature {
                 state.hasLoadedAtLeastOnce = true
                 return .none
 
-            case .videoTapped(let video):
+            case let .videoTapped(video):
                 state.videoTapped = video
                 return .none
             }
@@ -385,9 +389,9 @@ struct VideoChannelView: View {
     @Bindable var store: StoreOf<VideoChannelFeature>
 
     private var channelDisplayName: String {
-        store.state.channelName 
-            ?? store.state.videoDetails?.channel?.displayName 
-            ?? store.state.videoChannel?.name 
+        store.state.channelName
+            ?? store.state.videoDetails?.channel?.displayName
+            ?? store.state.videoChannel?.name
             ?? "Channel"
     }
 
@@ -433,7 +437,8 @@ struct VideoChannelView: View {
 
             // Channel description
             if let description = store.state.videoDetails?.channel?.description ?? store.state.videoChannel?.description,
-               !description.isEmpty {
+               !description.isEmpty
+            {
                 Text(description)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

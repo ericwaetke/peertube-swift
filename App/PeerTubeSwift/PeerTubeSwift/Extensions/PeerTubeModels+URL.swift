@@ -7,10 +7,9 @@
 
 import Foundation
 
-
 // MARK: - VideoDetails Extensions
 
-//extension VideoDetails {
+// extension VideoDetails {
 //	/// Computed thumbnail URL based on current app instance
 //	var thumbnailURL: URL? {
 //		guard let appState = AppStateProvider.shared.appState,
@@ -43,11 +42,11 @@ import Foundation
 //		}
 //		return instanceURL.appendingPathComponent(embedPath)
 //	}
-//}
+// }
 //
 //// MARK: - Video Extensions
 //
-//extension Video {
+// extension Video {
 //	/// Computed thumbnail URL based on current app instance
 //	var thumbnailURL: URL? {
 //		guard let appState = AppStateProvider.shared.appState,
@@ -69,11 +68,11 @@ import Foundation
 //		}
 //		return instanceURL.appendingPathComponent(previewPath)
 //	}
-//}
+// }
 //
 //// MARK: - VideoSummary Extensions
 //
-//extension VideoSummary {
+// extension VideoSummary {
 //	/// Computed thumbnail URL based on current app instance
 //	var thumbnailURL: URL? {
 //		guard let appState = AppStateProvider.shared.appState,
@@ -84,11 +83,11 @@ import Foundation
 //		}
 //		return instanceURL.appendingPathComponent(thumbnailPath)
 //	}
-//}
+// }
 //
 //// MARK: - VideoChannel Extensions
 //
-//extension VideoChannel {
+// extension VideoChannel {
 //	/// Computed avatar URL based on current app instance and primary avatar
 //	var avatarURL: URL? {
 //		guard let appState = AppStateProvider.shared.appState,
@@ -112,11 +111,11 @@ import Foundation
 //		}
 //		return instanceURL.appendingPathComponent(bannerPath)
 //	}
-//}
+// }
 //
 //// MARK: - VideoChannelSummary Extensions
 //
-//extension VideoChannelSummary {
+// extension VideoChannelSummary {
 //	/// Computed avatar URL based on current app instance and avatar
 //	var avatarURL: URL? {
 //		guard let appState = AppStateProvider.shared.appState,
@@ -128,11 +127,11 @@ import Foundation
 //		}
 //		return instanceURL.appendingPathComponent(avatarPath)
 //	}
-//}
+// }
 //
 //// MARK: - Account Extensions
 //
-//extension Account {
+// extension Account {
 //	/// Computed avatar URL based on current app instance and primary avatar
 //	var avatarURL: URL? {
 //		guard let appState = AppStateProvider.shared.appState,
@@ -144,11 +143,11 @@ import Foundation
 //		}
 //		return instanceURL.appendingPathComponent(avatarPath)
 //	}
-//}
+// }
 //
 //// MARK: - AccountSummary Extensions
 //
-//extension AccountSummary {
+// extension AccountSummary {
 //	/// Computed avatar URL based on current app instance and avatar
 //	var avatarURL: URL? {
 //		guard let appState = AppStateProvider.shared.appState,
@@ -160,4 +159,4 @@ import Foundation
 //		}
 //		return instanceURL.appendingPathComponent(avatarPath)
 //	}
-//}
+// }

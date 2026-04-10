@@ -13,8 +13,8 @@ import TubeSDK
 public class PlaylistLoaderDelegate: NSObject, AVAssetResourceLoaderDelegate {
     public var url: URL
     public var customSchemeURL: URL {
-        guard var components = URLComponents(url: self.url, resolvingAgainstBaseURL: false),
-            ["http", "https"].contains(components.scheme)
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              ["http", "https"].contains(components.scheme)
         else {
             return url
         }
@@ -34,7 +34,7 @@ public class PlaylistLoaderDelegate: NSObject, AVAssetResourceLoaderDelegate {
     }
 
     public func resourceLoader(
-        _ resourceLoader: AVAssetResourceLoader,
+        _: AVAssetResourceLoader,
         shouldWaitForLoadingOfRequestedResource loadingRequest: AVAssetResourceLoadingRequest
     ) -> Bool {
         print("🎵 PlaylistLoaderDelegate: resourceLoader called")
@@ -53,7 +53,7 @@ public class PlaylistLoaderDelegate: NSObject, AVAssetResourceLoaderDelegate {
 
         print("🎵   Handling custom scheme request")
 
-        let originalURL = self.url
+        let originalURL = url
         let videoFile = self.videoFile
         let audioFile = self.audioFile
 
@@ -159,9 +159,9 @@ class PlaylistModifier {
 
         // If we have both video and audio files, create appropriate combined playlist
         if let videoFile = videoFile,
-            let audioFile = audioFile,
-            let videoPlaylistURL = videoFile.playlistUrl,
-            let audioPlaylistURL = audioFile.playlistUrl
+           let audioFile = audioFile,
+           let videoPlaylistURL = videoFile.playlistUrl,
+           let audioPlaylistURL = audioFile.playlistUrl
         {
             print("🎵   Combining video (\(videoPlaylistURL)) with audio (\(audioPlaylistURL))")
 
@@ -190,7 +190,7 @@ class PlaylistModifier {
 
     private func handleMasterPlaylist(
         lines: [String],
-        videoFile: TubeSDK.VideoFile,
+        videoFile _: TubeSDK.VideoFile,
         audioFile: TubeSDK.VideoFile
     ) async throws -> Data {
         print("🎵   Handling master playlist")
@@ -219,7 +219,7 @@ class PlaylistModifier {
         print("🎵   Creating master playlist wrapper for media playlist")
 
         guard let videoURL = videoFile.playlistUrl,
-            let audioURL = audioFile.playlistUrl
+              let audioURL = audioFile.playlistUrl
         else {
             throw PlaylistModifierError.noVideoFile
         }
@@ -232,12 +232,12 @@ class PlaylistModifier {
 
         // Create a master playlist that references both video and audio
         let masterPlaylist = """
-            #EXTM3U
-            #EXT-X-VERSION:7
-            #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Default",DEFAULT=YES,AUTOSELECT=YES,URI="\(audioURL)"
-            #EXT-X-STREAM-INF:BANDWIDTH=\(bandwidth),RESOLUTION=\(width)x\(height),CODECS="avc1.640028,mp4a.40.2",AUDIO="audio"
-            \(videoURL)
-            """
+        #EXTM3U
+        #EXT-X-VERSION:7
+        #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Default",DEFAULT=YES,AUTOSELECT=YES,URI="\(audioURL)"
+        #EXT-X-STREAM-INF:BANDWIDTH=\(bandwidth),RESOLUTION=\(width)x\(height),CODECS="avc1.640028,mp4a.40.2",AUDIO="audio"
+        \(videoURL)
+        """
 
         print("🎵   Created master playlist:")
         for (i, line) in masterPlaylist.components(separatedBy: .newlines).enumerated() {
@@ -251,17 +251,17 @@ class PlaylistModifier {
         // Estimate bandwidth based on resolution
         if let resolutionId = videoFile.resolution?.id {
             switch resolutionId {
-            case 2160: return 25_000_000  // 4K
-            case 1440: return 16_000_000  // 1440p
-            case 1080: return 8_000_000  // 1080p
-            case 720: return 5_000_000  // 720p
-            case 480: return 2_500_000  // 480p
-            case 360: return 1_000_000  // 360p
-            case 240: return 500000  // 240p
-            default: return 3_000_000  // Default
+            case 2160: return 25_000_000 // 4K
+            case 1440: return 16_000_000 // 1440p
+            case 1080: return 8_000_000 // 1080p
+            case 720: return 5_000_000 // 720p
+            case 480: return 2_500_000 // 480p
+            case 360: return 1_000_000 // 360p
+            case 240: return 500_000 // 240p
+            default: return 3_000_000 // Default
             }
         }
-        return 3_000_000  // Default bandwidth
+        return 3_000_000 // Default bandwidth
     }
 
     private func addAudioGroup(_ lines: inout [String], audioPlaylistURL: String) async throws {
@@ -276,7 +276,7 @@ class PlaylistModifier {
 
         if !hasAudioGroup {
             // Find the insertion point (after #EXTM3U but before stream definitions)
-            var insertIndex = 1  // After #EXTM3U
+            var insertIndex = 1 // After #EXTM3U
             for (index, line) in lines.enumerated() {
                 if line.starts(with: "#EXT-X-STREAM-INF:") {
                     insertIndex = index
@@ -329,15 +329,16 @@ class PlaylistModifier {
                 if !processedUrls.contains(cleanURI) {
                     let absoluteURL = makeAbsoluteURL(from: cleanURI)
                     lines[index] = line.replacingOccurrences(
-                        of: cleanURI, with: absoluteURL.absoluteString)
+                        of: cleanURI, with: absoluteURL.absoluteString
+                    )
                     print("🎵     Made URI absolute: \(cleanURI) -> \(absoluteURL.absoluteString)")
                     urlCount += 1
                     processedUrls.insert(cleanURI)
                 }
             }
             // Handle playlist URLs (lines that don't start with #)
-            else if !line.starts(with: "#") && !line.isEmpty
-                && !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else if !line.starts(with: "#"), !line.isEmpty,
+                    !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             {
                 let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !processedUrls.contains(trimmedLine) {

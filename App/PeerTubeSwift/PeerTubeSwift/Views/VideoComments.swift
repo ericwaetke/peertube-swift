@@ -1,7 +1,7 @@
 import ComposableArchitecture
+import PostHog
 import SwiftUI
 import TubeSDK
-import PostHog
 
 @Reducer
 struct VideoCommentsFeature {
@@ -9,14 +9,14 @@ struct VideoCommentsFeature {
     struct State: Equatable {
         let videoId: String
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
-        
+
         var commentsVisible = false
         var comments: [TubeSDK.VideoCommentThreadTree] = []
         var videoDetails: TubeSDK.VideoDetails?
-        
+
         var instanceAvatars: [String: String] = [:]
         var collapsedCommentIds: Set<Int> = []
-        
+
         @Presents var composeSheet: CommentComposeFeature.State?
     }
 
@@ -38,30 +38,35 @@ struct VideoCommentsFeature {
             switch action {
             case .binding:
                 return .none
+
             case .commentsVisibleChanged:
                 state.commentsVisible.toggle()
                 if state.commentsVisible {
                     PostHogSDK.shared.capture("comments_viewed", properties: ["video_id": state.videoId])
                 }
                 return .none
+
             case .loadComments:
                 return .run { [client = state.client, videoId = state.videoId] send in
                     if let commentsResponse = try? await client.getCommentThreads(videoID: videoId),
-                       let data = commentsResponse.data {
+                       let data = commentsResponse.data
+                    {
                         // Fetch the full tree for each thread
                         var trees: [VideoCommentThreadTree] = []
                         for comment in data {
                             if let threadId = comment.threadId,
-                               let tree = try? await client.getCommentThread(videoID: videoId, threadId: threadId) {
+                               let tree = try? await client.getCommentThread(videoID: videoId, threadId: threadId)
+                            {
                                 trees.append(tree)
                             }
                         }
                         await send(.commentsLoaded(trees))
                     }
                 }
-            case .commentsLoaded(let trees):
+
+            case let .commentsLoaded(trees):
                 state.comments = trees
-                
+
                 // Collect unique hosts to fetch avatars
                 var uniqueHosts = Set<String>()
                 func traverse(_ tree: VideoCommentThreadTree) {
@@ -69,14 +74,14 @@ struct VideoCommentsFeature {
                     tree.children?.forEach(traverse)
                 }
                 trees.forEach(traverse)
-                
+
                 // Convert to array to avoid capturing mutable Set in async context
                 let hosts = Array(uniqueHosts)
-                
+
                 return .run { send in
                     @Dependency(\.defaultDatabase) var database
                     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
-                    
+
                     await withTaskGroup(of: (String, String?).self) { group in
                         for host in hosts {
                             group.addTask { @Sendable in
@@ -86,7 +91,7 @@ struct VideoCommentsFeature {
                                 return (host, nil)
                             }
                         }
-                        
+
                         for await (host, avatarUrl) in group {
                             if let avatarUrl = avatarUrl {
                                 await send(.instanceAvatarLoaded(host: host, avatarUrl: avatarUrl))
@@ -94,12 +99,13 @@ struct VideoCommentsFeature {
                         }
                     }
                 }
-            case .instanceAvatarLoaded(let host, let avatarUrl):
+
+            case let .instanceAvatarLoaded(host, avatarUrl):
                 if let avatarUrl = avatarUrl {
                     state.instanceAvatars[host] = avatarUrl
                 }
                 return .none
-                
+
             case .addCommentTapped:
                 PostHogSDK.shared.capture("comment_compose_started", properties: ["video_id": state.videoId, "type": "top_level"])
                 state.composeSheet = CommentComposeFeature.State(
@@ -108,8 +114,8 @@ struct VideoCommentsFeature {
                     targetUsername: nil
                 )
                 return .none
-                
-            case .toggleThreadCollapsed(let id):
+
+            case let .toggleThreadCollapsed(id):
                 let willCollapse = !state.collapsedCommentIds.contains(id)
                 PostHogSDK.shared.capture("comment_thread_toggled", properties: ["video_id": state.videoId, "comment_id": id, "action": willCollapse ? "collapsed" : "expanded"])
                 if willCollapse {
@@ -119,7 +125,7 @@ struct VideoCommentsFeature {
                 }
                 return .none
 
-            case .replyTapped(let comment):
+            case let .replyTapped(comment):
                 if let id = comment.id {
                     PostHogSDK.shared.capture("comment_compose_started", properties: ["video_id": state.videoId, "type": "reply", "parent_comment_id": id])
                     let username = comment.account?.displayName ?? comment.account?.name ?? "Unknown"
@@ -130,11 +136,11 @@ struct VideoCommentsFeature {
                     )
                 }
                 return .none
-                
+
             case .composeSheet(.presented(.postResponse(.success))):
                 // Reload comments after successful post
                 return .send(.loadComments)
-                
+
             case .composeSheet:
                 return .none
             }
@@ -154,7 +160,6 @@ struct VideoCommentsView: View {
                 isExpanded: $store.commentsVisible.sending(\.commentsVisibleChanged)
             ) {
                 VStack(alignment: .leading, spacing: 16) {
-                    
                     if store.state.client.currentToken != nil {
                         Button {
                             store.send(.addCommentTapped)
@@ -172,10 +177,10 @@ struct VideoCommentsView: View {
                         }
                         .padding(.top, 8)
                     }
-                    
+
                     ForEach(store.state.comments, id: \.comment?.id) { tree in
                         CommentTreeView(store: store, tree: tree, level: 0)
-                        
+
                         if tree.comment?.id != store.state.comments.last?.comment?.id {
                             Divider()
                         }
@@ -202,7 +207,7 @@ struct CommentTreeView: View {
     let store: StoreOf<VideoCommentsFeature>
     let tree: VideoCommentThreadTree
     let level: Int
-    
+
     var body: some View {
         if let comment = tree.comment {
             VStack(alignment: .leading, spacing: 4) {
@@ -214,15 +219,15 @@ struct CommentTreeView: View {
                         name: comment.account?.displayName ?? comment.account?.name ?? "Unknown",
                         size: 42
                     )
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text(comment.account?.displayName ?? comment.account?.name ?? "Unknown")
                                 .fontWeight(.semibold)
                                 .font(.subheadline)
-                            
+
                             Spacer()
-                            
+
                             if let createdAt = comment.createdAt {
                                 Text(createdAt, style: .date)
                                     .font(.caption)
@@ -237,7 +242,7 @@ struct CommentTreeView: View {
                             Text(cleanText)
                                 .font(.body)
                         }
-                        
+
                         HStack(spacing: 16) {
                             if store.state.client.currentToken != nil {
                                 Button {
@@ -251,7 +256,7 @@ struct CommentTreeView: View {
                                     .foregroundColor(.accentColor)
                                 }
                             }
-                            
+
                             if let children = tree.children, !children.isEmpty, let id = comment.id {
                                 let isCollapsed = store.state.collapsedCommentIds.contains(id)
                                 Button {
@@ -273,7 +278,7 @@ struct CommentTreeView: View {
             }
             .padding(.vertical, 4)
             .padding(.leading, CGFloat(level * 32))
-            
+
             if let children = tree.children, let id = comment.id, !store.state.collapsedCommentIds.contains(id) {
                 ForEach(children, id: \.comment?.id) { childTree in
                     CommentTreeView(store: store, tree: childTree, level: level + 1)
@@ -322,9 +327,9 @@ extension VideoCommentThreadTree: Equatable {
                                     )
                                 ),
                                 children: []
-                            )
+                            ),
                         ]
-                    )
+                    ),
                 ],
                 videoDetails: TubeSDK.VideoDetails(
                     comments: 2
