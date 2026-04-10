@@ -11,13 +11,13 @@ struct VideoActionsFeature {
         let host: String
         let videoId: String
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
-        
+
         var hasLiked = false
         var hasDisliked = false
         var videoDetails: TubeSDK.VideoDetails?
         var selectedQuality: TubeSDK.VideoFile?
     }
-    
+
     enum Action {
         case dislikeButtonTapped
         case likeButtonTapped
@@ -25,58 +25,58 @@ struct VideoActionsFeature {
         case ratingLoaded(TubeSDK.VideoRating)
         case newResolutionSelected(TubeSDK.VideoFile)
     }
-    
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
             case .dislikeButtonTapped:
                 let wasDisliked = state.hasDisliked
                 let wasLiked = state.hasLiked
-                
+
                 state.hasLiked = false
                 state.hasDisliked = !wasDisliked
-                
+
                 var newLikes = state.videoDetails?.likes ?? 0
                 var newDislikes = state.videoDetails?.dislikes ?? 0
-                
+
                 if wasLiked { newLikes = max(0, newLikes - 1) }
                 if wasDisliked {
                     newDislikes = max(0, newDislikes - 1)
                 } else {
                     newDislikes += 1
                 }
-                
+
                 state.videoDetails?.likes = newLikes
                 state.videoDetails?.dislikes = newDislikes
-                return .run { [client = state.client, videoId = state.videoId, hasDisliked = state.hasDisliked] send in
+                return .run { [client = state.client, videoId = state.videoId, hasDisliked = state.hasDisliked] _ in
                     try? await client.rate(videoID: videoId, rating: hasDisliked ? .dislike : .none)
                     PostHogSDK.shared.capture(hasDisliked ? "video_disliked" : "video_dislike_removed", properties: ["video_id": videoId])
                 }
-                
+
             case .likeButtonTapped:
                 let wasLiked = state.hasLiked
                 let wasDisliked = state.hasDisliked
-                
+
                 state.hasLiked = !wasLiked
                 state.hasDisliked = false
-                
+
                 var newLikes = state.videoDetails?.likes ?? 0
                 var newDislikes = state.videoDetails?.dislikes ?? 0
-                
+
                 if wasDisliked { newDislikes = max(0, newDislikes - 1) }
                 if wasLiked {
                     newLikes = max(0, newLikes - 1)
                 } else {
                     newLikes += 1
                 }
-                
+
                 state.videoDetails?.likes = newLikes
                 state.videoDetails?.dislikes = newDislikes
-                return .run { [client = state.client, videoId = state.videoId, hasLiked = state.hasLiked] send in
+                return .run { [client = state.client, videoId = state.videoId, hasLiked = state.hasLiked] _ in
                     try? await client.rate(videoID: videoId, rating: hasLiked ? .like : .none)
                     PostHogSDK.shared.capture(hasLiked ? "video_liked" : "video_like_removed", properties: ["video_id": videoId])
                 }
-                
+
             case .loadUserRating:
                 return .run { [client = state.client, videoId = state.videoId] send in
                     if client.currentToken != nil {
@@ -85,18 +85,18 @@ struct VideoActionsFeature {
                         }
                     }
                 }
-                
-            case .ratingLoaded(let rating):
+
+            case let .ratingLoaded(rating):
                 state.hasLiked = rating == .like
                 state.hasDisliked = rating == .dislike
                 return .none
-                
-            case .newResolutionSelected(let resolution):
+
+            case let .newResolutionSelected(resolution):
                 state.selectedQuality = resolution
                 return .run { [videoId = state.videoId, resolution] _ in
                     PostHogSDK.shared.capture("video_quality_changed", properties: [
                         "video_id": videoId,
-                        "quality": resolution.resolution?.label ?? ""
+                        "quality": resolution.resolution?.label ?? "",
                     ])
                 }
             }
@@ -106,12 +106,12 @@ struct VideoActionsFeature {
 
 struct VideoActionsView: View {
     @Bindable var store: StoreOf<VideoActionsFeature>
-    
+
     var body: some View {
         HStack {
             if let likes = store.state.videoDetails?.likes,
-               let dislikes = store.state.videoDetails?.dislikes {
-                
+               let dislikes = store.state.videoDetails?.dislikes
+            {
                 Button {
                     self.store.send(.likeButtonTapped)
                 } label: {
@@ -134,13 +134,13 @@ struct VideoActionsView: View {
                 }
                 .buttonStyle(.bordered)
                 .foregroundStyle(self.store.state.hasDisliked ? .blue : .primary)
-                
             }
-            
+
             Spacer()
-            
+
             if let playlist = store.state.videoDetails?.streamingPlaylists?.first,
-               let qualities = playlist.files {
+               let qualities = playlist.files
+            {
                 Menu {
                     ForEach(qualities) { quality in
                         if let resolution = quality.resolution?.label {
@@ -164,7 +164,7 @@ struct VideoActionsView: View {
                 .buttonStyle(.bordered)
                 .foregroundStyle(.primary)
             }
-            
+
             if let url = URL(string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)") {
                 ShareLink(item: url) {
                     Image(systemName: "square.and.arrow.up")
@@ -197,9 +197,9 @@ struct VideoActionsView: View {
                                     resolution: TubeSDK.VideoResolutionConstant(id: 720, label: "720p"),
                                     hasAudio: true,
                                     hasVideo: true
-                                )
+                                ),
                             ]
-                        )
+                        ),
                     ]
                 ),
                 selectedQuality: TubeSDK.VideoFile(

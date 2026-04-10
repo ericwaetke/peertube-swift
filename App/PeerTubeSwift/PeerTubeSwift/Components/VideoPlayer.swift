@@ -17,40 +17,40 @@ struct SeekRequest: Equatable {
 
 struct VideoPlayerView: View {
     @Binding var isPlayerReady: Bool
-    var onTimeUpdate: ((Int) -> Void)? = nil
+    var onTimeUpdate: ((Int) -> Void)?
     let videoFiles: [TubeSDK.VideoFile]
     let selectedVideoFile: TubeSDK.VideoFile?
-    var startTime: Int? = nil
-    var seekRequest: SeekRequest? = nil
-    var videoTitle: String? = nil
-    var channelName: String? = nil
-    var thumbnailPath: String? = nil
+    var startTime: Int?
+    var seekRequest: SeekRequest?
+    var videoTitle: String?
+    var channelName: String?
+    var thumbnailPath: String?
 
     // Legacy initializer for single URL (backwards compatibility)
-    init(videoURL: URL) {
-        self._isPlayerReady = .constant(false)
-        self.videoFiles = []
-        self.selectedVideoFile = nil
-        self.startTime = nil
-        self.seekRequest = nil
-        self.videoTitle = nil
-        self.channelName = nil
-        self.thumbnailPath = nil
+    init(videoURL _: URL) {
+        _isPlayerReady = .constant(false)
+        videoFiles = []
+        selectedVideoFile = nil
+        startTime = nil
+        seekRequest = nil
+        videoTitle = nil
+        channelName = nil
+        thumbnailPath = nil
     }
 
     // New initializer for VideoFile arrays with quality selection
     init(
         isPlayerReady: Binding<Bool> = .constant(false),
-        onTimeUpdate: ((Int) -> Void)? = nil, 
-        videoFiles: [TubeSDK.VideoFile], 
-        selectedVideoFile: TubeSDK.VideoFile?, 
+        onTimeUpdate: ((Int) -> Void)? = nil,
+        videoFiles: [TubeSDK.VideoFile],
+        selectedVideoFile: TubeSDK.VideoFile?,
         startTime: Int? = nil,
         seekRequest: SeekRequest? = nil,
         videoTitle: String? = nil,
         channelName: String? = nil,
         thumbnailPath: String? = nil
     ) {
-        self._isPlayerReady = isPlayerReady
+        _isPlayerReady = isPlayerReady
         self.onTimeUpdate = onTimeUpdate
         self.videoFiles = videoFiles
         self.selectedVideoFile = selectedVideoFile
@@ -102,7 +102,6 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
     var channelName: String? = nil
     var thumbnailPath: String? = nil
 
-    
     class Coordinator: NSObject {
         var parent: VideoPlayerViewControllerRepresentable
         var timeObserver: Any?
@@ -120,19 +119,19 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
         func addObserver(to player: AVPlayer) {
             removeObserver()
             self.player = player
-            
+
             print("🎬 addObserver: parent.startTime = \(String(describing: parent.startTime)), initialSeekPerformed = \(initialSeekPerformed)")
-            
+
             // Observe timeControlStatus to detect when player starts playing (first frame ready)
             timeControlObservation = player.observe(\.timeControlStatus) { [weak self] player, _ in
                 guard let self = self else { return }
                 print("🎬 addObserver: timeControlStatus changed to \(String(describing: player.timeControlStatus))")
-                
-                if player.timeControlStatus == .playing && !self.hasNotifiedPlayerReady {
+
+                if player.timeControlStatus == .playing, !self.hasNotifiedPlayerReady {
                     print("🎬 addObserver: First frame ready, setting isPlayerReady = true")
                     self.hasNotifiedPlayerReady = true
                     self.parent.isPlayerReady = true
-                    
+
                     // Now that player is ready, perform initial seek if needed
                     if let startTime = self.parent.startTime, startTime > 0, !self.initialSeekPerformed {
                         print("🎬 addObserver: Performing initial seek to \(startTime)s")
@@ -141,28 +140,28 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
                     }
                 }
             }
-            
+
             // If player is already playing, handle it immediately
-            if player.timeControlStatus == .playing && !hasNotifiedPlayerReady {
+            if player.timeControlStatus == .playing, !hasNotifiedPlayerReady {
                 print("🎬 addObserver: Player already playing on setup")
                 hasNotifiedPlayerReady = true
                 parent.isPlayerReady = true
             }
-            
+
             let interval = CMTime(seconds: 5.0, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
             timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
                 self?.parent.onTimeUpdate?(Int(time.seconds))
             }
         }
-        
+
         func performSeekWhenReady(time: CMTime) {
-            guard let player = self.player, let item = player.currentItem else { 
+            guard let player = player, let item = player.currentItem else {
                 print("🎬 performSeekWhenReady: No player or currentItem")
-                return 
+                return
             }
-            
+
             print("🎬 performSeekWhenReady: Requested seek to \(time.seconds)s, status: \(item.status.rawValue)")
-            
+
             let seekBlock = {
                 print("🎬 performSeekWhenReady: Executing seek to \(time.seconds)s")
                 player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
@@ -170,7 +169,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
                     player.play() // ensure it keeps playing if it was auto-played
                 }
             }
-            
+
             if item.status == .readyToPlay {
                 print("🎬 performSeekWhenReady: Already ready, seeking immediately")
                 seekBlock()
@@ -235,7 +234,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
         print("🎬 VideoPlayer: updateUIViewController called")
 
         // Handle seek requests explicitly first
-        if let req = self.seekRequest, context.coordinator.lastSeekRequestId != req.id {
+        if let req = seekRequest, context.coordinator.lastSeekRequestId != req.id {
             print("🎬 VideoPlayer: Handling new seek request for \(req.time)s")
             context.coordinator.lastSeekRequestId = req.id
             context.coordinator.performSeekWhenReady(time: CMTime(seconds: Double(req.time), preferredTimescale: 600))
@@ -243,7 +242,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
 
         // Check if we need to update the player
         guard let selectedFile = selectedVideoFile,
-            let selectedURL = selectedFile.bestPlaybackURL
+              let selectedURL = selectedFile.bestPlaybackURL
         else {
             print("❌ VideoPlayer: No selected file or URL")
             return
@@ -257,7 +256,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
 
         // Compare current URL with selected URL
         if let currentItem = uiViewController.player?.currentItem,
-            let currentURL = (currentItem.asset as? AVURLAsset)?.url
+           let currentURL = (currentItem.asset as? AVURLAsset)?.url
         {
             print("🎬 VideoPlayer: Current URL: \(currentURL)")
 
@@ -267,7 +266,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
             if currentOriginalURL?.absoluteString == selectedURL.absoluteString {
                 print("🎬 VideoPlayer: Same URL, no update needed")
                 // Still try to seek if we haven't performed initial seek yet!
-                if !context.coordinator.initialSeekPerformed, let startTime = self.startTime, startTime > 0 {
+                if !context.coordinator.initialSeekPerformed, let startTime = startTime, startTime > 0 {
                     print("🎬 updateUIViewController: Trying initial seek from update")
                     context.coordinator.performSeekWhenReady(time: CMTime(seconds: Double(startTime), preferredTimescale: 600))
                     context.coordinator.initialSeekPerformed = true
@@ -280,7 +279,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
 
         // Reset player ready state so loading overlay appears during stream change
         context.coordinator.hasNotifiedPlayerReady = false
-        self.isPlayerReady = false
+        isPlayerReady = false
 
         // Store current playback state
         let currentTime = uiViewController.player?.currentTime()
@@ -296,7 +295,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
 
             // Clean up any resource loader delegates
             if let currentItem = currentPlayer.currentItem,
-                let currentAsset = currentItem.asset as? AVURLAsset
+               let currentAsset = currentItem.asset as? AVURLAsset
             {
                 currentAsset.resourceLoader.setDelegate(nil, queue: nil)
                 print("🎬   Cleaned up resource loader delegate")
@@ -337,7 +336,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
 
     private func applyMetadata(to playerItem: AVPlayerItem) {
         var metadataItems: [AVMetadataItem] = []
-        
+
         if let title = videoTitle {
             let titleItem = AVMutableMetadataItem()
             titleItem.identifier = .commonIdentifierTitle
@@ -345,7 +344,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
             titleItem.extendedLanguageTag = "und"
             metadataItems.append(titleItem)
         }
-        
+
         if let channel = channelName {
             let artistItem = AVMutableMetadataItem()
             artistItem.identifier = .commonIdentifierArtist
@@ -353,7 +352,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
             artistItem.extendedLanguageTag = "und"
             metadataItems.append(artistItem)
         }
-        
+
         // Asynchronously load thumbnail if available
         if let path = thumbnailPath, let url = URL(string: path) {
             // Because thumbnailPath might just be a path, let's try to construct a full URL if it's not absolute.
@@ -363,7 +362,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
                 // We don't easily have the instance URL here, so if it's a relative path, this might fail unless it's full.
                 // Assuming it's passed as a full URL, or at least a path we can try.
             }
-            
+
             // To properly resolve, we could just use URLSession
             Task {
                 do {
@@ -375,7 +374,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
                             artworkItem.value = pngData as NSData
                             artworkItem.dataType = "public.png"
                             artworkItem.extendedLanguageTag = "und"
-                            
+
                             // Update player item on main thread
                             await MainActor.run {
                                 var currentMetadata = playerItem.externalMetadata
@@ -389,7 +388,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
                 }
             }
         }
-        
+
         playerItem.externalMetadata = metadataItems
     }
 
@@ -405,7 +404,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
         )
 
         guard let primary = primaryFile,
-            let playbackURL = primary.bestPlaybackURL
+              let playbackURL = primary.bestPlaybackURL
         else {
             return nil
         }
@@ -430,7 +429,6 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
         videoFile: TubeSDK.VideoFile,
         audioFile: TubeSDK.VideoFile?
     ) -> AVPlayer? {
-
         // Create the resource loader delegate
         let delegate = PlaylistLoaderDelegate(
             videoURL,
@@ -467,7 +465,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
                 resolution: TubeSDK.VideoResolutionConstant(id: 1, label: "720p"),
                 fileUrl: "https://sample-videos.com/zip/10/mp4/720/mp4/SampleVideo_720x480_1mb.mp4",
                 playlistUrl:
-                    "https://sample-videos.com/zip/10/mp4/720/mp4/SampleVideo_720x480_1mb.mp4",
+                "https://sample-videos.com/zip/10/mp4/720/mp4/SampleVideo_720x480_1mb.mp4",
                 hasAudio: true,
                 hasVideo: true
             )

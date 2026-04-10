@@ -33,13 +33,14 @@ struct ChannelPreviewFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .loadChannelPreview(let videoDetails):
+            case let .loadChannelPreview(videoDetails):
                 state.videoDetails = videoDetails
 
                 // Get channel info for subscription
                 guard let channel = videoDetails.channel,
                       let channelUsername = channel.name,
-                      let channelHost = channel.host else {
+                      let channelHost = channel.host
+                else {
                     return .none
                 }
 
@@ -68,14 +69,14 @@ struct ChannelPreviewFeature {
                             await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
                         }
                     } else {
-                        let hasLocalSub = try? await database.read({ db in
+                        let hasLocalSub = try? await database.read { db in
                             try PeertubeSubscription.find(channelId).fetchOne(db) != nil
-                        })
+                        }
                         await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
                     }
                 }
 
-            case .instanceLoaded(let instance):
+            case let .instanceLoaded(instance):
                 state.instance = instance
                 return .none
 
@@ -99,7 +100,7 @@ struct ChannelPreviewFeature {
                     }
                 }
 
-            case .updateNotificationState(let notify):
+            case let .updateNotificationState(notify):
                 state.notifyOnNewVideo = notify
                 return .run { [videoDetails = state.videoDetails, notify = notify] _ in
                     guard let videoDetails = videoDetails,
@@ -117,20 +118,21 @@ struct ChannelPreviewFeature {
                     }
                 }
 
-            case .changeSubscriptionState(let newSubscriptionState):
+            case let .changeSubscriptionState(newSubscriptionState):
                 state.isSubscribedToChannel = newSubscriptionState
                 let videoDetails = state.videoDetails
                 return .run { [
                     client = state.client,
                     videoDetails = videoDetails,
                     newSubscriptionState = newSubscriptionState
-                ] send in
+                ] _ in
                     @Dependency(\.defaultDatabase) var database
 
                     guard let videoDetails = videoDetails,
                           let channel = videoDetails.channel,
                           let channelUsername = channel.name,
-                          let channelHost = channel.host else {
+                          let channelHost = channel.host
+                    else {
                         return
                     }
 
@@ -159,10 +161,11 @@ struct ChannelPreviewFeature {
                     }
                 }
 
-            case .subscriptionStateLoaded(let isSubscribed, let notifyOnNewVideo):
+            case let .subscriptionStateLoaded(isSubscribed, notifyOnNewVideo):
                 state.isSubscribedToChannel = isSubscribed
                 state.notifyOnNewVideo = notifyOnNewVideo
                 return .none
+
             case .channelTapped:
                 return .none
             }

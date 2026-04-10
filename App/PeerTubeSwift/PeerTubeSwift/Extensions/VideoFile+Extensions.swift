@@ -37,8 +37,7 @@ extension TubeSDK.VideoFile {
 }
 
 /// Helper for managing VideoFile collections and finding matching streams
-struct VideoFileHelper {
-
+enum VideoFileHelper {
     /// Finds the best video and audio combination for a given video file
     /// - Parameters:
     ///   - videoFiles: Array of available video files
@@ -48,7 +47,6 @@ struct VideoFileHelper {
         from videoFiles: [TubeSDK.VideoFile],
         targetVideoFile: TubeSDK.VideoFile?
     ) -> (primaryFile: TubeSDK.VideoFile?, audioFile: TubeSDK.VideoFile?) {
-
         print("🎵 VideoFileHelper: findBestVideoAudioCombination")
         print("🎵   Total files: \(videoFiles.count)")
 
@@ -89,7 +87,6 @@ struct VideoFileHelper {
         for videoFile: TubeSDK.VideoFile,
         from videoFiles: [TubeSDK.VideoFile]
     ) -> TubeSDK.VideoFile? {
-
         print("🎵   findMatchingAudioFile:")
 
         // Filter files that have audio streams

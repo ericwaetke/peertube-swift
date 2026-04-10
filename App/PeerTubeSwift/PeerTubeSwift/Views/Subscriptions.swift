@@ -29,22 +29,21 @@ enum RecommendationCategory: String, CaseIterable {
 }
 
 struct Recommendation: Equatable, Hashable, Identifiable {
-    let id: UUID = UUID()
+    let id: UUID = .init()
     let username: String
     let displayName: String
     let avatarUrl: URL
     let category: RecommendationCategory
-    
+
     var isSubscribed = false
 }
 
 @Reducer
 struct SubscriptionFeature {
-    
     @ObservableState
     struct State: Equatable {
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
-        
+
         @FetchAll(
             PeertubeSubscription
                 .group(by: \.id)
@@ -59,7 +58,7 @@ struct SubscriptionFeature {
             animation: .default
         )
         var records: [SubRecord]
-        
+
         var recommendations: [Recommendation] = [
             Recommendation(username: "veronicaexplains@tinkerbetter.tube", displayName: "Veronica Explains", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/52cda089-6645-4306-8a8e-e54459652462.jpg")!, category: .tech),
             Recommendation(username: "arthurpizza@tilvids.com", displayName: "arthurpizza", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/af6645ec-6d5e-4880-a710-98475525162d.jpg")!, category: .tech),
@@ -73,27 +72,27 @@ struct SubscriptionFeature {
             Recommendation(username: "obsidianurbexvideos@lostpod.space", displayName: "Obsidian Urbex - Abandoned Places Videos", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/c73cb49d-a7cc-4e93-9278-83ee8e8bc37f.png")!, category: .photography),
         ]
     }
-    
+
     enum Action {
         case findChannelsButtonTapped
         case listElementDeleteSwiped(offsets: IndexSet)
-        
+
         case recommendationSubscribeButtonTapped(Recommendation)
         case toggleNotification(SubRecord)
         case updateNotificationState(SubRecord, Bool)
     }
-    
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
             case .findChannelsButtonTapped:
                 return .none
-            case .toggleNotification(let row):
+            case let .toggleNotification(row):
                 let currentNotificationState = row.subscription.notifyOnNewVideo
                 return .run { send in
                     let center = UNUserNotificationCenter.current()
                     let settings = await center.notificationSettings()
-                    
+
                     if settings.authorizationStatus == .notDetermined {
                         let granted = try? await center.requestAuthorization(options: [.alert, .sound])
                         if granted == true {
@@ -106,7 +105,7 @@ struct SubscriptionFeature {
                         print("User denied notifications")
                     }
                 }
-            case .updateNotificationState(let row, let notify):
+            case let .updateNotificationState(row, notify):
                 return .run { _ in
                     let channelId = row.subscription.channelID
                     @Dependency(\.defaultDatabase) var database
@@ -117,8 +116,8 @@ struct SubscriptionFeature {
                             .execute(db)
                     }
                 }
-            case .listElementDeleteSwiped(offsets: let offsets):
-                return .run { [client = state.client, subscriptions = state.records] send in
+            case let .listElementDeleteSwiped(offsets: offsets):
+                return .run { [client = state.client, subscriptions = state.records] _ in
                     withErrorReporting {
                         try database.write { db in
                             try PeertubeSubscription.find(offsets.map { subscriptions[$0].id })
@@ -135,10 +134,10 @@ struct SubscriptionFeature {
                 }
             case let .recommendationSubscribeButtonTapped(recommendation):
                 @Dependency(\.defaultDatabase) var database
-                let isSubscribed = state.records.filter {$0.channel?.id == recommendation.username}.count > 0
-                
+                let isSubscribed = state.records.filter { $0.channel?.id == recommendation.username }.count > 0
+
                 if isSubscribed {
-                    return .run { [client = state.client] send in
+                    return .run { [client = state.client] _ in
                         await withErrorReporting {
                             try await database.write { db in
                                 try PeertubeSubscription
@@ -152,25 +151,25 @@ struct SubscriptionFeature {
                         }
                     }
                 } else {
-                    return .run { [client = state.client] send in
+                    return .run { [client = state.client] _ in
                         await withErrorReporting {
                             try await database.write { db in
                                 guard let hostSubstring = recommendation.username.split(separator: "@").last else {
                                     print("could not get host")
                                     return
                                 }
-                                
+
                                 let instance = try Instance
                                     .upsert {
                                         Instance(host: String(hostSubstring), scheme: "https")
                                     }
                                     .returning(\.self)
                                     .fetchOne(db)
-                                
+
                                 guard let instance = instance else {
                                     return
                                 }
-                                
+
                                 try VideoChannel
                                     .upsert {
                                         VideoChannel(
@@ -181,11 +180,12 @@ struct SubscriptionFeature {
                                         )
                                     }
                                     .execute(db)
-                                
+
                                 try PeertubeSubscription
                                     .insert {
                                         PeertubeSubscription.Draft(
-                                            channelID: recommendation.username, createdAt: .now)
+                                            channelID: recommendation.username, createdAt: .now
+                                        )
                                     }
                                     .execute(db)
                             }
@@ -198,13 +198,13 @@ struct SubscriptionFeature {
             }
         }
     }
-    
+
     @Dependency(\.defaultDatabase) var database
 }
 
 struct Subscriptions: View {
     let store: StoreOf<SubscriptionFeature>
-    
+
     var body: some View {
         Form {
             Section {
@@ -225,11 +225,11 @@ struct Subscriptions: View {
                                     name: row.channel?.name ?? "Channel Name Not Available",
                                     size: 36
                                 )
-                                
+
                                 Text(row.channel?.name ?? "Channel Name Not Available")
 
                                 Spacer()
-                                
+
                                 Button {
                                     self.store.send(.toggleNotification(row))
                                 } label: {
@@ -244,7 +244,7 @@ struct Subscriptions: View {
                     }
                 }
             }
-            
+
             Section("Recommendations") {
                 ForEach(RecommendationCategory.allCases, id: \.rawValue) { category in
                     VStack(alignment: .leading) {
@@ -259,12 +259,12 @@ struct Subscriptions: View {
                                             name: recommendation.displayName,
                                             size: 48
                                         )
-                                        
+
                                         Text(recommendation.displayName)
-                                        
+
                                         Button(
-                                            self.store.state.records.filter {$0.channel?.id == recommendation.username}.count > 0
-                                            ? "Unsubscribe" : "Subscribe"
+                                            self.store.state.records.filter { $0.channel?.id == recommendation.username }.count > 0
+                                                ? "Unsubscribe" : "Subscribe"
                                         ) {
                                             self.store.send(.recommendationSubscribeButtonTapped(recommendation))
                                         }
@@ -279,7 +279,6 @@ struct Subscriptions: View {
                     }
                 }
             }
-            
         }
         .navigationTitle("Subscriptions")
     }

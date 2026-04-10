@@ -8,7 +8,6 @@
 import XCTest
 
 final class PeerTubeSwiftUITestsLaunchTests: XCTestCase {
-
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
     }

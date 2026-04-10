@@ -1,7 +1,7 @@
 import ComposableArchitecture
+import PostHog
 import SwiftUI
 import TubeSDK
-import PostHog
 
 @Reducer
 struct CommentComposeFeature {

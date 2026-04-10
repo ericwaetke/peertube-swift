@@ -10,47 +10,47 @@ public struct LoginFeature {
         public var username = ""
         public var password = ""
         public var isLoading = false
-        public var errorMessage: String? = nil
-        
+        public var errorMessage: String?
+
         public init() {}
     }
-    
+
     public enum Action: BindableAction {
         case binding(BindingAction<State>)
         case loginButtonTapped
         case loginResponse(Result<UserSession, Error>)
         case delegate(Delegate)
-        
+
         public enum Delegate {
             case didLogin(UserSession)
         }
     }
-    
+
     @Dependency(\.authClient) var authClient
     @Dependency(\.dismiss) var dismiss
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
-    
+
     public init() {}
-    
+
     public var body: some Reducer<State, Action> {
         BindingReducer()
-        
+
         Reduce<State, Action> { state, action in
             switch action {
             case .binding:
                 state.errorMessage = nil
                 return .none
-                
+
             case .loginButtonTapped:
                 state.isLoading = true
                 state.errorMessage = nil
-                
+
                 return .run { [client = self.client, username = state.username, password = state.password] send in
                     do {
                         let credentials = try await client.getClientOAuthCredentials()
                         let token = try await client.login(username: username, password: password, client: credentials)
                         let session = UserSession(username: username, host: client.instance.host, token: token)
-                        
+
                         // Fetch avatar from user/me
                         var avatarUrl: String? = nil
                         do {
@@ -60,7 +60,7 @@ public struct LoginFeature {
                             // Avatar fetching is optional, continue without it
                             print("Failed to fetch avatar: \(error)")
                         }
-                        
+
                         let sessionWithAvatar = UserSession(
                             username: session.username,
                             host: session.host,
@@ -72,7 +72,7 @@ public struct LoginFeature {
                         await send(.loginResponse(.failure(error)))
                     }
                 }
-                
+
             case let .loginResponse(.success(session)):
                 state.isLoading = false
                 return .run { [authClient = self.authClient, dismiss = self.dismiss, session] send in
@@ -81,16 +81,16 @@ public struct LoginFeature {
                     PostHogSDK.shared.capture("user_logged_in", properties: ["host": session.host])
                     await send(.delegate(.didLogin(session)))
                     await dismiss()
-                } catch: { error, _ in
+                } catch: { _, _ in
                     print("Failed to save session: \\(error)")
                 }
-                
+
             case let .loginResponse(.failure(error)):
                 state.isLoading = false
                 print("Failed to login: \\(error)")
                 state.errorMessage = error.localizedDescription
                 return .none
-                
+
             case .delegate:
                 return .none
             }
@@ -100,11 +100,11 @@ public struct LoginFeature {
 
 public struct LoginView: View {
     @Bindable var store: StoreOf<LoginFeature>
-    
+
     public init(store: StoreOf<LoginFeature>) {
         self.store = store
     }
-    
+
     public var body: some View {
         Form {
             Section(header: Text("Credentials")) {
@@ -114,7 +114,7 @@ public struct LoginView: View {
                 SecureField("Password", text: $store.password)
                     .textContentType(.password)
             }
-            
+
             if let errorMessage = store.errorMessage {
                 Section {
                     Text(errorMessage)
@@ -122,7 +122,7 @@ public struct LoginView: View {
                         .font(.caption)
                 }
             }
-            
+
             Section {
                 Button {
                     store.send(.loginButtonTapped)
