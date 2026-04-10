@@ -150,15 +150,22 @@ struct PeerTubeSwiftApp: App {
                             continue
                         }
 
-                        // Check if we already have this video
-                        let isNew = try await database.read { db in
-                            try Video.find(videoId).fetchOne(db) == nil
-                        }
+                        // Try to insert video - if duplicate, it already exists so skip notification
+                        do {
+                            _ = try await database.write { db in
+                                try Video.insert {
+                                    Video(
+                                        id: videoId,
+                                        channelID: channelId,
+                                        instanceID: channel.instanceID,
+                                        name: videoName,
+                                        publishDate: video.publishedAt ?? Date()
+                                    )
+                                }
+                                .execute(db)
+                            }
 
-                        print("Video \(videoId) (\(videoName)) - isNew: \(isNew)")
-
-                        if isNew {
-                            // Trigger local notification
+                            // Insert succeeded - video is new, trigger notification
                             let content = UNMutableNotificationContent()
                             content.title = "New Video from \(channelName)"
                             content.body = videoName
@@ -166,9 +173,9 @@ struct PeerTubeSwiftApp: App {
 
                             let request = UNNotificationRequest(identifier: videoId.uuidString, content: content, trigger: nil)
                             try? await UNUserNotificationCenter.current().add(request)
-
-                            // We do not save it here so the app will download it and save it properly
-                            // when the user opens the feed again.
+                        } catch {
+                            // Video already exists - no notification needed
+                            print("Video \(videoId) already exists, skipping notification")
                         }
                     }
                 } catch {
