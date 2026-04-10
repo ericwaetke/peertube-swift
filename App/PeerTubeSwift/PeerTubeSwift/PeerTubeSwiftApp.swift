@@ -57,12 +57,9 @@ struct PeerTubeSwiftApp: App {
         guard let url = URL(string: "https://" + host) else {
             fatalError("Set POSTHOG_HOST in the Xcode scheme environment variables.")
         }
-        print(apiKey)
-        print(url.absoluteString)
         let config = PostHogConfig(apiKey: apiKey, host: url.absoluteString)
         config.captureApplicationLifecycleEvents = true
         config.errorTrackingConfig.autoCapture = true
-        print(config)
         PostHogSDK.shared.setup(config)
 
         prepareDependencies {
