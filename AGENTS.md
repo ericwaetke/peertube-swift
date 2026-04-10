@@ -18,6 +18,8 @@ mise run generate-client  # Generate API client from openapi.json
 - **Scheme**: "PeerTubeSwift" (Swift package builds cleanly)
 - **TubeSDK**: Separate repo at `/Users/ericwatke/Documents/GitHub/peertube-swift-sdk`
 
+Before finishing a feature, **always** format, lint and build to test if everything works.
+
 ## Architecture
 
 - **TCA** (Composable Architecture) for state management
