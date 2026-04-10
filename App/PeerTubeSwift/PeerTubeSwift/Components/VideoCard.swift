@@ -67,13 +67,9 @@ struct VideoCard: View {
         self.onVideoTap = onVideoTap
         self.openChannel = openChannel
 
-        // Use client.getImageUrl for proper thumbnail URL construction
-        if let thumbnailPath = video.thumbnailPath, let client = client {
-            let thumbnailUrl = (try? client.getImageUrl(path: thumbnailPath).absoluteString)
-            self._cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnailUrl })
-        } else {
-            self._cachedThumbnail = FetchOne(PeertubeImage.none)
-        }
+        // Use bestThumbnailUrl for proper thumbnail URL construction
+        let thumbnailUrl = client.flatMap { video.bestThumbnailUrl(client: $0, size: .medium) }
+        self._cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnailUrl })
     }
     
     let formatter = RelativeDateTimeFormatter()
@@ -86,9 +82,9 @@ struct VideoCard: View {
         if let url = row?.video.thumbnailUrl {
             return url
         }
-        // Use client.getImageUrl for proper thumbnail URL construction
-        if let thumbnailPath = video?.thumbnailPath, let client = client {
-            return try? client.getImageUrl(path: thumbnailPath).absoluteString
+        // Use bestThumbnailUrl for highest resolution available
+        if let video = video, let client = client {
+            return video.bestThumbnailUrl(client: client, size: .medium)
         }
         return nil
     }

@@ -216,7 +216,7 @@ struct VideoDetails: View {
                                 seekRequest: self.store.seekRequest,
                                 videoTitle: videoDetails.name,
                                 channelName: videoDetails.channel?.displayName,
-                                thumbnailPath: (try? store.client.getImageUrl(path: videoDetails.thumbnailPath ?? ""))?.absoluteString
+                                thumbnailPath: videoDetails.bestThumbnailUrl(client: store.client, size: .large)
                             )
                             .frame(
                                 minWidth: 0,
