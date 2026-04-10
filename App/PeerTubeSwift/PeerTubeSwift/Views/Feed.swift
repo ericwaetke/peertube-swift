@@ -285,15 +285,8 @@ struct FeedFeature {
                     .fetchOne(db)
                 
                 var thumbnailUrl: String? = nil
-                if let thumbnailPath = peertubeVideo.thumbnailPath {
-                    do {
-                        thumbnailUrl = try client.getImageUrl(
-                            path: thumbnailPath
-                        ).absoluteString
-                    } catch {
-                        print("could not get thumbnail url")
-                    }
-                }
+                // Use bestThumbnailUrl for highest resolution available
+                thumbnailUrl = peertubeVideo.bestThumbnailUrl(client: client, size: .medium)
                 
                 let existingTime = try Video.find(videoId).fetchOne(db)?.currentTime
                 
