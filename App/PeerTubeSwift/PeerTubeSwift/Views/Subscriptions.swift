@@ -9,6 +9,7 @@ import ComposableArchitecture
 import SQLiteData
 import SwiftUI
 import TubeSDK
+import UIKit
 
 @Selection
 struct SubRecord: Equatable {
@@ -43,6 +44,8 @@ struct SubscriptionFeature {
     @ObservableState
     struct State: Equatable {
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+
+        @Presents var alert: AlertState<AlertAction>?
 
         @FetchAll(
             PeertubeSubscription
@@ -80,6 +83,13 @@ struct SubscriptionFeature {
         case recommendationSubscribeButtonTapped(Recommendation)
         case toggleNotification(SubRecord)
         case updateNotificationState(SubRecord, Bool)
+        case updateAlertState(AlertState<AlertAction>?)
+        case alert(PresentationAction<AlertAction>)
+    }
+
+    enum AlertAction: Equatable {
+        case openSettings
+        case dismiss
     }
 
     var body: some ReducerOf<Self> {
@@ -90,32 +100,51 @@ struct SubscriptionFeature {
             case let .toggleNotification(row):
                 let currentNotificationState = row.subscription.notifyOnNewVideo
                 return .run { send in
-                    let center = UNUserNotificationCenter.current()
-                    let settings = await center.notificationSettings()
-
-                    if settings.authorizationStatus == .notDetermined {
-                        let granted = try? await center.requestAuthorization(options: [.alert, .sound])
-                        if granted == true {
+                    let status = await checkNotificationPermission()
+                    switch status {
+                    case .notDetermined:
+                        let granted = await requestNotificationPermission()
+                        if granted {
                             await send(.updateNotificationState(row, !currentNotificationState))
                         }
-                    } else if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
+                    case .allowed:
                         await send(.updateNotificationState(row, !currentNotificationState))
-                    } else {
-                        // User denied notifications in settings
-                        print("User denied notifications")
+                    case .denied:
+                        await send(.updateAlertState(AlertState {
+                            TextState("Notifications Disabled")
+                        } actions: {
+                            ButtonState(role: .cancel) {
+                                TextState("Cancel")
+                            }
+                            ButtonState(action: .openSettings) {
+                                TextState("Open Settings")
+                            }
+                        } message: {
+                            TextState("Enable notifications in Settings to receive alerts when this channel posts new videos.")
+                        }))
                     }
                 }
+            case let .updateAlertState(alertState):
+                state.alert = alertState
+                return .none
             case let .updateNotificationState(row, notify):
                 return .run { _ in
                     let channelId = row.subscription.channelID
-                    @Dependency(\.defaultDatabase) var database
-                    try? await database.write { db in
-                        try PeertubeSubscription
-                            .where { $0.channelID == channelId }
-                            .update { $0.notifyOnNewVideo = notify }
-                            .execute(db)
+                    try? await saveNotificationPreference(channelId: channelId, notify: notify)
+                }
+            case .alert(.presented(.openSettings)):
+                return .run { _ in
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        @Dependency(\.openURL) var openURL
+                        await openURL(url)
                     }
                 }
+            case .alert(.dismiss):
+                state.alert = nil
+                return .none
+            case .alert(.presented(.dismiss)):
+                state.alert = nil
+                return .none
             case let .listElementDeleteSwiped(offsets: offsets):
                 return .run { [client = state.client, subscriptions = state.records] _ in
                     withErrorReporting {
@@ -197,13 +226,14 @@ struct SubscriptionFeature {
                 }
             }
         }
+        .ifLet(\.$alert, action: \.alert)
     }
 
     @Dependency(\.defaultDatabase) var database
 }
 
 struct Subscriptions: View {
-    let store: StoreOf<SubscriptionFeature>
+    @Bindable var store: StoreOf<SubscriptionFeature>
 
     var body: some View {
         Form {
@@ -281,6 +311,7 @@ struct Subscriptions: View {
             }
         }
         .navigationTitle("Subscriptions")
+        .alert($store.scope(state: \.alert, action: \.alert))
     }
 }
 
