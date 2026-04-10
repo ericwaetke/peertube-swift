@@ -2,26 +2,19 @@
 uv = "latest"
 swiftlint = "latest"
 swiftformat = "latest"
-"npm:beads-ui" = "latest"
 "npm:@openapitools/openapi-generator-cli" = "latest"
-
-[tasks.beads]
-run = "uvx beads-mcp"
-
-[tasks.beads-ui]
-run = "bdui start --open --port 3535"
 
 [tasks.xcode-mcp]
 run = "npx -y xcodebuildmcp@latest"
 
 [tasks.lint]
-run = "swiftlint"
+run = "swiftlint App/PeerTubeSwift"
 
 [tasks.format]
-run = "swiftformat ."
+run = "swiftformat App/PeerTubeSwift"
 
 [tasks.build]
-run = "cd PeerTubeSwift && swift build"
+run = "cd App/PeerTubeSwift && xcodebuild -project PeerTubeSwift.xcodeproj -scheme PeerTubeSwift -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' build"
 
 [tasks.test]
 run = "cd PeerTubeSwift && swift test"
