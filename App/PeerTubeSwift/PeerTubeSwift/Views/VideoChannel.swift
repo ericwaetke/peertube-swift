@@ -30,9 +30,6 @@ struct VideoChannelFeature {
         var currentPage = 0
         let pageSize = 15
         var hasMoreVideos = true
-
-        // For navigation
-        var videoTapped: TubeSDK.Video?
     }
 
     enum Action {
@@ -54,6 +51,12 @@ struct VideoChannelFeature {
         case loadMoreVideosIfNeeded(currentItem: TubeSDK.Video?)
         case finishLoadingVideos([TubeSDK.Video])
         case videoTapped(TubeSDK.Video)
+
+        case delegate(Delegate)
+
+        enum Delegate: Equatable {
+            case navigateToVideo(host: String, videoId: String)
+        }
     }
 
     enum AlertAction: Equatable {
@@ -423,7 +426,10 @@ struct VideoChannelFeature {
                 return .none
 
             case let .videoTapped(video):
-                state.videoTapped = video
+                guard let videoId = video.uuid?.uuidString else { return .none }
+                return .send(.delegate(.navigateToVideo(host: state.host, videoId: videoId)))
+
+            case .delegate:
                 return .none
             }
         }
