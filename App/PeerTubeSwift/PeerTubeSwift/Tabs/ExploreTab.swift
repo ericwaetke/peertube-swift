@@ -28,14 +28,14 @@ struct ExploreTabFeature {
     @Reducer
     enum Path {
         case exploreFeed(FeedFeature)
-        case videoDetail(VideoDetailsFeature)
         case searchResults(FeedFeature)
-        case channelDetail(VideoChannelFeature)
     }
 
     @ObservableState
     struct State: Equatable {
         var path = StackState<Path.State>()
+        var navigation = FeedNavigationFeature.State()
+        var searchResults = FeedFeature.State(feedType: .search)
 
         var searchText = String()
         var isSearchActive = false
@@ -45,6 +45,8 @@ struct ExploreTabFeature {
 
     enum Action {
         case path(StackActionOf<Path>)
+        case navigation(FeedNavigationFeature.Action)
+        case searchResults(FeedFeature.Action)
 
         case setSearch(String)
         case startSearch
@@ -59,101 +61,67 @@ struct ExploreTabFeature {
     }
 
     var body: some ReducerOf<Self> {
+        Scope(state: \.navigation, action: \.navigation) {
+            FeedNavigationFeature()
+        }
+        Scope(state: \.searchResults, action: \.searchResults) {
+            FeedFeature()
+        }
         Reduce { state, action in
             switch action {
             case let .path(action):
                 switch action {
                 case let .element(id: _, action: .exploreFeed(.videoTapped(row: row))):
-                    guard let instance = row.instance else {
-                        return .none
-                    }
-                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
-                    return .none
-
-                case let .element(id: _, action: .searchResults(.videoTapped(row: row))):
-                    guard let instance = row.instance else {
-                        return .none
-                    }
-                    state.path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
-                    return .none
+                    return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation.path, row: row)
+                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
 
                 case let .element(id: _, action: .exploreFeed(.channelTapped(row: row))):
-                    guard let channel = row.channel,
-                          let instance = row.instance
-                    else {
-                        return .none
-                    }
-                    var channelState = VideoChannelFeature.State(host: instance.host)
-                    channelState.channelName = channel.name
-                    state.path.append(.channelDetail(channelState))
-                    // Capture path ID before async block
-                    let pathId = state.path.ids.last!
-                    // Use name@host format for channel ID
-                    let channelIdentifier = "\(channel.name)@\(instance.host)"
-                    return .run { send in
-                        await send(.path(.element(
-                            id: pathId,
-                            action: .channelDetail(.loadChannelFromRow(
-                                channelId: channelIdentifier,
-                                channelName: channel.name,
-                                avatarUrl: channel.avatarUrl,
-                                description: channel.description,
-                                host: instance.host
-                            ))
-                        )))
-                    }
+                    return FeedNavigationFeature.navigateToChannelFromRow(&state.navigation.path, row: row)
+                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
+
+                case let .element(id: _, action: .searchResults(.videoTapped(row: row))):
+                    return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation.path, row: row)
+                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
 
                 case let .element(id: _, action: .searchResults(.channelTapped(row: row))):
-                    guard let channel = row.channel,
-                          let instance = row.instance
-                    else {
-                        return .none
-                    }
-                    var channelState = VideoChannelFeature.State(host: instance.host)
-                    channelState.channelName = channel.name
-                    state.path.append(.channelDetail(channelState))
-                    // Capture path ID before async block
-                    let pathId = state.path.ids.last!
-                    return .run { send in
-                        await send(.path(.element(
-                            id: pathId,
-                            action: .channelDetail(.loadChannelFromRow(
-                                channelId: channel.id,
-                                channelName: channel.name,
-                                avatarUrl: channel.avatarUrl,
-                                description: channel.description,
-                                host: instance.host
-                            ))
-                        )))
-                    }
+                    return FeedNavigationFeature.navigateToChannelFromRow(&state.navigation.path, row: row)
+                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
 
+                default:
+                    return .none
+                }
+
+            case let .navigation(.path(action)):
+                switch action {
                 case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channel: channel)))):
-                    print("🔍 navigateToChannel: host='\(host)', channel.id=\(String(describing: channel.id)), channel.name=\(channel.name ?? "nil")")
-                    var channelState = VideoChannelFeature.State(host: host)
-                    state.path.append(.channelDetail(channelState))
-                    let pathId = state.path.ids.last!
-                    guard let channelId = channel.id,
-                          let channelName = channel.name,
-                          let avatarUrl = channel.avatars?.first?.fileUrl
-                    else {
-                        print("🔍 navigateToChannel: FAILED guard - channelId=\(String(describing: channel.id)), channelName=\(channel.name ?? "nil"), avatarUrl=\(channel.avatars?.first?.fileUrl ?? "nil")")
+                    guard let channelName = channel.name else {
+                        // TODO: Error handeling
                         return .none
                     }
-                    // Use name@host format (not numeric ID)
                     let channelIdentifier = "\(channelName)@\(host)"
-                    print("🔍 navigateToChannel: channelIdentifier='\(channelIdentifier)'")
-                    return .run { send in
-                        await send(.path(.element(
-                            id: pathId,
-                            action: .channelDetail(.loadChannelFromRow(
-                                channelId: channelIdentifier,
-                                channelName: channelName,
-                                avatarUrl: avatarUrl,
-                                description: channel.description,
-                                host: host
-                            ))
-                        )))
-                    }
+                    return FeedNavigationFeature.navigateToChannel(
+                        &state.navigation.path,
+                        host: host,
+                        channelIdentifier: channelIdentifier,
+                        channelName: channel.name,
+                        avatarUrl: channel.avatars?.first?.fileUrl,
+                        channelDescription: channel.description
+                    )
+                    .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
+
+                default:
+                    return .none
+                }
+
+            case let .searchResults(action):
+                switch action {
+                case let .videoTapped(row: row):
+                    return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation.path, row: row)
+                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
+
+                case let .channelTapped(row: row):
+                    return FeedNavigationFeature.navigateToChannelFromRow(&state.navigation.path, row: row)
+                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
 
                 default:
                     return .none
@@ -190,7 +158,7 @@ struct ExploreTab: View {
     @Bindable var store: StoreOf<ExploreTabFeature>
 
     var body: some View {
-        NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
+        NavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
             contentView
         } destination: { pathStore in
             destinationView(for: pathStore)
@@ -204,16 +172,16 @@ struct ExploreTab: View {
                 // Only show Continue Watching for logged-in users
                 NavigationLink(
                     "Continue Watching",
-                    state: ExploreTabFeature.Path.State.exploreFeed(FeedFeature.State(feedType: .continueWatching))
+                    state: FeedFeature.State(feedType: .continueWatching)
                 )
             }
             NavigationLink(
                 "Newest",
-                state: ExploreTabFeature.Path.State.exploreFeed(FeedFeature.State(feedType: .exploreNewest))
+                state: FeedFeature.State(feedType: .exploreNewest)
             )
             NavigationLink(
                 "Recommended",
-                state: ExploreTabFeature.Path.State.exploreFeed(FeedFeature.State(feedType: .recommended))
+                state: FeedFeature.State(feedType: .recommended)
             )
         }
         .navigationTitle("Explore")
@@ -224,78 +192,22 @@ struct ExploreTab: View {
         .minimizedSearch()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                settingsMenu
-            }
-        }
-    }
-
-    private var settingsMenu: some View {
-        Menu {
-            if let session = store.session {
-                VStack(alignment: .leading) {
-                    Text(session.username)
-                        .font(.headline)
-                    Text(session.host)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Divider()
-            } else {
-                Text("Not logged in")
-                    .font(.headline)
-            }
-
-            Divider()
-
-            Button {
-                self.store.send(.delegate(.openSettings))
-            } label: {
-                Label("Settings", systemImage: "gear")
-            }
-        } label: {
-            if let session = store.session {
-                AvatarView(
-                    url: session.avatarUrl,
-                    name: session.username,
-                    size: 32
+                FeedSettingsMenu(
+                    searchText: $store.searchText.sending(\.setSearch),
+                    session: store.session,
+                    onOpenSettings: { store.send(.delegate(.openSettings)) }
                 )
-            } else {
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .frame(width: 32, height: 32)
-                    .foregroundStyle(.secondary)
             }
         }
     }
 
     @ViewBuilder
-    private func destinationView(for pathStore: StoreOf<ExploreTabFeature.Path>) -> some View {
+    private func destinationView(for pathStore: StoreOf<FeedNavigationFeature.Path>) -> some View {
         switch pathStore.case {
-        case let .exploreFeed(store):
-            Feed(store: store)
-                .navigationTitle(navigationTitle(for: store))
-        case let .searchResults(store):
-            Feed(store: store)
-                .navigationTitle("Search Results")
         case let .videoDetail(store):
             VideoDetails(store: store)
         case let .channelDetail(store):
             VideoChannelView(store: store)
-        }
-    }
-
-    private func navigationTitle(for store: StoreOf<FeedFeature>) -> String {
-        switch store.feedType {
-        case .exploreNewest:
-            return "Newest Videos"
-        case .recommended:
-            return "Recommended"
-        case .subscriptions:
-            return "Subscriptions"
-        case .search:
-            return "Search Results"
-        case .continueWatching:
-            return "Continue Watching"
         }
     }
 }
