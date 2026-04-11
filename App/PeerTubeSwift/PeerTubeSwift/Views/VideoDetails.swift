@@ -22,6 +22,7 @@ struct VideoDetailsFeature {
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
 
         var videoDetails: TubeSDK.VideoDetails?
+        var pauseTrigger: Int = 0
 
         var actions: VideoActionsFeature.State
         var channelPreview: ChannelPreviewFeature.State
@@ -56,7 +57,7 @@ struct VideoDetailsFeature {
         case delegate(Delegate)
 
         enum Delegate {
-            case navigateToChannel(host: String, channelName: String)
+            case navigateToChannel(host: String, channel: TubeSDK.VideoChannel)
         }
     }
 
@@ -178,7 +179,8 @@ struct VideoDetailsFeature {
                 else {
                     return .none
                 }
-                return .send(.delegate(.navigateToChannel(host: state.host, channelName: channelName)))
+                state.pauseTrigger += 1
+                return .send(.delegate(.navigateToChannel(host: state.host, channel: channel)))
 
             case .delegate:
                 return .none
@@ -218,7 +220,8 @@ struct VideoDetails: View {
                                 seekRequest: self.store.seekRequest,
                                 videoTitle: videoDetails.name,
                                 channelName: videoDetails.channel?.displayName,
-                                thumbnailPath: videoDetails.bestThumbnailUrl(client: store.client, size: .large)
+                                thumbnailPath: videoDetails.bestThumbnailUrl(client: store.client, size: .large),
+                                pauseTrigger: self.store.pauseTrigger
                             )
                             .frame(
                                 minWidth: 0,

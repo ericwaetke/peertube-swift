@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import SQLiteData
 import SwiftUI
+import TubeSDK
 
 @Reducer
 struct FeedTabFeature {
@@ -54,11 +55,29 @@ struct FeedTabFeature {
                 return .none
             case let .path(action):
                 switch action {
-                case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channelName: channelName)))):
+                case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channel: channel)))):
                     var channelState = VideoChannelFeature.State(host: host)
-                    channelState.channelName = channelName
                     state.path.append(.channelDetail(channelState))
-                    return .none
+                    let pathId = state.path.ids.last!
+                    guard let channelName = channel.name,
+                          let avatarUrl = channel.avatars?.first?.fileUrl
+                    else {
+                        return .none
+                    }
+                    // Use name@host format for channel ID
+                    let channelIdentifier = "\(channelName)@\(host)"
+                    return .run { send in
+                        await send(.path(.element(
+                            id: pathId,
+                            action: .channelDetail(.loadChannelFromRow(
+                                channelId: channelIdentifier,
+                                channelName: channelName,
+                                avatarUrl: avatarUrl,
+                                description: channel.description,
+                                host: host
+                            ))
+                        )))
+                    }
 
                 default:
                     return .none

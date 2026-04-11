@@ -25,6 +25,7 @@ struct VideoPlayerView: View {
     var videoTitle: String?
     var channelName: String?
     var thumbnailPath: String?
+    var pauseTrigger: Int = 0
 
     // Legacy initializer for single URL (backwards compatibility)
     init(videoURL _: URL) {
@@ -36,6 +37,7 @@ struct VideoPlayerView: View {
         videoTitle = nil
         channelName = nil
         thumbnailPath = nil
+        pauseTrigger = 0
     }
 
     // New initializer for VideoFile arrays with quality selection
@@ -48,7 +50,8 @@ struct VideoPlayerView: View {
         seekRequest: SeekRequest? = nil,
         videoTitle: String? = nil,
         channelName: String? = nil,
-        thumbnailPath: String? = nil
+        thumbnailPath: String? = nil,
+        pauseTrigger: Int = 0
     ) {
         _isPlayerReady = isPlayerReady
         self.onTimeUpdate = onTimeUpdate
@@ -59,6 +62,7 @@ struct VideoPlayerView: View {
         self.videoTitle = videoTitle
         self.channelName = channelName
         self.thumbnailPath = thumbnailPath
+        self.pauseTrigger = pauseTrigger
     }
 
     var body: some View {
@@ -72,7 +76,8 @@ struct VideoPlayerView: View {
                 seekRequest: seekRequest,
                 videoTitle: videoTitle,
                 channelName: channelName,
-                thumbnailPath: thumbnailPath
+                thumbnailPath: thumbnailPath,
+                pauseTrigger: pauseTrigger
             )
             .allowsHitTesting(isPlayerReady)
 
@@ -101,6 +106,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
     var videoTitle: String? = nil
     var channelName: String? = nil
     var thumbnailPath: String? = nil
+    var pauseTrigger: Int = 0
 
     class Coordinator: NSObject {
         var parent: VideoPlayerViewControllerRepresentable
@@ -111,6 +117,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
         var initialSeekPerformed = false
         var lastSeekRequestId: UUID?
         var hasNotifiedPlayerReady = false
+        var lastPauseTrigger: Int = 0
 
         init(_ parent: VideoPlayerViewControllerRepresentable) {
             self.parent = parent
@@ -232,6 +239,13 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
         context.coordinator.parent = self
         print("🎬 VideoPlayer: updateUIViewController called")
+
+        // Handle pause trigger
+        if pauseTrigger != context.coordinator.lastPauseTrigger {
+            context.coordinator.lastPauseTrigger = pauseTrigger
+            uiViewController.player?.pause()
+            print("🎬 VideoPlayer: Paused due to pauseTrigger change")
+        }
 
         // Handle seek requests explicitly first
         if let req = seekRequest, context.coordinator.lastSeekRequestId != req.id {
