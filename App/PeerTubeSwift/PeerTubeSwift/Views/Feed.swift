@@ -39,6 +39,190 @@ enum FeedOrder: Equatable, Hashable {
     case descending
 }
 
+// MARK: - Feed Navigation Feature
+
+/// Shared navigation reducer for feed tabs.
+/// Handles video and channel navigation with consistent behavior.
+@Reducer
+struct FeedNavigationFeature {
+    @Reducer
+    enum Path {
+        case videoDetail(VideoDetailsFeature)
+        case channelDetail(VideoChannelFeature)
+    }
+
+    @ObservableState
+    struct State: Equatable {
+        var path = StackState<Path.State>()
+    }
+
+    enum Action {
+        case path(StackActionOf<Path>)
+    }
+
+    var body: some ReducerOf<Self> {
+        Reduce { state, action in
+            switch action {
+            case let .path(action):
+                switch action {
+                case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channel: channel)))):
+                    guard let channelName = channel.name else {
+                        // TODO: Error handeling
+                        return .none
+                    }
+                    let channelIdentifier = "\(channelName)@\(host)"
+                    return Self.navigateToChannel(
+                        &state.path,
+                        host: host,
+                        channelIdentifier: channelIdentifier,
+                        channelName: channel.name,
+                        avatarUrl: channel.avatars?.first?.fileUrl,
+                        channelDescription: channel.description
+                    )
+
+                default:
+                    return .none
+                }
+            }
+        }
+        .forEach(\.path, action: \.path)
+    }
+
+    /// Helper to navigate to a channel with proper state management
+    static func navigateToChannel(
+        _ path: inout StackState<Path.State>,
+        host: String,
+        channelIdentifier: String,  // Can be Int? from VideoChannelSummary or String?
+        channelName: String?,
+        avatarUrl: String?,
+        channelDescription: String?
+    ) -> Effect<Action> {
+        guard let channelName = channelName else { return .none }
+
+        var channelState = VideoChannelFeature.State(host: host)
+        channelState.channelName = channelName
+        path.append(.channelDetail(channelState))
+
+        // Capture path ID before async block
+        let pathId = path.ids.last!
+
+        return .run { send in
+            await send(.path(.element(
+                id: pathId,
+                action: .channelDetail(.loadChannelFromRow(
+                    channelId: channelIdentifier,
+                    channelName: channelName,
+                    avatarUrl: avatarUrl,
+                    description: channelDescription,
+                    host: host
+                ))
+            )))
+        }
+    }
+
+    /// Navigate to video detail
+    static func navigateToVideo(
+        _ path: inout StackState<Path.State>,
+        host: String,
+        videoId: String
+    ) -> Effect<Action> {
+        path.append(.videoDetail(VideoDetailsFeature.State(host: host, videoId: videoId)))
+        return .none
+    }
+
+    /// Navigate to channel from a VideoRow
+    static func navigateToChannelFromRow(
+        _ path: inout StackState<Path.State>,
+        row: VideoRow
+    ) -> Effect<Action> {
+        guard let channel = row.channel,
+              let instance = row.instance
+        else {
+            return .none
+        }
+
+        var channelState = VideoChannelFeature.State(host: instance.host)
+        channelState.channelName = channel.name
+        path.append(.channelDetail(channelState))
+
+        let pathId = path.ids.last!
+
+        return .run { send in
+            await send(.path(.element(
+                id: pathId,
+                action: .channelDetail(.loadChannelFromRow(
+                    channelId: channel.id,
+                    channelName: channel.name,
+                    avatarUrl: channel.avatarUrl,
+                    description: channel.description,
+                    host: instance.host
+                ))
+            )))
+        }
+    }
+
+    /// Navigate to video from a VideoRow
+    static func navigateToVideoFromRow(
+        _ path: inout StackState<Path.State>,
+        row: VideoRow
+    ) -> Effect<Action> {
+        guard let instance = row.instance else { return .none }
+
+        path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
+        return .none
+    }
+}
+
+extension FeedNavigationFeature.Path.State: Equatable {}
+
+// MARK: - Shared Settings Menu
+
+/// Shared settings menu component for feed tabs
+struct FeedSettingsMenu: View {
+    @Binding var searchText: String
+    let session: UserSession?
+    let onOpenSettings: () -> Void
+
+    var body: some View {
+        Menu {
+            if let session = session {
+                VStack(alignment: .leading) {
+                    Text(session.username)
+                        .font(.headline)
+                    Text(session.host)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Divider()
+            } else {
+                Text("Not logged in")
+                    .font(.headline)
+            }
+
+            Divider()
+
+            Button {
+                onOpenSettings()
+            } label: {
+                Label("Settings", systemImage: "gear")
+            }
+        } label: {
+            if let session = session {
+                AvatarView(
+                    url: session.avatarUrl,
+                    name: session.username,
+                    size: 32
+                )
+            } else {
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .frame(width: 32, height: 32)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 // MARK: - Feed Cache Types
 
 /// Cache entry storing videos and timestamp for TTL validation
