@@ -88,11 +88,13 @@ struct ExploreTabFeature {
                     state.path.append(.channelDetail(channelState))
                     // Capture path ID before async block
                     let pathId = state.path.ids.last!
+                    // Use name@host format for channel ID
+                    let channelIdentifier = "\(channel.name)@\(instance.host)"
                     return .run { send in
                         await send(.path(.element(
                             id: pathId,
                             action: .channelDetail(.loadChannelFromRow(
-                                channelId: channel.id,
+                                channelId: channelIdentifier,
                                 channelName: channel.name,
                                 avatarUrl: channel.avatarUrl,
                                 description: channel.description,
@@ -125,11 +127,33 @@ struct ExploreTabFeature {
                         )))
                     }
 
-                case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channelName: channelName)))):
+                case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channel: channel)))):
+                    print("🔍 navigateToChannel: host='\(host)', channel.id=\(String(describing: channel.id)), channel.name=\(channel.name ?? "nil")")
                     var channelState = VideoChannelFeature.State(host: host)
-                    channelState.channelName = channelName
                     state.path.append(.channelDetail(channelState))
-                    return .none
+                    let pathId = state.path.ids.last!
+                    guard let channelId = channel.id,
+                          let channelName = channel.name,
+                          let avatarUrl = channel.avatars?.first?.fileUrl
+                    else {
+                        print("🔍 navigateToChannel: FAILED guard - channelId=\(String(describing: channel.id)), channelName=\(channel.name ?? "nil"), avatarUrl=\(channel.avatars?.first?.fileUrl ?? "nil")")
+                        return .none
+                    }
+                    // Use name@host format (not numeric ID)
+                    let channelIdentifier = "\(channelName)@\(host)"
+                    print("🔍 navigateToChannel: channelIdentifier='\(channelIdentifier)'")
+                    return .run { send in
+                        await send(.path(.element(
+                            id: pathId,
+                            action: .channelDetail(.loadChannelFromRow(
+                                channelId: channelIdentifier,
+                                channelName: channelName,
+                                avatarUrl: avatarUrl,
+                                description: channel.description,
+                                host: host
+                            ))
+                        )))
+                    }
 
                 default:
                     return .none

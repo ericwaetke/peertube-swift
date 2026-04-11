@@ -154,8 +154,6 @@ struct FeedFeature {
         case finishLoadingMore([VideoRow])
         case setLoadingMore(Bool)
 
-        case loadVideosNewestOfInstance
-        case loadRecommendedVideos
         case loadChannelVideos
         case loadSubscriptionVideos
         case loadVideosBySearch(TubeSDK.SearchVideoQueryParameters)
@@ -529,11 +527,6 @@ struct FeedFeature {
 
                     await send(.finishLoadingMore(videos))
                 }
-            // Legacy actions - functionality moved to loadInitialVideos/loadSecondBatch
-            case .loadVideosNewestOfInstance:
-                return .none
-            case .loadRecommendedVideos:
-                return .none
             case let .loadVideosBySearch(searchParameters):
                 return .run { [client = state.client, searchParameters = searchParameters] send in
                     await send(.setLoading(true))
@@ -541,7 +534,7 @@ struct FeedFeature {
                     let searchResult = try await client.searchVideos(search: searchParameters)
 
                     let videos = try await self.saveVideos(videos: searchResult, client: client)
-                    await send(.finishLoading(videos ?? []))
+                    await send(.finishLoading(videos))
                 }
             case .loadChannelVideos:
                 return .none

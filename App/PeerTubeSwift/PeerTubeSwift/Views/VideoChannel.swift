@@ -103,6 +103,7 @@ struct VideoChannelFeature {
                 }
 
             case let .loadChannelFromRow(channelId, channelName, avatarUrl, description, host):
+                print("🔍 loadChannelFromRow: channelId='\(channelId)', channelName='\(channelName)', host='\(host)'")
                 // Set channel name immediately for navigation title
                 state.channelName = channelName
 
@@ -112,7 +113,9 @@ struct VideoChannelFeature {
 
                     do {
                         // Fetch full channel details from API
+                        print("🔍 loadChannelFromRow: Calling getChannel with '\(channelId)'")
                         let fullChannel = try await client.getChannel(channelIdentifier: channelId)
+                        print("🔍 loadChannelFromRow: getChannel success - displayName='\(fullChannel.displayName ?? "nil")'")
 
                         // Update state with full channel info including description
                         await send(.channelDetailsLoaded(
@@ -124,6 +127,7 @@ struct VideoChannelFeature {
                         ))
                     } catch {
                         // If API call fails, fall back to basic info from row
+                        print("🔍 loadChannelFromRow: getChannel FAILED - \(error), using fallback")
                         await send(.channelDetailsLoaded(
                             channelId: channelId,
                             channelName: channelName,
@@ -151,12 +155,10 @@ struct VideoChannelFeature {
                         }
                         await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
                     }
-
-                    // Load videos
-                    await send(.loadVideos)
                 }
 
             case let .channelDetailsLoaded(channelId, channelName, avatarUrl, description, host):
+                print("🔍 channelDetailsLoaded: channelId='\(channelId)', channelName='\(channelName)', host='\(host)'")
                 // Update channel name if we got a better one from API
                 if channelName != state.channelName {
                     state.channelName = channelName
@@ -181,7 +183,9 @@ struct VideoChannelFeature {
                         description: description
                     )
                 )
-                return .none
+                print("🔍 channelDetailsLoaded: videoChannel.id='\(state.videoChannel?.id ?? "nil")', videoDetails.channel.name='\(state.videoDetails?.channel?.name ?? "nil")'")
+                // Now load videos (channel details are set)
+                return .send(.loadVideos)
 
             case let .saveChannel(channel):
                 state.videoChannel = channel
@@ -336,22 +340,27 @@ struct VideoChannelFeature {
                 } else if let channel = state.videoChannel {
                     channelId = channel.id
                 } else {
+                    print("🔍 loadVideos: FAILED - videoDetails=\(state.videoDetails != nil), videoChannel=\(state.videoChannel != nil)")
                     return .none
                 }
+                print("🔍 loadVideos: channelId='\(channelId)', videoChannel=\(state.videoChannel?.id ?? "nil")")
 
                 state.isLoadingVideos = true
                 state.currentPage = 0
                 state.videos = []
 
                 return .run { [client = state.client, channelId = channelId, pageSize = state.pageSize] send in
+                    print("🔍 loadVideos API call: channelId='\(channelId)'")
                     do {
                         let videos = try await client.getVideosPaginated(
                             channelIdentifier: channelId,
                             start: 0,
                             count: pageSize
                         )
+                        print("🔍 loadVideos API success: \(videos.count) videos")
                         await send(.finishLoadingVideos(videos))
                     } catch {
+                        print("🔍 loadVideos API error: \(error)")
                         await send(.finishLoadingVideos([]))
                     }
                 }
