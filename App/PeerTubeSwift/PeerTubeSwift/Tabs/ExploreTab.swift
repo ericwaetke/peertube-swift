@@ -109,6 +109,10 @@ struct ExploreTabFeature {
                     )
                     .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
 
+                case let .element(id: _, action: .channelDetail(.delegate(.navigateToVideo(host: host, videoId: videoId)))):
+                    return FeedNavigationFeature.navigateToVideo(&state.navigation.path, host: host, videoId: videoId)
+                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
+
                 default:
                     return .none
                 }
