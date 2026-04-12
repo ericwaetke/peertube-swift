@@ -25,17 +25,9 @@ extension View {
 
 @Reducer
 struct ExploreTabFeature {
-    @Reducer
-    enum Path {
-        case exploreFeed(FeedFeature)
-        case searchResults(FeedFeature)
-    }
-
     @ObservableState
     struct State: Equatable {
-        var path = StackState<Path.State>()
         var navigation = FeedNavigationFeature.State()
-        var searchResults = FeedFeature.State(feedType: .search)
 
         var searchText = String()
         var isSearchActive = false
@@ -44,9 +36,7 @@ struct ExploreTabFeature {
     }
 
     enum Action {
-        case path(StackActionOf<Path>)
         case navigation(FeedNavigationFeature.Action)
-        case searchResults(FeedFeature.Action)
 
         case setSearch(String)
         case startSearch
@@ -64,33 +54,8 @@ struct ExploreTabFeature {
         Scope(state: \.navigation, action: \.navigation) {
             FeedNavigationFeature()
         }
-        Scope(state: \.searchResults, action: \.searchResults) {
-            FeedFeature()
-        }
         Reduce { state, action in
             switch action {
-            case let .path(action):
-                switch action {
-                case let .element(id: _, action: .exploreFeed(.videoTapped(row: row))):
-                    return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation.path, row: row)
-                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
-
-                case let .element(id: _, action: .exploreFeed(.channelTapped(row: row))):
-                    return FeedNavigationFeature.navigateToChannelFromRow(&state.navigation.path, row: row)
-                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
-
-                case let .element(id: _, action: .searchResults(.videoTapped(row: row))):
-                    return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation.path, row: row)
-                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
-
-                case let .element(id: _, action: .searchResults(.channelTapped(row: row))):
-                    return FeedNavigationFeature.navigateToChannelFromRow(&state.navigation.path, row: row)
-                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
-
-                default:
-                    return .none
-                }
-
             case let .navigation(.path(action)):
                 switch action {
                 case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channel: channel)))):
@@ -117,20 +82,6 @@ struct ExploreTabFeature {
                     return .none
                 }
 
-            case let .searchResults(action):
-                switch action {
-                case let .videoTapped(row: row):
-                    return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation.path, row: row)
-                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
-
-                case let .channelTapped(row: row):
-                    return FeedNavigationFeature.navigateToChannelFromRow(&state.navigation.path, row: row)
-                        .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in .navigation(action) }
-
-                default:
-                    return .none
-                }
-
             case .delegate:
                 return .none
 
@@ -140,8 +91,8 @@ struct ExploreTabFeature {
 
             case .startSearch:
                 guard !state.searchText.isEmpty else { return .none }
-                state.path.append(.searchResults(FeedFeature.State(feedType: .search)))
-                return .send(.path(.element(id: state.path.ids.last!, action: .searchResults(.loadVideosBySearch(TubeSDK.SearchVideoQueryParameters(search: state.searchText))))))
+                state.navigation.path.append(.feed(FeedFeature.State(feedType: .search)))
+                return .send(.navigation(.path(.element(id: state.navigation.path.ids.last!, action: .feed(.loadVideosBySearch(TubeSDK.SearchVideoQueryParameters(search: state.searchText)))))))
 
             case .activateSearch:
                 state.isSearchActive = true
@@ -152,11 +103,8 @@ struct ExploreTabFeature {
                 return .none
             }
         }
-        .forEach(\.path, action: \.path)
     }
 }
-
-extension ExploreTabFeature.Path.State: Equatable {}
 
 struct ExploreTab: View {
     @Bindable var store: StoreOf<ExploreTabFeature>
@@ -176,16 +124,16 @@ struct ExploreTab: View {
                 // Only show Continue Watching for logged-in users
                 NavigationLink(
                     "Continue Watching",
-                    state: FeedFeature.State(feedType: .continueWatching)
+                    state: FeedNavigationFeature.Path.State.feed(FeedFeature.State(feedType: .continueWatching))
                 )
             }
             NavigationLink(
                 "Newest",
-                state: FeedFeature.State(feedType: .exploreNewest)
+                state: FeedNavigationFeature.Path.State.feed(FeedFeature.State(feedType: .exploreNewest))
             )
             NavigationLink(
                 "Recommended",
-                state: FeedFeature.State(feedType: .recommended)
+                state: FeedNavigationFeature.Path.State.feed(FeedFeature.State(feedType: .recommended))
             )
         }
         .navigationTitle("Explore")
@@ -212,6 +160,8 @@ struct ExploreTab: View {
             VideoDetails(store: store)
         case let .channelDetail(store):
             VideoChannelView(store: store)
+        case let .feed(store):
+            Feed(store: store)
         }
     }
 }

@@ -49,6 +49,7 @@ struct FeedNavigationFeature {
     enum Path {
         case videoDetail(VideoDetailsFeature)
         case channelDetail(VideoChannelFeature)
+        case feed(FeedFeature)
     }
 
     @ObservableState
@@ -79,7 +80,12 @@ struct FeedNavigationFeature {
                         avatarUrl: channel.avatars?.first?.fileUrl,
                         channelDescription: channel.description
                     )
-
+                case let .element(id: _, action: .channelDetail(.delegate(.navigateToVideo(host: host, videoId: videoId)))):
+                    return Self.navigateToVideo(&state.path, host: host, videoId: videoId)
+                case let .element(id: _, action: .feed(.videoTapped(row: row))):
+                    return Self.navigateToVideoFromRow(&state.path, row: row)
+                case let .element(id: _, action: .feed(.channelTapped(row: row))):
+                    return Self.navigateToChannelFromRow(&state.path, row: row)
                 default:
                     return .none
                 }
