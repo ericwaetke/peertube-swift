@@ -163,6 +163,8 @@ struct FeedTab: View {
                 VideoDetails(store: store)
             case let .channelDetail(store):
                 VideoChannelView(store: store)
+            case let .feed(store):
+                Feed(store: store)
             }
         }
         .sheet(item: $store.scope(state: \.manageSubscriptions, action: \.manageSubsctiptions)) { store in
