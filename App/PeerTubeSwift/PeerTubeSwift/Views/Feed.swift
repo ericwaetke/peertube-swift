@@ -1038,6 +1038,17 @@ struct Feed: View {
         .refreshable {
             await self.store.send(.pulledToRefresh).finish()
         }
+        .navigationTitle(navigationTitle)
+    }
+
+    private var navigationTitle: String {
+        switch store.feedType {
+        case .exploreNewest: return "Newest Videos"
+        case .recommended: return "Recommendations"
+        case .subscriptions: return "Subscriptions"
+        case .search: return "Search Results"
+        case .continueWatching: return "Continue Watching"
+        }
     }
 }
 
