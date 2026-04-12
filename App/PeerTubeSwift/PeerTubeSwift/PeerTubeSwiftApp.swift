@@ -67,12 +67,12 @@ struct PeerTubeSwiftApp: App {
         }
 
         BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.peertubeswift.refresh", using: nil) { task in
-            let refreshTask = Task {
+            Task { @MainActor in
                 await Self.handleAppRefresh()
                 task.setTaskCompleted(success: true)
             }
             task.expirationHandler = {
-                refreshTask.cancel()
+                // Task was cancelled, let it clean up naturally
             }
         }
     }
@@ -100,6 +100,7 @@ struct PeerTubeSwiftApp: App {
         }
     }
 
+    @MainActor
     static func handleAppRefresh() async {
         scheduleAppRefresh()
 
