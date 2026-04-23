@@ -316,6 +316,7 @@ struct VideoDetails: View {
                 )
             ) {
                 VideoDetailsFeature()
-            })
+            }
+        )
     }
 }

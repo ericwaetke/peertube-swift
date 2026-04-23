@@ -288,7 +288,7 @@ struct CommentTreeView: View {
     }
 }
 
-// Ensure Equatable for Hashable/Identifiable if needed by SwiftUI
+/// Ensure Equatable for Hashable/Identifiable if needed by SwiftUI
 extension VideoCommentThreadTree: Equatable {
     public static func == (lhs: VideoCommentThreadTree, rhs: VideoCommentThreadTree) -> Bool {
         lhs.comment?.id == rhs.comment?.id && lhs.children == rhs.children

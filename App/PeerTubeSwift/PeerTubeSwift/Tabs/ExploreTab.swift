@@ -117,7 +117,6 @@ struct ExploreTab: View {
         }
     }
 
-    @ViewBuilder
     private var contentView: some View {
         Form {
             if store.session != nil {

@@ -27,7 +27,7 @@ struct VideoPlayerView: View {
     var thumbnailPath: String?
     var pauseTrigger: Int = 0
 
-    // Legacy initializer for single URL (backwards compatibility)
+    /// Legacy initializer for single URL (backwards compatibility)
     init(videoURL _: URL) {
         _isPlayerReady = .constant(false)
         videoFiles = []
@@ -40,7 +40,7 @@ struct VideoPlayerView: View {
         pauseTrigger = 0
     }
 
-    // New initializer for VideoFile arrays with quality selection
+    /// New initializer for VideoFile arrays with quality selection
     init(
         isPlayerReady: Binding<Bool> = .constant(false),
         onTimeUpdate: ((Int) -> Void)? = nil,

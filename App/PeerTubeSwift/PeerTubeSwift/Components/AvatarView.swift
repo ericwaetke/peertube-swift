@@ -55,7 +55,6 @@ struct AvatarView: View {
         }
     }
 
-    @ViewBuilder
     private var fallbackView: some View {
         ZStack {
             Color.fromHash(of: name)

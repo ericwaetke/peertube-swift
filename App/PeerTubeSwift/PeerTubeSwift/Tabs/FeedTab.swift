@@ -50,6 +50,7 @@ struct FeedTabFeature {
             case .manageSubscriptionButtonTapped:
                 state.manageSubscriptions = SubscriptionFeature.State()
                 return .none
+
             case .manageSubsctiptions:
                 return .none
 

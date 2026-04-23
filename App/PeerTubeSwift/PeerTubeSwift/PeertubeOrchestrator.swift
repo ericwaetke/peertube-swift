@@ -65,7 +65,7 @@ actor InstanceCache {
     }
 }
 
-// Global cache instance - shared across all orchestrator operations
+/// Global cache instance - shared across all orchestrator operations
 private let instanceCache = InstanceCache()
 
 // MARK: - PeertubeOrchestratorClient

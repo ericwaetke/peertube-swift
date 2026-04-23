@@ -9,20 +9,19 @@ import BackgroundTasks
 import Combine
 import ComposableArchitecture
 import Dependencies
+import OSLog
 @_spi(Experimental) import PostHog
+import SQLiteData
 import SwiftUI
 import TubeSDK
 import UserNotifications
-
-import OSLog
-import SQLiteData
 
 enum Configuration {
     enum Error: Swift.Error {
         case missingKey, invalidValue
     }
 
-    static func value<T>(for key: String) throws -> T where T: LosslessStringConvertible {
+    static func value<T: LosslessStringConvertible>(for key: String) throws -> T {
         guard let object = Bundle.main.object(forInfoDictionaryKey: key) else {
             throw Error.missingKey
         }

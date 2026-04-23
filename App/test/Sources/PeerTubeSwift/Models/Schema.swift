@@ -17,7 +17,7 @@ import SQLiteData
     var avatarUrl: String?
 }
 
-@Table struct VideoChannel: Identifiable, Hashable {
+@Table struct VideoChannel: Identifiable, Equatable, Hashable {
     // \(channelname)@\(host)
     let id: String
     var name: String

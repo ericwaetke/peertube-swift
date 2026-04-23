@@ -98,7 +98,7 @@ struct FeedNavigationFeature {
     static func navigateToChannel(
         _ path: inout StackState<Path.State>,
         host: String,
-        channelIdentifier: String,  // Can be Int? from VideoChannelSummary or String?
+        channelIdentifier: String, // Can be Int? from VideoChannelSummary or String?
         channelName: String?,
         avatarUrl: String?,
         channelDescription: String?
@@ -320,7 +320,7 @@ struct FeedFeature {
 
         @FetchAll var instances: [Instance] = []
 
-        //        @FetchAll(VideoRow.none)
+        ///        @FetchAll(VideoRow.none)
         var feed: [VideoRow] = []
     }
 
@@ -453,7 +453,7 @@ struct FeedFeature {
         }
 
         // Phase 2: Batch DB writes in a single transaction to avoid SQLite lock contention
-        let videoRows: [VideoRow] = try await database.write { db -> [VideoRow] in
+        return try await database.write { db -> [VideoRow] in
             var rows: [VideoRow] = []
             for (_, peertubeVideo, data) in processedVideos {
                 guard let data = data,
@@ -503,8 +503,6 @@ struct FeedFeature {
             }
             return rows
         }
-
-        return videoRows
     }
 
     /// Intermediate data structure for processed video info
@@ -950,7 +948,7 @@ struct FeedFeature {
 }
 
 struct Feed: View {
-    //    @Environment(AppState.self) private var appState: AppState
+    ///    @Environment(AppState.self) private var appState: AppState
     let store: StoreOf<FeedFeature>
 
     var body: some View {
