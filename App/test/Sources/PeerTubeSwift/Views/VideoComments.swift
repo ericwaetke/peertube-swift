@@ -1,7 +1,4 @@
 import ComposableArchitecture
-#if canImport(PostHog)
-import PostHog
-#endif
 import SwiftUI
 import TubeSDK
 
@@ -10,7 +7,8 @@ struct VideoCommentsFeature {
     @ObservableState
     struct State: Equatable {
         let videoId: String
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
 
         var commentsVisible = false
         var comments: [TubeSDK.VideoCommentThreadTree] = []
@@ -43,21 +41,19 @@ struct VideoCommentsFeature {
 
             case .commentsVisibleChanged:
                 state.commentsVisible.toggle()
-                if state.commentsVisible {
-                    PostHogSDK.shared.capture("comments_viewed", properties: ["video_id": state.videoId])
-                }
                 return .none
 
             case .loadComments:
                 return .run { [client = state.client, videoId = state.videoId] send in
                     if let commentsResponse = try? await client.getCommentThreads(videoID: videoId),
-                       let data = commentsResponse.data
+                        let data = commentsResponse.data
                     {
                         // Fetch the full tree for each thread
                         var trees: [VideoCommentThreadTree] = []
                         for comment in data {
                             if let threadId = comment.threadId,
-                               let tree = try? await client.getCommentThread(videoID: videoId, threadId: threadId)
+                                let tree = try? await client.getCommentThread(
+                                    videoID: videoId, threadId: threadId)
                             {
                                 trees.append(tree)
                             }
@@ -66,7 +62,7 @@ struct VideoCommentsFeature {
                     }
                 }
 
-            case let .commentsLoaded(trees):
+            case .commentsLoaded(let trees):
                 state.comments = trees
 
                 // Collect unique hosts to fetch avatars
@@ -87,7 +83,9 @@ struct VideoCommentsFeature {
                     await withTaskGroup(of: (String, String?).self) { group in
                         for host in hosts {
                             group.addTask { @Sendable in
-                                if let instance = try? await peertubeOrchestrator.syncInstanceInfo(host, database) {
+                                if let instance = try? await peertubeOrchestrator.syncInstanceInfo(
+                                    host, database)
+                                {
                                     return (host, instance.avatarUrl)
                                 }
                                 return (host, nil)
@@ -102,14 +100,13 @@ struct VideoCommentsFeature {
                     }
                 }
 
-            case let .instanceAvatarLoaded(host, avatarUrl):
+            case .instanceAvatarLoaded(let host, let avatarUrl):
                 if let avatarUrl = avatarUrl {
                     state.instanceAvatars[host] = avatarUrl
                 }
                 return .none
 
             case .addCommentTapped:
-                PostHogSDK.shared.capture("comment_compose_started", properties: ["video_id": state.videoId, "type": "top_level"])
                 state.composeSheet = CommentComposeFeature.State(
                     videoId: state.videoId,
                     targetCommentId: nil,
@@ -117,9 +114,8 @@ struct VideoCommentsFeature {
                 )
                 return .none
 
-            case let .toggleThreadCollapsed(id):
+            case .toggleThreadCollapsed(let id):
                 let willCollapse = !state.collapsedCommentIds.contains(id)
-                PostHogSDK.shared.capture("comment_thread_toggled", properties: ["video_id": state.videoId, "comment_id": id, "action": willCollapse ? "collapsed" : "expanded"])
                 if willCollapse {
                     state.collapsedCommentIds.insert(id)
                 } else {
@@ -127,10 +123,10 @@ struct VideoCommentsFeature {
                 }
                 return .none
 
-            case let .replyTapped(comment):
+            case .replyTapped(let comment):
                 if let id = comment.id {
-                    PostHogSDK.shared.capture("comment_compose_started", properties: ["video_id": state.videoId, "type": "reply", "parent_comment_id": id])
-                    let username = comment.account?.displayName ?? comment.account?.name ?? "Unknown"
+                    let username =
+                        comment.account?.displayName ?? comment.account?.name ?? "Unknown"
                     state.composeSheet = CommentComposeFeature.State(
                         videoId: state.videoId,
                         targetCommentId: id,
@@ -197,7 +193,8 @@ struct VideoCommentsView: View {
                         .opacity(0.5)
                 }
             }
-            .sheet(item: $store.scope(state: \.composeSheet, action: \.composeSheet)) { composeStore in
+            .sheet(item: $store.scope(state: \.composeSheet, action: \.composeSheet)) {
+                composeStore in
                 CommentComposeView(store: composeStore)
                     .presentationDetents([.medium, .large])
             }
@@ -214,8 +211,12 @@ struct CommentTreeView: View {
         if let comment = tree.comment {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .top) {
-                    let avatar = comment.account?.avatars?.first(where: { $0.width == 48 }) ?? comment.account?.avatars?.first
-                    let urlStr = avatar?.path.flatMap { try? store.state.client.getImageUrl(path: $0).absoluteString }
+                    let avatar =
+                        comment.account?.avatars?.first(where: { $0.width == 48 })
+                        ?? comment.account?.avatars?.first
+                    let urlStr = avatar?.path.flatMap {
+                        try? store.state.client.getImageUrl(path: $0).absoluteString
+                    }
                     AvatarView(
                         url: urlStr,
                         name: comment.account?.displayName ?? comment.account?.name ?? "Unknown",
@@ -237,10 +238,13 @@ struct CommentTreeView: View {
                             }
                         }
                         if let host = comment.account?.host {
-                            InstanceIndicator(instanceName: host, instanceImage: store.state.instanceAvatars[host])
+                            InstanceIndicator(
+                                instanceName: host, instanceImage: store.state.instanceAvatars[host]
+                            )
                         }
                         if let text = comment.text {
-                            let cleanText = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression, range: nil)
+                            let cleanText = text.replacingOccurrences(
+                                of: "<[^>]+>", with: "", options: .regularExpression, range: nil)
                             Text(cleanText)
                                 .font(.body)
                         }
@@ -259,15 +263,20 @@ struct CommentTreeView: View {
                                 }
                             }
 
-                            if let children = tree.children, !children.isEmpty, let id = comment.id {
+                            if let children = tree.children, !children.isEmpty, let id = comment.id
+                            {
                                 let isCollapsed = store.state.collapsedCommentIds.contains(id)
                                 Button {
                                     store.send(.toggleThreadCollapsed(commentId: id))
                                 } label: {
                                     HStack(spacing: 4) {
-                                        Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
+                                        Image(
+                                            systemName: isCollapsed ? "chevron.down" : "chevron.up")
                                         let replyCount = comment.totalReplies ?? children.count
-                                        Text(isCollapsed ? "Show ^[\(replyCount) reply](inflect: true)" : "Hide replies")
+                                        Text(
+                                            isCollapsed
+                                                ? "Show ^[\(replyCount) reply](inflect: true)"
+                                                : "Hide replies")
                                     }
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -281,7 +290,9 @@ struct CommentTreeView: View {
             .padding(.vertical, 4)
             .padding(.leading, CGFloat(level * 32))
 
-            if let children = tree.children, let id = comment.id, !store.state.collapsedCommentIds.contains(id) {
+            if let children = tree.children, let id = comment.id,
+                !store.state.collapsedCommentIds.contains(id)
+            {
                 ForEach(children, id: \.comment?.id) { childTree in
                     CommentTreeView(store: store, tree: childTree, level: level + 1)
                 }
@@ -295,50 +306,4 @@ extension VideoCommentThreadTree: Equatable {
     public static func == (lhs: VideoCommentThreadTree, rhs: VideoCommentThreadTree) -> Bool {
         lhs.comment?.id == rhs.comment?.id && lhs.children == rhs.children
     }
-}
-
-#Preview {
-    VideoCommentsView(
-        store: Store(
-            initialState: VideoCommentsFeature.State(
-                videoId: "eRbrxETVKN3gxKKD8bcaHK",
-                comments: [
-                    TubeSDK.VideoCommentThreadTree(
-                        comment: TubeSDK.VideoComment(
-                            id: 1,
-                            text: "This is a great video! Thanks for sharing.",
-                            createdAt: Date(),
-                            account: TubeSDK.Account(
-                                id: 1,
-                                name: "reviewer",
-                                host: "peertube.wtf",
-                                displayName: "Reviewer 123"
-                            )
-                        ),
-                        children: [
-                            TubeSDK.VideoCommentThreadTree(
-                                comment: TubeSDK.VideoComment(
-                                    id: 2,
-                                    text: "I agree completely!",
-                                    createdAt: Date(),
-                                    account: TubeSDK.Account(
-                                        id: 2,
-                                        name: "swiftfan",
-                                        host: "my-sunshine.video",
-                                        displayName: "Swift Fan"
-                                    )
-                                ),
-                                children: []
-                            ),
-                        ]
-                    ),
-                ],
-                videoDetails: TubeSDK.VideoDetails(
-                    comments: 2
-                )
-            )
-        ) {
-            VideoCommentsFeature()
-        }
-    )
 }

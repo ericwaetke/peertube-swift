@@ -45,10 +45,10 @@ extension Instance {
 // @Table struct Comment: Identifiable {
 //    let id: UUID
 //    let accountID: Account.ID
-
+//
 //    let videoID: Video.ID
 //    var replyToCommentID: Comment.ID?
-
+//
 //    var likes: Int
 //    var dislikes: Int
 // }
@@ -225,7 +225,7 @@ extension DependencyValues {
 
 extension DatabaseWriter {
     func seed() throws {
-        write { db in
+        try write { db in
             try db.seed {
                 Instance(host: "peertube.wtf", scheme: "https")
                 Instance(host: "ard.de", scheme: "https", avatarUrl: "https://yt3.googleusercontent.com/ytc/AIdro_nkghDj-XHzlJ0CCE1q4BXzL01ufINgm9KUiqfhaWTBjUnZ=s160-c-k-c0x00ffffff-no-rj")
@@ -242,7 +242,7 @@ extension DatabaseWriter {
                     id: UUID(1),
                     channelID: "peertube.wtf-1",
                     instanceID: "peertube.wtf",
-                    name: "Minecraft Let's Play #001",
+                    name: "Minecraft Let’s Play #001",
                     publishDate: .now,
                     thumbnailUrl: "https://i.ytimg.com/vi/DM52HxaLK-Y/hqdefault.jpg?sqp=-oaymwEXCOADEI4CSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLCYG-ebPaEOzdf_cIFY7tdd2oD5qg&days_since_epoch=20146"
                 )

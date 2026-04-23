@@ -64,9 +64,12 @@ struct FeedNavigationFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case let .path(action):
+            case .path(let action):
                 switch action {
-                case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channel: channel)))):
+                case .element(
+                    id: _,
+                    action: .videoDetail(
+                        .delegate(.navigateToChannel(host: let host, channel: let channel)))):
                     guard let channelName = channel.name else {
                         // TODO: Error handeling
                         return .none
@@ -80,11 +83,14 @@ struct FeedNavigationFeature {
                         avatarUrl: channel.avatars?.first?.fileUrl,
                         channelDescription: channel.description
                     )
-                case let .element(id: _, action: .channelDetail(.delegate(.navigateToVideo(host: host, videoId: videoId)))):
+                case .element(
+                    id: _,
+                    action: .channelDetail(
+                        .delegate(.navigateToVideo(host: let host, videoId: let videoId)))):
                     return Self.navigateToVideo(&state.path, host: host, videoId: videoId)
-                case let .element(id: _, action: .feed(.videoTapped(row: row))):
+                case .element(id: _, action: .feed(.videoTapped(row: let row))):
                     return Self.navigateToVideoFromRow(&state.path, row: row)
-                case let .element(id: _, action: .feed(.channelTapped(row: row))):
+                case .element(id: _, action: .feed(.channelTapped(row: let row))):
                     return Self.navigateToChannelFromRow(&state.path, row: row)
                 default:
                     return .none
@@ -113,16 +119,19 @@ struct FeedNavigationFeature {
         let pathId = path.ids.last!
 
         return .run { send in
-            await send(.path(.element(
-                id: pathId,
-                action: .channelDetail(.loadChannelFromRow(
-                    channelId: channelIdentifier,
-                    channelName: channelName,
-                    avatarUrl: avatarUrl,
-                    description: channelDescription,
-                    host: host
-                ))
-            )))
+            await send(
+                .path(
+                    .element(
+                        id: pathId,
+                        action: .channelDetail(
+                            .loadChannelFromRow(
+                                channelId: channelIdentifier,
+                                channelName: channelName,
+                                avatarUrl: avatarUrl,
+                                description: channelDescription,
+                                host: host
+                            ))
+                    )))
         }
     }
 
@@ -142,7 +151,7 @@ struct FeedNavigationFeature {
         row: VideoRow
     ) -> Effect<Action> {
         guard let channel = row.channel,
-              let instance = row.instance
+            let instance = row.instance
         else {
             return .none
         }
@@ -154,16 +163,19 @@ struct FeedNavigationFeature {
         let pathId = path.ids.last!
 
         return .run { send in
-            await send(.path(.element(
-                id: pathId,
-                action: .channelDetail(.loadChannelFromRow(
-                    channelId: channel.id,
-                    channelName: channel.name,
-                    avatarUrl: channel.avatarUrl,
-                    description: channel.description,
-                    host: instance.host
-                ))
-            )))
+            await send(
+                .path(
+                    .element(
+                        id: pathId,
+                        action: .channelDetail(
+                            .loadChannelFromRow(
+                                channelId: channel.id,
+                                channelName: channel.name,
+                                avatarUrl: channel.avatarUrl,
+                                description: channel.description,
+                                host: instance.host
+                            ))
+                    )))
         }
     }
 
@@ -174,7 +186,9 @@ struct FeedNavigationFeature {
     ) -> Effect<Action> {
         guard let instance = row.instance else { return .none }
 
-        path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
+        path.append(
+            .videoDetail(
+                VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
         return .none
     }
 }
@@ -255,7 +269,7 @@ enum CachedFeedType: String, Equatable, Hashable {
         case .continueWatching:
             self = .continueWatching
         case .search:
-            self = .exploreNewest // Don't cache search results
+            self = .exploreNewest  // Don't cache search results
         }
     }
 }
@@ -266,7 +280,7 @@ actor FeedCacheActor {
     static let shared = FeedCacheActor()
 
     private var cache: [CachedFeedType: FeedCacheEntry] = [:]
-    private let ttl: TimeInterval = 300 // 5 minutes
+    private let ttl: TimeInterval = 300  // 5 minutes
 
     private init() {}
 
@@ -274,7 +288,7 @@ actor FeedCacheActor {
     func get(_ feedType: FeedFilter) -> [VideoRow]? {
         let cachedType = CachedFeedType(from: feedType)
         guard let cached = cache[cachedType],
-              Date().timeIntervalSince(cached.timestamp) < ttl
+            Date().timeIntervalSince(cached.timestamp) < ttl
         else {
             return nil
         }
@@ -307,7 +321,8 @@ struct FeedFeature {
     struct State: Equatable {
         let feedType: FeedFilter
 
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
         var isLoadingVideos: Bool = false
         var hasLoadedAtLeastOnce: Bool = false
         var order: FeedOrder = .descending
@@ -362,12 +377,14 @@ struct FeedFeature {
             try await database.read { db in
                 switch feedType {
                 case .exploreNewest, .recommended:
-                    let orderedVideos = Video
+                    let orderedVideos =
+                        Video
                         .order { $0.publishDate.desc() }
                         .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
                         .leftJoin(Instance.all) { $0.instanceID.eq($2.host) }
 
-                    return try orderedVideos
+                    return
+                        try orderedVideos
                         .select {
                             VideoRow.Columns(
                                 video: $0,
@@ -377,13 +394,15 @@ struct FeedFeature {
                         }
                         .fetchAll(db)
                 case .subscriptions:
-                    let orderedVideos = Video
+                    let orderedVideos =
+                        Video
                         .order { $0.publishDate.desc() }
                         .join(PeertubeSubscription.all) { $0.channelID.eq($1.channelID) }
                         .leftJoin(VideoChannel.all) { $0.channelID.eq($2.id) }
                         .leftJoin(Instance.all) { $0.instanceID.eq($3.host) }
 
-                    return try orderedVideos
+                    return
+                        try orderedVideos
                         .select {
                             VideoRow.Columns(
                                 video: $0,
@@ -405,12 +424,14 @@ struct FeedFeature {
 
     private static func fetchAllVideosWithProgress(db: Database) throws -> [VideoRow] {
         // Fetch all videos ordered by publish date
-        let allVideos = Video
+        let allVideos =
+            Video
             .order { $0.publishDate.desc() }
             .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
             .leftJoin(Instance.all) { $0.instanceID.eq($2.host) }
 
-        let rows = try allVideos
+        let rows =
+            try allVideos
             .select {
                 VideoRow.Columns(
                     video: $0,
@@ -423,8 +444,8 @@ struct FeedFeature {
         // Filter for continue watching: watched > 1 minute AND remaining > 3 minutes
         return rows.filter { row in
             guard let currentTime = row.video.currentTime,
-                  let duration = row.video.duration,
-                  duration > 0
+                let duration = row.video.duration,
+                duration > 0
             else {
                 return false
             }
@@ -437,10 +458,13 @@ struct FeedFeature {
     /// This avoids SQLite "database is locked" errors from concurrent writes
     func saveVideos(videos: [TubeSDK.Video], client: TubeSDKClient) async throws -> [VideoRow] {
         // Phase 1: Process all videos concurrently for network calls (syncInstanceInfo)
-        let processedVideos = await withTaskGroup(of: (Int, TubeSDK.Video, ProcessedVideoData?).self) { group in
+        let processedVideos = await withTaskGroup(
+            of: (Int, TubeSDK.Video, ProcessedVideoData?).self
+        ) { group in
             for (index, peertubeVideo) in videos.enumerated() {
                 group.addTask {
-                    let data = await self.processVideoNetwork(peertubeVideo: peertubeVideo, client: client)
+                    let data = await self.processVideoNetwork(
+                        peertubeVideo: peertubeVideo, client: client)
                     return (index, peertubeVideo, data)
                 }
             }
@@ -457,11 +481,13 @@ struct FeedFeature {
             var rows: [VideoRow] = []
             for (_, peertubeVideo, data) in processedVideos {
                 guard let data = data,
-                      let videoId = peertubeVideo.uuid,
-                      let videoName = peertubeVideo.name,
-                      let publishedAt = peertubeVideo.publishedAt else { continue }
+                    let videoId = peertubeVideo.uuid,
+                    let videoName = peertubeVideo.name,
+                    let publishedAt = peertubeVideo.publishedAt
+                else { continue }
 
-                let channel = try VideoChannel
+                let channel =
+                    try VideoChannel
                     .upsert {
                         VideoChannel(
                             id: "\(data.channelUsername)@\(data.instanceHost)",
@@ -480,7 +506,8 @@ struct FeedFeature {
 
                 let existingTime = try Video.find(videoId).fetchOne(db)?.currentTime
 
-                let video = try Video
+                let video =
+                    try Video
                     .upsert {
                         Video(
                             id: videoId,
@@ -498,7 +525,8 @@ struct FeedFeature {
                     .fetchOne(db)
 
                 if let inserted = video {
-                    rows.append(VideoRow(video: inserted, channel: channel, instance: data.instance))
+                    rows.append(
+                        VideoRow(video: inserted, channel: channel, instance: data.instance))
                 }
             }
             return rows
@@ -523,12 +551,12 @@ struct FeedFeature {
         client _: TubeSDKClient
     ) async -> ProcessedVideoData? {
         guard let channel = peertubeVideo.channel,
-              let videoId = peertubeVideo.uuid,
-              let videoName = peertubeVideo.name,
-              let publishedAt = peertubeVideo.publishedAt,
-              let channelUsername = channel.name,
-              let channelDisplayName = channel.displayName,
-              let instanceHost = channel.host
+            let videoId = peertubeVideo.uuid,
+            let videoName = peertubeVideo.name,
+            let publishedAt = peertubeVideo.publishedAt,
+            let channelUsername = channel.name,
+            let channelDisplayName = channel.displayName,
+            let instanceHost = channel.host
         else {
             print("Error adding video: missing required fields")
             return nil
@@ -539,7 +567,8 @@ struct FeedFeature {
             // Note: VideoChannelSummary doesn't have description - it's only available in full VideoChannel
             // Description will be fetched when navigating to channel detail
 
-            let instance = try await self.peertubeOrchestrator.syncInstanceInfo(instanceHost, database)
+            let instance = try await self.peertubeOrchestrator.syncInstanceInfo(
+                instanceHost, database)
 
             return ProcessedVideoData(
                 channelUsername: channelUsername,
@@ -562,7 +591,7 @@ struct FeedFeature {
         // Fire-and-forget - don't block the caller, but log errors for debugging
         Task {
             await withTaskGroup(of: Void.self) { group in
-                for url in thumbnailUrls.prefix(10) { // Only preload first 10 thumbnails
+                for url in thumbnailUrls.prefix(10) {  // Only preload first 10 thumbnails
                     group.addTask {
                         do {
                             try await orchestrator.cacheImageIfNeeded(url, db)
@@ -578,10 +607,10 @@ struct FeedFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case let .videoTapped(row):
+            case .videoTapped(let row):
                 let _ = row
                 return .none
-            case let .videoOverflowMenuTapped(row, host):
+            case .videoOverflowMenuTapped(let row, let host):
                 let _ = row
                 return .none
             case .initialScreenLoad:
@@ -603,7 +632,7 @@ struct FeedFeature {
                 case .continueWatching:
                     return .send(.loadContinueWatching)
                 }
-            case let .setLoading(isLoading):
+            case .setLoading(let isLoading):
                 state.isLoadingVideos = isLoading
                 return .none
             case .loadInitialVideos:
@@ -623,9 +652,13 @@ struct FeedFeature {
                     case .recommended:
                         // Use -best for logged in users, -hot for not logged in
                         if client.currentToken != nil {
-                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+                            sort = TubeSDK.VideoSort(
+                                key: TubeSDK.VideoSortKey.best,
+                                direction: TubeSDK.SortDirection.descending)
                         } else {
-                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+                            sort = TubeSDK.VideoSort(
+                                key: TubeSDK.VideoSortKey.hot,
+                                direction: TubeSDK.SortDirection.descending)
                         }
                     default:
                         sort = nil
@@ -642,7 +675,9 @@ struct FeedFeature {
                         peertubeVideos = try await client.getVideos(count: 4, start: 0)
                     }
                     let apiTime = Date().timeIntervalSince(fetchStart)
-                    print("[TIMING] InitialLoad: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
+                    print(
+                        "[TIMING] InitialLoad: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)"
+                    )
 
                     // Save to DB for caching and use returned VideoRows
                     let dbStart = Date()
@@ -676,9 +711,13 @@ struct FeedFeature {
                     case .recommended:
                         // Use -best for logged in users, -hot for not logged in
                         if client.currentToken != nil {
-                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+                            sort = TubeSDK.VideoSort(
+                                key: TubeSDK.VideoSortKey.best,
+                                direction: TubeSDK.SortDirection.descending)
                         } else {
-                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+                            sort = TubeSDK.VideoSort(
+                                key: TubeSDK.VideoSortKey.hot,
+                                direction: TubeSDK.SortDirection.descending)
                         }
                     default:
                         sort = nil
@@ -696,7 +735,9 @@ struct FeedFeature {
                     }
 
                     let apiTime = Date().timeIntervalSince(fetchStart)
-                    print("[TIMING] SecondBatch: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
+                    print(
+                        "[TIMING] SecondBatch: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)"
+                    )
 
                     // Save to DB for caching and use returned VideoRows
                     let dbStart = Date()
@@ -717,7 +758,7 @@ struct FeedFeature {
 
                     await send(.finishLoadingMore(videos))
                 }
-            case let .loadVideosBySearch(searchParameters):
+            case .loadVideosBySearch(let searchParameters):
                 return .run { [client = state.client, searchParameters = searchParameters] send in
                     await send(.setLoading(true))
 
@@ -746,13 +787,14 @@ struct FeedFeature {
                         let historyVideos = try await client.getMyHistory(count: 20)
 
                         // Save to DB and get VideoRows
-                        let videos = try await self.saveVideos(videos: historyVideos, client: client)
+                        let videos = try await self.saveVideos(
+                            videos: historyVideos, client: client)
 
                         // Filter: watched > 1 minute AND remaining > 3 minutes
                         let continueWatchingVideos = videos.filter { row in
                             guard let currentTime = row.video.currentTime,
-                                  let duration = row.video.duration,
-                                  duration > 0
+                                let duration = row.video.duration,
+                                duration > 0
                             else {
                                 return false
                             }
@@ -772,7 +814,11 @@ struct FeedFeature {
                     }
                 }
             case .loadSubscriptionVideos:
-                return .run { [client = state.client, authClient = self.authClient, feedType = state.feedType, stateFeedEmpty = state.feed.isEmpty] send in
+                return .run {
+                    [
+                        client = state.client, authClient = self.authClient,
+                        feedType = state.feedType, stateFeedEmpty = state.feed.isEmpty
+                    ] send in
                     let localVideos = await self.fetchLocalVideos(for: feedType)
 
                     if let localVideos, !localVideos.isEmpty {
@@ -787,7 +833,8 @@ struct FeedFeature {
                         print("User is authenticated, fetching native subscription feed")
                         do {
                             let peertubeVideos = try await client.getMySubscriptionVideos()
-                            let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                            let videos = try await self.saveVideos(
+                                videos: peertubeVideos, client: client)
                             await send(.finishLoading(videos))
                         } catch TubeError.unauthorized {
                             print("Token expired, attempting to refresh")
@@ -795,30 +842,38 @@ struct FeedFeature {
                                 let refreshToken = session.token.refreshToken
                                 do {
                                     let credentials = try await client.getClientOAuthCredentials()
-                                    let newToken = try await client.refresh(refreshToken: refreshToken, client: credentials)
+                                    let newToken = try await client.refresh(
+                                        refreshToken: refreshToken, client: credentials)
                                     var newSession = session
                                     newSession.token = newToken
                                     try await authClient.saveSession(newSession)
 
                                     // Retry
                                     let peertubeVideos = try await client.getMySubscriptionVideos()
-                                    let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                                    let videos = try await self.saveVideos(
+                                        videos: peertubeVideos, client: client)
                                     await send(.finishLoading(videos))
                                     return
                                 } catch {
                                     print("Failed to refresh token: \(error)")
                                     try? await authClient.deleteSession()
                                     client.currentToken = nil
-                                    await send(.loadingFailed("Your session has expired. Please log in again."))
+                                    await send(
+                                        .loadingFailed(
+                                            "Your session has expired. Please log in again."))
                                 }
                             } else {
                                 try? await authClient.deleteSession()
                                 client.currentToken = nil
-                                await send(.loadingFailed("Your session has expired. Please log in again."))
+                                await send(
+                                    .loadingFailed("Your session has expired. Please log in again.")
+                                )
                             }
                         } catch {
                             print("Error fetching native subscription feed: \(error)")
-                            await send(.loadingFailed("Failed to load feed: \(error.localizedDescription)"))
+                            await send(
+                                .loadingFailed("Failed to load feed: \(error.localizedDescription)")
+                            )
                         }
                         return
                     }
@@ -849,7 +904,7 @@ struct FeedFeature {
                     let videos = await self.fetchLocalVideos(for: feedType)
                     await send(.finishLoading(videos ?? []))
                 }
-            case let .finishLoading(videos):
+            case .finishLoading(let videos):
                 // First load (offset 0): replace feed
                 if state.currentOffset == 0 {
                     state.feed = videos
@@ -866,7 +921,9 @@ struct FeedFeature {
                 state.hasMoreVideos = videos.count > 0
                 return .none
             case .loadMoreVideos:
-                return .run { [client = state.client, feedType = state.feedType, offset = state.currentOffset] send in
+                return .run {
+                    [client = state.client, feedType = state.feedType, offset = state.currentOffset]
+                    send in
                     await send(.setLoadingMore(true))
 
                     // Determine sort based on feed type
@@ -875,9 +932,13 @@ struct FeedFeature {
                     switch feedType {
                     case .recommended:
                         if client.currentToken != nil {
-                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+                            sort = TubeSDK.VideoSort(
+                                key: TubeSDK.VideoSortKey.best,
+                                direction: TubeSDK.SortDirection.descending)
                         } else {
-                            sort = TubeSDK.VideoSort(key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+                            sort = TubeSDK.VideoSort(
+                                key: TubeSDK.VideoSortKey.hot,
+                                direction: TubeSDK.SortDirection.descending)
                         }
                     default:
                         sort = nil
@@ -889,13 +950,16 @@ struct FeedFeature {
                     // Load 15 more videos with current offset
                     let peertubeVideos: [TubeSDK.Video]
                     if let sort = sort {
-                        peertubeVideos = try await client.getVideos(sort: sort, count: 15, start: offset)
+                        peertubeVideos = try await client.getVideos(
+                            sort: sort, count: 15, start: offset)
                     } else {
                         peertubeVideos = try await client.getVideos(count: 15, start: offset)
                     }
 
                     let apiTime = Date().timeIntervalSince(fetchStart)
-                    print("[TIMING] LoadMore: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)")
+                    print(
+                        "[TIMING] LoadMore: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)"
+                    )
 
                     // Save to DB for caching and use returned VideoRows
                     let dbStart = Date()
@@ -916,17 +980,17 @@ struct FeedFeature {
 
                     await send(.finishLoadingMore(videos))
                 }
-            case let .finishLoadingMore(videos):
+            case .finishLoadingMore(let videos):
                 state.feed.append(contentsOf: videos)
                 state.currentOffset += videos.count
                 state.isLoadingMore = false
                 // If we got any videos, there might be more
                 state.hasMoreVideos = videos.count > 0
                 return .none
-            case let .setLoadingMore(isLoading):
+            case .setLoadingMore(let isLoading):
                 state.isLoadingMore = isLoading
                 return .none
-            case let .loadingFailed(message):
+            case .loadingFailed(let message):
                 state.errorMessage = message
                 state.isLoadingVideos = false
                 state.hasLoadedAtLeastOnce = true
@@ -937,7 +1001,7 @@ struct FeedFeature {
                     await FeedCacheActor.shared.invalidate(feedType)
                     await send(.loadVideos)
                 }
-            case let .channelTapped(row):
+            case .channelTapped(let row):
                 let _ = row
                 return .none
             case .instanceTapped:
@@ -999,7 +1063,10 @@ struct Feed: View {
                     }
                 } else {
                     VStack(spacing: 0) {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12) {
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading,
+                            spacing: 12
+                        ) {
                             ForEach(self.store.feed, id: \.self) { row in
                                 VideoCard(row: row) {
                                     self.store.send(.videoTapped(row: row))
@@ -1049,20 +1116,5 @@ struct Feed: View {
         case .search: return "Search Results"
         case .continueWatching: return "Continue Watching"
         }
-    }
-}
-
-#Preview {
-    let _ = prepareDependencies {
-        try! $0.bootstrapDatabase()
-        try! $0.defaultDatabase.seed()
-    }
-
-    NavigationStack {
-        Feed(
-            store: Store(initialState: FeedFeature.State(feedType: .subscriptions)) {
-                FeedFeature()
-            }
-        )
     }
 }

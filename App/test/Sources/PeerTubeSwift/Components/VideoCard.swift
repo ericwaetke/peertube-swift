@@ -41,7 +41,7 @@ struct VideoCard: View {
         self.openChannel = openChannel
 
         if let thumbnail = row.video.thumbnailUrl {
-            _cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnail })
+            _cachedThumbnail = FetchOne(PeertubeImage.where { $0.id.eq(thumbnail) })
         } else {
             _cachedThumbnail = FetchOne(PeertubeImage.none)
         }
@@ -69,7 +69,7 @@ struct VideoCard: View {
 
         // Use bestThumbnailUrl for proper thumbnail URL construction
         let thumbnailUrl = client.flatMap { video.bestThumbnailUrl(client: $0, size: .medium) }
-        _cachedThumbnail = FetchOne(PeertubeImage.where { $0.id == thumbnailUrl })
+        _cachedThumbnail = FetchOne(PeertubeImage.where { $0.id.eq(thumbnailUrl!) })
     }
 
     let formatter = RelativeDateTimeFormatter()
@@ -124,10 +124,12 @@ struct VideoCard: View {
     var body: some View {
         VStack {
             if let thumbnailUrl = videoThumbnailUrl,
-               let url = URL(string: thumbnailUrl)
+                let url = URL(string: thumbnailUrl)
             {
                 ZStack(alignment: .topLeading) {
-                    if let cachedData = cachedThumbnail?.data, let uiImage = UIImage(data: cachedData) {
+                    if let cachedData = cachedThumbnail?.data,
+                        let uiImage = UIImage(data: cachedData)
+                    {
                         Image(uiImage: uiImage)
                             .resizable()
                             .frame(
@@ -153,14 +155,18 @@ struct VideoCard: View {
                         .aspectRatio(16 / 9, contentMode: .fit)
                         .clipShape(.rect(cornerRadius: 8))
                         .task {
-                            try? await peertubeOrchestrator.cacheImageIfNeeded(thumbnailUrl, database)
+                            try? await peertubeOrchestrator.cacheImageIfNeeded(
+                                thumbnailUrl, database)
                         }
                     }
 
                     VStack(alignment: .leading) {
                         if !instanceDisplayHost.isEmpty {
-                            InstanceIndicator(instanceName: instanceDisplayHost, instanceImage: instanceDisplayAvatarUrl)
-                                .padding(8)
+                            InstanceIndicator(
+                                instanceName: instanceDisplayHost,
+                                instanceImage: instanceDisplayAvatarUrl
+                            )
+                            .padding(8)
                         }
 
                         Spacer()
@@ -171,19 +177,26 @@ struct VideoCard: View {
                                 Text(Duration.seconds(durationInt).formatted())
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
+                                    .background(
+                                        .thinMaterial, in: RoundedRectangle(cornerRadius: 4)
+                                    )
                                     .padding(8)
                             }
                         }
                     }
 
-                    if let duration = videoDuration, let currentTime = videoCurrentTime, duration > 0, currentTime > 0 {
+                    if let duration = videoDuration, let currentTime = videoCurrentTime,
+                        duration > 0, currentTime > 0
+                    {
                         VStack {
                             Spacer()
                             GeometryReader { geometry in
                                 Rectangle()
                                     .fill(Color.red)
-                                    .frame(width: geometry.size.width * CGFloat(min(Double(currentTime) / Double(duration), 1.0)))
+                                    .frame(
+                                        width: geometry.size.width
+                                            * CGFloat(
+                                                min(Double(currentTime) / Double(duration), 1.0)))
                             }
                             .frame(height: 4)
                         }
@@ -235,9 +248,4 @@ struct VideoCard: View {
             onVideoTap()
         }
     }
-}
-
-#Preview {
-    // VideoCard(host: "example.com", video: VideoMockData)
-    //        .environment(AppState())
 }

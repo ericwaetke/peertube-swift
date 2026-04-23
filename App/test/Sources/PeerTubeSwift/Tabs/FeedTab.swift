@@ -53,9 +53,12 @@ struct FeedTabFeature {
             case .manageSubsctiptions:
                 return .none
 
-            case let .navigation(.path(action)):
+            case .navigation(.path(let action)):
                 switch action {
-                case let .element(id: _, action: .videoDetail(.delegate(.navigateToChannel(host: host, channel: channel)))):
+                case .element(
+                    id: _,
+                    action: .videoDetail(
+                        .delegate(.navigateToChannel(host: let host, channel: let channel)))):
                     // Map FeedNavigationFeature.Action to FeedTabFeature.Action
                     guard let channelName = channel.name else {
                         // TODO: Error handeling
@@ -70,25 +73,42 @@ struct FeedTabFeature {
                         avatarUrl: channel.avatars?.first?.fileUrl,
                         channelDescription: channel.description
                     )
-                    .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in .navigation(action) }
+                    .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
+                        .navigation(action)
+                    }
 
-                case let .element(id: _, action: .channelDetail(.delegate(.navigateToVideo(host: host, videoId: videoId)))):
-                    return FeedNavigationFeature.navigateToVideo(&state.navigation.path, host: host, videoId: videoId)
-                        .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in .navigation(action) }
+                case .element(
+                    id: _,
+                    action: .channelDetail(
+                        .delegate(.navigateToVideo(host: let host, videoId: let videoId)))):
+                    return FeedNavigationFeature.navigateToVideo(
+                        &state.navigation.path, host: host, videoId: videoId
+                    )
+                    .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
+                        .navigation(action)
+                    }
 
                 default:
                     return .none
                 }
 
-            case let .subscriptionFeed(action):
+            case .subscriptionFeed(let action):
                 switch action {
-                case let .videoTapped(row: row):
-                    return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation.path, row: row)
-                        .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in .navigation(action) }
+                case .videoTapped(row: let row):
+                    return FeedNavigationFeature.navigateToVideoFromRow(
+                        &state.navigation.path, row: row
+                    )
+                    .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
+                        .navigation(action)
+                    }
 
-                case let .channelTapped(row: row):
-                    return FeedNavigationFeature.navigateToChannelFromRow(&state.navigation.path, row: row)
-                        .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in .navigation(action) }
+                case .channelTapped(row: let row):
+                    return FeedNavigationFeature.navigateToChannelFromRow(
+                        &state.navigation.path, row: row
+                    )
+                    .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
+                        .navigation(action)
+                    }
 
                 default:
                     return .none
@@ -159,15 +179,16 @@ struct FeedTab: View {
                 }
         } destination: { pathStore in
             switch pathStore.case {
-            case let .videoDetail(store):
+            case .videoDetail(let store):
                 VideoDetails(store: store)
-            case let .channelDetail(store):
+            case .channelDetail(let store):
                 VideoChannelView(store: store)
-            case let .feed(store):
+            case .feed(let store):
                 Feed(store: store)
             }
         }
-        .sheet(item: $store.scope(state: \.manageSubscriptions, action: \.manageSubsctiptions)) { store in
+        .sheet(item: $store.scope(state: \.manageSubscriptions, action: \.manageSubsctiptions)) {
+            store in
             NavigationStack {
                 Subscriptions(store: store)
                     .navigationTitle("Manage Subscriptions")
@@ -175,17 +196,4 @@ struct FeedTab: View {
             }
         }
     }
-}
-
-#Preview {
-    let _ = prepareDependencies {
-        try! $0.bootstrapDatabase()
-        try! $0.defaultDatabase.seed()
-    }
-
-    FeedTab(
-        store: Store(initialState: FeedTabFeature.State()) {
-            FeedTabFeature()
-        }
-    )
 }

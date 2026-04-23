@@ -7,9 +7,6 @@
 
 import ComposableArchitecture
 import Dependencies
-#if canImport(PostHog)
-import PostHog
-#endif
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -21,7 +18,8 @@ struct VideoDetailsFeature {
         let host: String
         let videoId: String
         var seekRequest: SeekRequest?
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
 
         var videoDetails: TubeSDK.VideoDetails?
         var pauseTrigger: Int = 0
@@ -79,19 +77,24 @@ struct VideoDetailsFeature {
 
         Reduce { state, action in
             switch action {
-            case let .seekTo(time):
+            case .seekTo(let time):
                 state.seekRequest = SeekRequest(time: time)
                 return .none
 
-            case let .timeUpdate(time):
-                return .run { [client = state.client, videoId = state.videoId, videoDetails = state.videoDetails] _ in
-                    try? await client.pingVideoWatchingInProgress(videoID: videoId, currentTime: time)
+            case .timeUpdate(let time):
+                return .run {
+                    [
+                        client = state.client, videoId = state.videoId,
+                        videoDetails = state.videoDetails
+                    ] _ in
+                    try? await client.pingVideoWatchingInProgress(
+                        videoID: videoId, currentTime: time)
 
                     if let uuid = videoDetails?.uuid {
                         @Dependency(\.defaultDatabase) var database
                         try? await database.write { db in
                             try Video
-                                .where { $0.id == uuid }
+                                .where { $0.id.eq(uuid) }
                                 .update { $0.currentTime = time }
                                 .execute(db)
                         }
@@ -107,12 +110,13 @@ struct VideoDetailsFeature {
                     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
 
                     await withErrorReporting {
-                        let instance = try await peertubeOrchestrator.syncInstanceInfo(host, database)
+                        let instance = try await peertubeOrchestrator.syncInstanceInfo(
+                            host, database)
                         await send(.instanceLoaded(instance))
                     }
                 }
 
-            case let .instanceLoaded(instance):
+            case .instanceLoaded(let instance):
                 state.channelPreview.instance = instance
                 return .run { [client = state.client, videoId = state.videoId] send in
                     print("running side-effect screen loaded")
@@ -127,7 +131,8 @@ struct VideoDetailsFeature {
                                 try Video.find(uuid).fetchOne(db)?.currentTime
                             }
                             if let time = localTime {
-                                videoDetails.userHistory = TubeSDK.VideoUserHistory(currentTime: time)
+                                videoDetails.userHistory = TubeSDK.VideoUserHistory(
+                                    currentTime: time)
                             }
                         }
                     }
@@ -146,7 +151,7 @@ struct VideoDetailsFeature {
                 state.isNotFound = true
                 return .none
 
-            case let .loadVideo(videoDetails):
+            case .loadVideo(let videoDetails):
                 state.videoDetails = videoDetails
 
                 state.actions.videoDetails = videoDetails
@@ -164,20 +169,14 @@ struct VideoDetailsFeature {
                     .send(.channelPreview(.loadChannelPreview(videoDetails))),
                     .send(.actions(.loadUserRating)),
                     .send(.comments(.loadComments)),
-                    .run { [videoDetails] _ in
-                        PostHogSDK.shared.capture("video_viewed", properties: [
-                            "video_id": videoDetails.uuid?.uuidString ?? "",
-                            "video_name": videoDetails.name ?? "",
-                        ])
-                    }
                 )
 
-            case let .description(.delegate(.seekTo(time))):
+            case .description(.delegate(.seekTo(let time))):
                 return .send(.seekTo(time))
 
             case .channelPreview(.channelTapped):
                 guard let channel = state.channelPreview.videoDetails?.channel,
-                      let channelName = channel.name
+                    let channelName = channel.name
                 else {
                     return .none
                 }
@@ -205,13 +204,14 @@ struct VideoDetails: View {
                 ContentUnavailableView(
                     "Video Not Found",
                     systemImage: "video.slash",
-                    description: Text("The video you are looking for does not exist or has been removed.")
+                    description: Text(
+                        "The video you are looking for does not exist or has been removed.")
                 )
             } else if let videoDetails = self.store.videoDetails {
                 ScrollView {
                     VStack(spacing: 16) {
                         if let videoFiles = videoDetails.streamingPlaylists?.first?.files,
-                           !videoFiles.isEmpty
+                            !videoFiles.isEmpty
                         {
                             VideoPlayerView(
                                 isPlayerReady: $isPlayerReady,
@@ -222,7 +222,8 @@ struct VideoDetails: View {
                                 seekRequest: self.store.seekRequest,
                                 videoTitle: videoDetails.name,
                                 channelName: videoDetails.channel?.displayName,
-                                thumbnailPath: videoDetails.bestThumbnailUrl(client: store.client, size: .large),
+                                thumbnailPath: videoDetails.bestThumbnailUrl(
+                                    client: store.client, size: .large),
                                 pauseTrigger: self.store.pauseTrigger
                             )
                             .frame(
@@ -237,7 +238,8 @@ struct VideoDetails: View {
                             Button {
                                 let newValue = !self.store.state.description.descriptionVisible
                                 withAnimation {
-                                    self.store.send(.description(.descriptionVisibleChanged(newValue)))
+                                    self.store.send(
+                                        .description(.descriptionVisibleChanged(newValue)))
                                 }
                             } label: {
                                 VStack(alignment: .leading, spacing: 8) {
@@ -270,22 +272,28 @@ struct VideoDetails: View {
                                     .opacity(0.5)
                                     .foregroundStyle(.primary)
 
-                                    VideoDescriptionView(store: self.store.scope(state: \.description, action: \.description))
+                                    VideoDescriptionView(
+                                        store: self.store.scope(
+                                            state: \.description, action: \.description))
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .buttonStyle(.plain)
 
-                            VideoActionsView(store: self.store.scope(state: \.actions, action: \.actions))
+                            VideoActionsView(
+                                store: self.store.scope(state: \.actions, action: \.actions))
 
                             Divider()
 
-                            ChannelPreviewView(store: self.store.scope(state: \.channelPreview, action: \.channelPreview))
+                            ChannelPreviewView(
+                                store: self.store.scope(
+                                    state: \.channelPreview, action: \.channelPreview))
 
                             Divider()
 
                             VStack(alignment: .leading) {
-                                VideoCommentsView(store: self.store.scope(state: \.comments, action: \.comments))
+                                VideoCommentsView(
+                                    store: self.store.scope(state: \.comments, action: \.comments))
                             }
 
                             Spacer()
@@ -301,23 +309,5 @@ struct VideoDetails: View {
         .task {
             await self.store.send(.screenLoaded).finish()
         }
-    }
-}
-
-#Preview {
-    let _ = prepareDependencies {
-        try! $0.bootstrapDatabase()
-        try! $0.defaultDatabase.seed()
-    }
-
-    NavigationStack {
-        VideoDetails(
-            store: Store(
-                initialState: VideoDetailsFeature.State(
-                    host: "peertube.cpy.re", videoId: "eRbrxETVKN3gxKKD8bcaHK"
-                )
-            ) {
-                VideoDetailsFeature()
-            })
     }
 }

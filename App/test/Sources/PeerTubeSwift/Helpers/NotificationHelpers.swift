@@ -12,9 +12,9 @@ import UserNotifications
 
 /// Result of checking notification permission
 enum NotificationPermissionStatus {
-    case allowed // Toggle allowed
-    case denied // Show alert + link to settings
-    case notDetermined // First time - request permission
+    case allowed  // Toggle allowed
+    case denied  // Show alert + link to settings
+    case notDetermined  // First time - request permission
 }
 
 /// Check notification permission status
@@ -36,7 +36,8 @@ func checkNotificationPermission() async -> NotificationPermissionStatus {
 
 /// Request notification permission
 func requestNotificationPermission() async -> Bool {
-    (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) != nil
+    (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]))
+        != nil
 }
 
 /// Save notification preference to DB
@@ -45,7 +46,7 @@ func saveNotificationPreference(channelId: String, notify: Bool) async throws {
     @Dependency(\.defaultDatabase) var database
     try await database.write { db in
         try PeertubeSubscription
-            .where { $0.channelID == channelId }
+            .where { $0.channelID.eq(channelId) }
             .update { $0.notifyOnNewVideo = notify }
             .execute(db)
     }

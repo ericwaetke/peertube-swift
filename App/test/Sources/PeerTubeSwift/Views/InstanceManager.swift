@@ -41,11 +41,11 @@ struct InstanceManagerFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case let .instanceUrlChanged(text):
+            case .instanceUrlChanged(let text):
                 state.instanceUrlString = text
                 state.connectionError = nil
-//                TODO: Enable onlyonce effect-cancellation is implemented
-//                state.tryingInstanceConnection = false
+                //                TODO: Enable onlyonce effect-cancellation is implemented
+                //                state.tryingInstanceConnection = false
                 state.readyToSaveInstance = false
 
                 return .none
@@ -68,22 +68,25 @@ struct InstanceManagerFeature {
                         let config = try await client.instance.getConfig()
                         await send(.connectionResponse(.success(config)))
                     } catch {
-                        await send(.connectionResponse(.failure(.connectionFailed(error.localizedDescription))))
+                        await send(
+                            .connectionResponse(
+                                .failure(.connectionFailed(error.localizedDescription))))
                     }
                 }
-            case let .connectionResponse(response):
+            case .connectionResponse(let response):
                 state.tryingInstanceConnection = false
 
                 switch response {
-                case let .success(config):
+                case .success(let config):
                     state.readyToSaveInstance = true
-                    state.connectionError = "Successfully connected to \(config.instance.name) (v\(config.serverVersion))"
-                case let .failure(error):
+                    state.connectionError =
+                        "Successfully connected to \(config.instance.name) (v\(config.serverVersion))"
+                case .failure(let error):
                     state.connectionError = error.localizedDescription
                 }
 
                 return .none
-            case let .setInstanceUrl(url):
+            case .setInstanceUrl(let url):
                 state.instanceUrl = url
                 return .none
             }
@@ -101,7 +104,7 @@ extension NetworkError: LocalizedError {
         switch self {
         case .badURL:
             return String(localized: "The Instance URL doesn’t seem to be valid.")
-        case let .connectionFailed(error):
+        case .connectionFailed(let error):
             return String(localized: "Connection failed: \(error)")
         }
     }
@@ -113,13 +116,15 @@ struct InstanceManager: View {
     var body: some View {
         Form {
             Section("Instance Details") {
-                TextField("Instance URL", text: $store.instanceUrlString.sending(\.instanceUrlChanged))
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .onSubmit {
-                        self.store.send(.textFieldSubmitButtonPressed)
-                    }
+                TextField(
+                    "Instance URL", text: $store.instanceUrlString.sending(\.instanceUrlChanged)
+                )
+                .keyboardType(.URL)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .onSubmit {
+                    self.store.send(.textFieldSubmitButtonPressed)
+                }
             }
 
             Section("Connection") {
@@ -134,7 +139,9 @@ struct InstanceManager: View {
                         }
                     }
                 }
-                .disabled(self.store.state.instanceUrlString == "" || self.store.state.tryingInstanceConnection)
+                .disabled(
+                    self.store.state.instanceUrlString == ""
+                        || self.store.state.tryingInstanceConnection)
 
                 if let connectionError = self.store.state.connectionError {
                     Text(connectionError)
@@ -145,21 +152,6 @@ struct InstanceManager: View {
                 if self.store.state.readyToSaveInstance {
                     Label("Instance is working fine, ready to add", systemImage: "checkmark")
                 }
-            }
-        }
-    }
-}
-
-#Preview {
-    NavigationStack {
-        InstanceManager(store: Store(initialState: InstanceManagerFeature.State()) {
-            InstanceManagerFeature()
-        })
-        .navigationTitle("Instance Manager")
-        .toolbar {
-            ToolbarItem {
-                Button("Save") {}
-                    .disabled(true)
             }
         }
     }

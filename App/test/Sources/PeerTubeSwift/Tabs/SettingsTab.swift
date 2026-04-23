@@ -11,17 +11,14 @@ import SwiftUI
 import TubeSDK
 import WebURL
 
-#if canImport(PostHog)
-import PostHog
-#endif
-
 @Reducer
 struct SettingsTabFeature {
     @ObservableState
     struct State: Equatable {
         var path = StackState<SettingsPath.State>()
 
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
         @Presents var editInstance: InstanceManagerFeature.State?
         @Presents var login: LoginFeature.State?
         @Shared(.inMemory("session")) var session: UserSession?
@@ -84,11 +81,13 @@ struct SettingsTabFeature {
                     await send(.checkInstanceHealth)
                 }
 
-            case let .sessionLoaded(session):
+            case .sessionLoaded(let session):
                 state.$session.withLock { $0 = session }
                 if let session = session {
                     state.$client.withLock {
-                        $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token, session: urlSession)
+                        $0 = try! TubeSDKClient(
+                            scheme: "https", host: session.host, token: session.token,
+                            session: urlSession)
                     }
                 } else {
                     state.$client.withLock { $0.currentToken = nil }
@@ -102,15 +101,17 @@ struct SettingsTabFeature {
                         let config = try await client.instance.getConfig()
                         await send(.instanceHealthResponse(.success(config)))
                     } catch {
-                        await send(.instanceHealthResponse(.failure(.connectionFailed(error.localizedDescription))))
+                        await send(
+                            .instanceHealthResponse(
+                                .failure(.connectionFailed(error.localizedDescription))))
                     }
                 }
 
-            case let .instanceHealthResponse(.success(config)):
+            case .instanceHealthResponse(.success(let config)):
                 state.healthStatus = .healthy(config)
                 return .none
 
-            case let .instanceHealthResponse(.failure(error)):
+            case .instanceHealthResponse(.failure(let error)):
                 state.healthStatus = .error(error.localizedDescription)
                 return .none
 
@@ -127,30 +128,24 @@ struct SettingsTabFeature {
                 state.editInstance = InstanceManagerFeature.State(instanceUrlString: url)
                 return .none
 
-            case let .editInstance(.presented(.delegate(delegate))):
+            case .editInstance(.presented(.delegate(let delegate))):
                 switch delegate {
-                case let .saveNewInstance(url):
+                case .saveNewInstance(let url):
                     state.editInstance = nil
                     return .run { send in
                         guard let host = url.host?.serialized else { return }
                         do {
-                            try await send(.setClient(TubeSDKClient(scheme: url.scheme, host: host, session: urlSession)))
+                            try await send(
+                                .setClient(
+                                    TubeSDKClient(
+                                        scheme: url.scheme, host: host, session: urlSession)))
                         } catch {}
                     }
                 }
 
-            case let .setClient(client):
+            case .setClient(let client):
                 state.$client.withLock { $0 = client }
-                #if canImport(PostHog)
-                return .merge(
-                    .send(.checkInstanceHealth),
-                    .run { [host = client.instance.host] _ in
-                        PostHogSDK.shared.capture("instance_changed", properties: ["instance_host": host])
-                    }
-                )
-                #else
                 return .send(.checkInstanceHealth)
-                #endif
 
             case .editInstance:
                 return .none
@@ -159,10 +154,12 @@ struct SettingsTabFeature {
                 state.login = LoginFeature.State()
                 return .none
 
-            case let .login(.presented(.delegate(.didLogin(session)))):
+            case .login(.presented(.delegate(.didLogin(let session)))):
                 state.$session.withLock { $0 = session }
                 state.$client.withLock {
-                    $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token, session: urlSession)
+                    $0 = try! TubeSDKClient(
+                        scheme: "https", host: session.host, token: session.token,
+                        session: urlSession)
                 }
                 return .merge(
                     .send(.checkInstanceHealth),
@@ -175,20 +172,7 @@ struct SettingsTabFeature {
             case .logoutButtonTapped:
                 state.$session.withLock { $0 = nil }
                 state.$client.withLock { $0.currentToken = nil }
-                #if canImport(PostHog)
-                return .merge(
-                    .run { _ in
-                        try? await authClient.deleteSession()
-                        PostHogSDK.shared.capture("user_logged_out")
-                        PostHogSDK.shared.reset()
-                    },
-                    .send(.delegate(.didLogout))
-                )
-                #else
-                return .run { [authClient] _ in
-                    try? await authClient.deleteSession()
-                }
-                #endif
+                return .send(.delegate(.didLogout))
 
             case .dismiss:
                 return .run { [dismiss] _ in
@@ -221,14 +205,14 @@ struct SettingsTab: View {
                             switch self.store.healthStatus {
                             case .loading:
                                 EmptyView()
-                            case let .healthy(config):
+                            case .healthy(let config):
                                 Text(config.instance.name)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 Text("v\(config.serverVersion)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                            case let .error(error):
+                            case .error(let error):
                                 Text("Error: \(error)")
                                     .font(.caption)
                                     .foregroundStyle(.red)
@@ -301,17 +285,4 @@ struct SettingsTab: View {
             }
         }
     }
-}
-
-#Preview {
-    let _ = prepareDependencies {
-        try! $0.bootstrapDatabase()
-        try! $0.defaultDatabase.seed()
-    }
-
-    SettingsTab(
-        store: Store(initialState: SettingsTabFeature.State()) {
-            SettingsTabFeature()
-        }
-    )
 }

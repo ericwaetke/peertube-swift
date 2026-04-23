@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "PeerTubeSwift",
-    platforms: [
+platforms: [
         .iOS(.v18),
         .macOS(.v14),
     ],
@@ -23,9 +23,6 @@ let package = Package(
         
         // WebURL - URL handling
         .package(url: "https://github.com/karwa/swift-url", from: "0.4.0"),
-        
-        // PostHog - Analytics (optional, platforms: iOS only)
-        .package(url: "https://github.com/PostHog/posthog-ios", from: "3.48.2"),
         
         // TubeSDK - Local package
         .package(path: "/home/eric/Documents/GitHub/peertube-swift-sdk"),

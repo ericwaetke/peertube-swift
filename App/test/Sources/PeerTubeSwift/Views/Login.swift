@@ -1,7 +1,4 @@
 import ComposableArchitecture
-#if canImport(PostHog)
-import PostHog
-#endif
 import SwiftUI
 import TubeSDK
 
@@ -30,7 +27,8 @@ public struct LoginFeature {
 
     @Dependency(\.authClient) var authClient
     @Dependency(\.dismiss) var dismiss
-    @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+    @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+        scheme: "https", host: "peertube.wtf")
 
     public init() {}
 
@@ -47,11 +45,15 @@ public struct LoginFeature {
                 state.isLoading = true
                 state.errorMessage = nil
 
-                return .run { [client = self.client, username = state.username, password = state.password] send in
+                return .run {
+                    [client = self.client, username = state.username, password = state.password]
+                    send in
                     do {
                         let credentials = try await client.getClientOAuthCredentials()
-                        let token = try await client.login(username: username, password: password, client: credentials)
-                        let session = UserSession(username: username, host: client.instance.host, token: token)
+                        let token = try await client.login(
+                            username: username, password: password, client: credentials)
+                        let session = UserSession(
+                            username: username, host: client.instance.host, token: token)
 
                         // Fetch avatar from user/me
                         var avatarUrl: String? = nil
@@ -75,19 +77,18 @@ public struct LoginFeature {
                     }
                 }
 
-            case let .loginResponse(.success(session)):
+            case .loginResponse(.success(let session)):
                 state.isLoading = false
-                return .run { [authClient = self.authClient, dismiss = self.dismiss, session] send in
+                return .run {
+                    [authClient = self.authClient, dismiss = self.dismiss, session] send in
                     try await authClient.saveSession(session)
-                    PostHogSDK.shared.identify(session.username, userProperties: ["host": session.host])
-                    PostHogSDK.shared.capture("user_logged_in", properties: ["host": session.host])
                     await send(.delegate(.didLogin(session)))
                     await dismiss()
                 } catch: { _, _ in
                     print("Failed to save session: \\(error)")
                 }
 
-            case let .loginResponse(.failure(error)):
+            case .loginResponse(.failure(let error)):
                 state.isLoading = false
                 print("Failed to login: \\(error)")
                 state.errorMessage = error.localizedDescription

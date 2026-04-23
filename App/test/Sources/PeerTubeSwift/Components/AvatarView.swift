@@ -22,7 +22,7 @@ struct AvatarView: View {
         self.size = size
 
         if let avatarUrl = url {
-            _cachedAvatar = FetchOne(PeertubeImage.where { $0.id == avatarUrl })
+            _cachedAvatar = FetchOne(PeertubeImage.where { $0.id.eq(avatarUrl) })
         } else {
             _cachedAvatar = FetchOne(PeertubeImage.none)
         }

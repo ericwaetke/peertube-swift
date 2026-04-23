@@ -43,7 +43,8 @@ struct Recommendation: Equatable, Hashable, Identifiable {
 struct SubscriptionFeature {
     @ObservableState
     struct State: Equatable {
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
 
         @Presents var alert: AlertState<AlertAction>?
 
@@ -63,16 +64,69 @@ struct SubscriptionFeature {
         var records: [SubRecord]
 
         var recommendations: [Recommendation] = [
-            Recommendation(username: "veronicaexplains@tinkerbetter.tube", displayName: "Veronica Explains", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/52cda089-6645-4306-8a8e-e54459652462.jpg")!, category: .tech),
-            Recommendation(username: "arthurpizza@tilvids.com", displayName: "arthurpizza", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/af6645ec-6d5e-4880-a710-98475525162d.jpg")!, category: .tech),
-            Recommendation(username: "ct_3003@peertube.heise.de", displayName: "c’t 3003", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/86130f91-8d83-42e3-853c-b3a50ea29944.jpg")!, category: .tech),
-            Recommendation(username: "transit@video.canadiancivil.com", displayName: "Transit", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/59406d16-fd0d-4604-963c-4aae5bfdb1d9.jpg")!, category: .politics),
-            Recommendation(username: "she_drives_mobility@tube.tchncs.de", displayName: "Katja Diehl", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/a9fb9cca-b70f-47c4-9b8c-62edcb696e14.png")!, category: .politics),
-            Recommendation(username: "thelinuxexperiment_channel@tilvids.com", displayName: "The Linux Experiment", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/a35f3a25-ff7f-4dff-886c-e8373f6ed306.jpg")!, category: .tech),
-            Recommendation(username: "gardiner_bryant@subscribeto.me", displayName: "Gardiner Bryant", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/178a420f-a00a-4db9-960f-ef5a213a168e.png")!, category: .tech),
-            Recommendation(username: "ewen@makertube.net", displayName: "Photography with Ewen Bell", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/86012f0f-1fad-4405-8a1a-a00210a44848.jpg")!, category: .photography),
-            Recommendation(username: "norberteder.photography@tube.graz.social", displayName: "Norbert Eder Photography", avatarUrl: URL(string: "https://tube.tchncs.de/lazy-static/avatars/5d7ad89e-2d1b-4799-82ca-3cfc19af12f3.jpg")!, category: .photography),
-            Recommendation(username: "obsidianurbexvideos@lostpod.space", displayName: "Obsidian Urbex - Abandoned Places Videos", avatarUrl: URL(string: "https://peertube.wtf/lazy-static/avatars/c73cb49d-a7cc-4e93-9278-83ee8e8bc37f.png")!, category: .photography),
+            Recommendation(
+                username: "veronicaexplains@tinkerbetter.tube", displayName: "Veronica Explains",
+                avatarUrl: URL(
+                    string:
+                        "https://peertube.wtf/lazy-static/avatars/52cda089-6645-4306-8a8e-e54459652462.jpg"
+                )!, category: .tech),
+            Recommendation(
+                username: "arthurpizza@tilvids.com", displayName: "arthurpizza",
+                avatarUrl: URL(
+                    string:
+                        "https://peertube.wtf/lazy-static/avatars/af6645ec-6d5e-4880-a710-98475525162d.jpg"
+                )!, category: .tech),
+            Recommendation(
+                username: "ct_3003@peertube.heise.de", displayName: "c’t 3003",
+                avatarUrl: URL(
+                    string:
+                        "https://peertube.wtf/lazy-static/avatars/86130f91-8d83-42e3-853c-b3a50ea29944.jpg"
+                )!, category: .tech),
+            Recommendation(
+                username: "transit@video.canadiancivil.com", displayName: "Transit",
+                avatarUrl: URL(
+                    string:
+                        "https://peertube.wtf/lazy-static/avatars/59406d16-fd0d-4604-963c-4aae5bfdb1d9.jpg"
+                )!, category: .politics),
+            Recommendation(
+                username: "she_drives_mobility@tube.tchncs.de", displayName: "Katja Diehl",
+                avatarUrl: URL(
+                    string:
+                        "https://peertube.wtf/lazy-static/avatars/a9fb9cca-b70f-47c4-9b8c-62edcb696e14.png"
+                )!, category: .politics),
+            Recommendation(
+                username: "thelinuxexperiment_channel@tilvids.com",
+                displayName: "The Linux Experiment",
+                avatarUrl: URL(
+                    string:
+                        "https://peertube.wtf/lazy-static/avatars/a35f3a25-ff7f-4dff-886c-e8373f6ed306.jpg"
+                )!, category: .tech),
+            Recommendation(
+                username: "gardiner_bryant@subscribeto.me", displayName: "Gardiner Bryant",
+                avatarUrl: URL(
+                    string:
+                        "https://peertube.wtf/lazy-static/avatars/178a420f-a00a-4db9-960f-ef5a213a168e.png"
+                )!, category: .tech),
+            Recommendation(
+                username: "ewen@makertube.net", displayName: "Photography with Ewen Bell",
+                avatarUrl: URL(
+                    string:
+                        "https://peertube.wtf/lazy-static/avatars/86012f0f-1fad-4405-8a1a-a00210a44848.jpg"
+                )!, category: .photography),
+            Recommendation(
+                username: "norberteder.photography@tube.graz.social",
+                displayName: "Norbert Eder Photography",
+                avatarUrl: URL(
+                    string:
+                        "https://tube.tchncs.de/lazy-static/avatars/5d7ad89e-2d1b-4799-82ca-3cfc19af12f3.jpg"
+                )!, category: .photography),
+            Recommendation(
+                username: "obsidianurbexvideos@lostpod.space",
+                displayName: "Obsidian Urbex - Abandoned Places Videos",
+                avatarUrl: URL(
+                    string:
+                        "https://peertube.wtf/lazy-static/avatars/c73cb49d-a7cc-4e93-9278-83ee8e8bc37f.png"
+                )!, category: .photography),
         ]
     }
 
@@ -97,7 +151,7 @@ struct SubscriptionFeature {
             switch action {
             case .findChannelsButtonTapped:
                 return .none
-            case let .toggleNotification(row):
+            case .toggleNotification(let row):
                 let currentNotificationState = row.subscription.notifyOnNewVideo
                 return .run { send in
                     let status = await checkNotificationPermission()
@@ -110,24 +164,28 @@ struct SubscriptionFeature {
                     case .allowed:
                         await send(.updateNotificationState(row, !currentNotificationState))
                     case .denied:
-                        await send(.updateAlertState(AlertState {
-                            TextState("Notifications Disabled")
-                        } actions: {
-                            ButtonState(role: .cancel) {
-                                TextState("Cancel")
-                            }
-                            ButtonState(action: .openSettings) {
-                                TextState("Open Settings")
-                            }
-                        } message: {
-                            TextState("Enable notifications in Settings to receive alerts when this channel posts new videos.")
-                        }))
+                        await send(
+                            .updateAlertState(
+                                AlertState {
+                                    TextState("Notifications Disabled")
+                                } actions: {
+                                    ButtonState(role: .cancel) {
+                                        TextState("Cancel")
+                                    }
+                                    ButtonState(action: .openSettings) {
+                                        TextState("Open Settings")
+                                    }
+                                } message: {
+                                    TextState(
+                                        "Enable notifications in Settings to receive alerts when this channel posts new videos."
+                                    )
+                                }))
                     }
                 }
-            case let .updateAlertState(alertState):
+            case .updateAlertState(let alertState):
                 state.alert = alertState
                 return .none
-            case let .updateNotificationState(row, notify):
+            case .updateNotificationState(let row, let notify):
                 return .run { _ in
                     let channelId = row.subscription.channelID
                     try? await saveNotificationPreference(channelId: channelId, notify: notify)
@@ -145,7 +203,7 @@ struct SubscriptionFeature {
             case .alert(.presented(.dismiss)):
                 state.alert = nil
                 return .none
-            case let .listElementDeleteSwiped(offsets: offsets):
+            case .listElementDeleteSwiped(let offsets):
                 return .run { [client = state.client, subscriptions = state.records] _ in
                     withErrorReporting {
                         try database.write { db in
@@ -161,21 +219,23 @@ struct SubscriptionFeature {
                         }
                     }
                 }
-            case let .recommendationSubscribeButtonTapped(recommendation):
+            case .recommendationSubscribeButtonTapped(let recommendation):
                 @Dependency(\.defaultDatabase) var database
-                let isSubscribed = state.records.filter { $0.channel?.id == recommendation.username }.count > 0
+                let isSubscribed =
+                    state.records.filter { $0.channel?.id == recommendation.username }.count > 0
 
                 if isSubscribed {
                     return .run { [client = state.client] _ in
                         await withErrorReporting {
                             try await database.write { db in
                                 try PeertubeSubscription
-                                    .where { $0.channelID == recommendation.username }
+                                    .where { $0.channelID.eq(recommendation.username) }
                                     .delete()
                                     .execute(db)
                             }
                             if client.currentToken != nil {
-                                try? await client.removeSubscription(channelUri: recommendation.username)
+                                try? await client.removeSubscription(
+                                    channelUri: recommendation.username)
                             }
                         }
                     }
@@ -183,12 +243,17 @@ struct SubscriptionFeature {
                     return .run { [client = state.client] _ in
                         await withErrorReporting {
                             try await database.write { db in
-                                guard let hostSubstring = recommendation.username.split(separator: "@").last else {
+                                guard
+                                    let hostSubstring = recommendation.username.split(
+                                        separator: "@"
+                                    ).last
+                                else {
                                     print("could not get host")
                                     return
                                 }
 
-                                let instance = try Instance
+                                let instance =
+                                    try Instance
                                     .upsert {
                                         Instance(host: String(hostSubstring), scheme: "https")
                                     }
@@ -219,7 +284,8 @@ struct SubscriptionFeature {
                                     .execute(db)
                             }
                             if client.currentToken != nil {
-                                try? await client.addSubscription(channelUri: recommendation.username)
+                                try? await client.addSubscription(
+                                    channelUri: recommendation.username)
                             }
                         }
                     }
@@ -240,7 +306,9 @@ struct Subscriptions: View {
             Section {
                 if !self.store.$records.isLoading, self.store.records.isEmpty {
                     ContentUnavailableView {
-                        Label("You are not subscribed to anyone", systemImage: "person.crop.square.on.square.angled.fill")
+                        Label(
+                            "You are not subscribed to anyone",
+                            systemImage: "person.crop.square.on.square.angled.fill")
                     } description: {
                         //                    Button("Find interesing channels") {
                         //                        self.store.send(.findChannelsButtonTapped)
@@ -263,7 +331,9 @@ struct Subscriptions: View {
                                 Button {
                                     self.store.send(.toggleNotification(row))
                                 } label: {
-                                    Image(systemName: row.subscription.notifyOnNewVideo ? "bell.fill" : "bell")
+                                    Image(
+                                        systemName: row.subscription.notifyOnNewVideo
+                                            ? "bell.fill" : "bell")
                                 }
                                 .buttonStyle(.borderless)
                             }
@@ -282,7 +352,9 @@ struct Subscriptions: View {
                             .font(.title3)
                         ScrollView(.horizontal) {
                             LazyHStack {
-                                ForEach(self.store.recommendations.filter { $0.category == category }) { recommendation in
+                                ForEach(
+                                    self.store.recommendations.filter { $0.category == category }
+                                ) { recommendation in
                                     VStack {
                                         AvatarView(
                                             url: recommendation.avatarUrl.absoluteString,
@@ -293,10 +365,14 @@ struct Subscriptions: View {
                                         Text(recommendation.displayName)
 
                                         Button(
-                                            self.store.state.records.filter { $0.channel?.id == recommendation.username }.count > 0
+                                            self.store.state.records.filter {
+                                                $0.channel?.id == recommendation.username
+                                            }.count > 0
                                                 ? "Unsubscribe" : "Subscribe"
                                         ) {
-                                            self.store.send(.recommendationSubscribeButtonTapped(recommendation))
+                                            self.store.send(
+                                                .recommendationSubscribeButtonTapped(recommendation)
+                                            )
                                         }
                                         .buttonStyle(.bordered)
                                     }
@@ -312,17 +388,5 @@ struct Subscriptions: View {
         }
         .navigationTitle("Subscriptions")
         .alert($store.scope(state: \.alert, action: \.alert))
-    }
-}
-
-#Preview {
-    let _ = prepareDependencies {
-        try! $0.bootstrapDatabase()
-        try! $0.defaultDatabase.seed()
-    }
-    NavigationStack {
-        Subscriptions(store: Store(initialState: SubscriptionFeature.State()) {
-            SubscriptionFeature()
-        })
     }
 }

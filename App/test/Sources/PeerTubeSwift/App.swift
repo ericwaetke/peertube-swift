@@ -22,7 +22,8 @@ struct AppFeature {
 
         @Presents var settingsSheet: SettingsTabFeature.State?
 
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
         @Shared(.inMemory("session")) var session: UserSession?
     }
 
@@ -50,12 +51,14 @@ struct AppFeature {
                     let session = try? await authClient.getSession()
                     await send(.sessionLoaded(session))
                 }
-            case let .sessionLoaded(session):
+            case .sessionLoaded(let session):
                 state.isLoaded = true
                 state.$session.withLock { $0 = session }
                 if let session = session {
                     state.$client.withLock {
-                        $0 = try! TubeSDKClient(scheme: "https", host: session.host, token: session.token, session: urlSession)
+                        $0 = try! TubeSDKClient(
+                            scheme: "https", host: session.host, token: session.token,
+                            session: urlSession)
                     }
                     return .run { send in
                         await send(.syncSubscriptions)
@@ -69,11 +72,14 @@ struct AppFeature {
                         try? await database.write { db in
                             var remoteIds = Set<String>()
                             for channel in remoteSubs {
-                                guard let host = channel.host, let username = channel.name else { continue }
+                                guard let host = channel.host, let username = channel.name else {
+                                    continue
+                                }
                                 let id = "\(username)@\(host)"
                                 remoteIds.insert(id)
 
-                                let instance = try Instance
+                                let instance =
+                                    try Instance
                                     .upsert {
                                         Instance(host: host, scheme: "https")
                                     }
@@ -93,7 +99,9 @@ struct AppFeature {
                                     }
                                     .execute(db)
 
-                                let exists = try PeertubeSubscription.where { $0.channelID.eq(id) }.fetchOne(db) != nil
+                                let exists =
+                                    try PeertubeSubscription.where { $0.channelID.eq(id) }.fetchOne(
+                                        db) != nil
                                 if !exists {
                                     try PeertubeSubscription
                                         .insert {
@@ -110,7 +118,7 @@ struct AppFeature {
                             for localSub in localSubs {
                                 if !remoteIds.contains(localSub.channelID) {
                                     try PeertubeSubscription
-                                        .where { $0.id .eq(localSub.id) }
+                                        .where { $0.id.eq(localSub.id) }
                                         .delete()
                                         .execute(db)
                                 }
@@ -118,7 +126,7 @@ struct AppFeature {
                         }
                     }
                 }
-            case let .selectedTabChanged(tab):
+            case .selectedTabChanged(let tab):
                 state.selectedTab = tab
                 return .none
             case .feedTab(.delegate(.openSettings)):
@@ -227,14 +235,4 @@ struct ContentView: View {
             }
         }
     }
-}
-
-#Preview {
-    let _ = prepareDependencies {
-        try! $0.bootstrapDatabase()
-        try! $0.defaultDatabase.seed()
-    }
-    ContentView(store: Store(initialState: AppFeature.State()) {
-        AppFeature()
-    })
 }

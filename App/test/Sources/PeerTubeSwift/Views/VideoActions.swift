@@ -1,8 +1,5 @@
 import ComposableArchitecture
 import Dependencies
-#if canImport(PostHog)
-import PostHog
-#endif
 import SwiftUI
 import TubeSDK
 
@@ -12,7 +9,8 @@ struct VideoActionsFeature {
     struct State: Equatable {
         let host: String
         let videoId: String
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
 
         var hasLiked = false
         var hasDisliked = false
@@ -50,9 +48,12 @@ struct VideoActionsFeature {
 
                 state.videoDetails?.likes = newLikes
                 state.videoDetails?.dislikes = newDislikes
-                return .run { [client = state.client, videoId = state.videoId, hasDisliked = state.hasDisliked] _ in
+                return .run {
+                    [
+                        client = state.client, videoId = state.videoId,
+                        hasDisliked = state.hasDisliked
+                    ] _ in
                     try? await client.rate(videoID: videoId, rating: hasDisliked ? .dislike : .none)
-                    PostHogSDK.shared.capture(hasDisliked ? "video_disliked" : "video_dislike_removed", properties: ["video_id": videoId])
                 }
 
             case .likeButtonTapped:
@@ -74,9 +75,10 @@ struct VideoActionsFeature {
 
                 state.videoDetails?.likes = newLikes
                 state.videoDetails?.dislikes = newDislikes
-                return .run { [client = state.client, videoId = state.videoId, hasLiked = state.hasLiked] _ in
+                return .run {
+                    [client = state.client, videoId = state.videoId, hasLiked = state.hasLiked] _ in
                     try? await client.rate(videoID: videoId, rating: hasLiked ? .like : .none)
-                    PostHogSDK.shared.capture(hasLiked ? "video_liked" : "video_like_removed", properties: ["video_id": videoId])
+
                 }
 
             case .loadUserRating:
@@ -88,18 +90,14 @@ struct VideoActionsFeature {
                     }
                 }
 
-            case let .ratingLoaded(rating):
+            case .ratingLoaded(let rating):
                 state.hasLiked = rating == .like
                 state.hasDisliked = rating == .dislike
                 return .none
 
-            case let .newResolutionSelected(resolution):
+            case .newResolutionSelected(let resolution):
                 state.selectedQuality = resolution
                 return .run { [videoId = state.videoId, resolution] _ in
-                    PostHogSDK.shared.capture("video_quality_changed", properties: [
-                        "video_id": videoId,
-                        "quality": resolution.resolution?.label ?? "",
-                    ])
                 }
             }
         }
@@ -112,7 +110,7 @@ struct VideoActionsView: View {
     var body: some View {
         HStack {
             if let likes = store.state.videoDetails?.likes,
-               let dislikes = store.state.videoDetails?.dislikes
+                let dislikes = store.state.videoDetails?.dislikes
             {
                 Button {
                     self.store.send(.likeButtonTapped)
@@ -141,7 +139,7 @@ struct VideoActionsView: View {
             Spacer()
 
             if let playlist = store.state.videoDetails?.streamingPlaylists?.first,
-               let qualities = playlist.files
+                let qualities = playlist.files
             {
                 Menu {
                     ForEach(qualities) { quality in
@@ -167,7 +165,9 @@ struct VideoActionsView: View {
                 .foregroundStyle(.primary)
             }
 
-            if let url = URL(string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)") {
+            if let url = URL(
+                string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)")
+            {
                 ShareLink(item: url) {
                     Image(systemName: "square.and.arrow.up")
                 }
@@ -176,42 +176,4 @@ struct VideoActionsView: View {
             }
         }
     }
-}
-
-#Preview {
-    VideoActionsView(
-        store: Store(
-            initialState: VideoActionsFeature.State(
-                host: "peertube.cpy.re",
-                videoId: "eRbrxETVKN3gxKKD8bcaHK",
-                videoDetails: TubeSDK.VideoDetails(
-                    likes: 1234,
-                    dislikes: 12,
-                    streamingPlaylists: [
-                        TubeSDK.VideoStreamingPlaylists(
-                            files: [
-                                TubeSDK.VideoFile(
-                                    resolution: TubeSDK.VideoResolutionConstant(id: 1080, label: "1080p"),
-                                    hasAudio: true,
-                                    hasVideo: true
-                                ),
-                                TubeSDK.VideoFile(
-                                    resolution: TubeSDK.VideoResolutionConstant(id: 720, label: "720p"),
-                                    hasAudio: true,
-                                    hasVideo: true
-                                ),
-                            ]
-                        ),
-                    ]
-                ),
-                selectedQuality: TubeSDK.VideoFile(
-                    resolution: TubeSDK.VideoResolutionConstant(id: 1080, label: "1080p"),
-                    hasAudio: true,
-                    hasVideo: true
-                )
-            )
-        ) {
-            VideoActionsFeature()
-        }
-    )
 }

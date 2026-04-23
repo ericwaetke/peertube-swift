@@ -1,8 +1,5 @@
 import ComposableArchitecture
 import Dependencies
-#if canImport(PostHog)
-import PostHog
-#endif
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -13,7 +10,8 @@ struct ChannelPreviewFeature {
     @ObservableState
     struct State: Equatable {
         let host: String
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
 
         @Presents var alert: AlertState<AlertAction>?
 
@@ -45,13 +43,13 @@ struct ChannelPreviewFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case let .loadChannelPreview(videoDetails):
+            case .loadChannelPreview(let videoDetails):
                 state.videoDetails = videoDetails
 
                 // Get channel info for subscription
                 guard let channel = videoDetails.channel,
-                      let channelUsername = channel.name,
-                      let channelHost = channel.host
+                    let channelUsername = channel.name,
+                    let channelHost = channel.host
                 else {
                     return .none
                 }
@@ -59,12 +57,16 @@ struct ChannelPreviewFeature {
                 let channelId = "\(channelUsername)@\(channelHost)"
 
                 // Fetch instance info for avatar
-                return .run { [client = state.client, channelHost = channelHost, channelId = channelId] send in
+                return .run {
+                    [client = state.client, channelHost = channelHost, channelId = channelId] send
+                    in
                     @Dependency(\.defaultDatabase) var database
                     @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
 
                     // Fetch instance avatar
-                    if let instanceObj = try? await peertubeOrchestrator.syncInstanceInfo(channelHost, database) {
+                    if let instanceObj = try? await peertubeOrchestrator.syncInstanceInfo(
+                        channelHost, database)
+                    {
                         await send(.instanceLoaded(instanceObj))
                     }
 
@@ -77,18 +79,22 @@ struct ChannelPreviewFeature {
                     }
 
                     if client.currentToken != nil {
-                        if let isSubscribed = try? await client.checkSubscription(channelUri: channelId) {
-                            await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
+                        if let isSubscribed = try? await client.checkSubscription(
+                            channelUri: channelId)
+                        {
+                            await send(
+                                .subscriptionStateLoaded(isSubscribed, localNotificationState))
                         }
                     } else {
                         let hasLocalSub = try? await database.read { db in
                             try PeertubeSubscription.find(channelId).fetchOne(db) != nil
                         }
-                        await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
+                        await send(
+                            .subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
                     }
                 }
 
-            case let .instanceLoaded(instance):
+            case .instanceLoaded(let instance):
                 state.instance = instance
                 return .none
 
@@ -109,32 +115,37 @@ struct ChannelPreviewFeature {
                     case .allowed:
                         await send(.updateNotificationState(!currentNotificationState))
                     case .denied:
-                        await send(.updateAlertState(AlertState {
-                            TextState("Notifications Disabled")
-                        } actions: {
-                            ButtonState(role: .cancel) {
-                                TextState("Cancel")
-                            }
-                            ButtonState(action: .openSettings) {
-                                TextState("Open Settings")
-                            }
-                        } message: {
-                            TextState("Enable notifications in Settings to receive alerts when this channel posts new videos.")
-                        }))
+                        await send(
+                            .updateAlertState(
+                                AlertState {
+                                    TextState("Notifications Disabled")
+                                } actions: {
+                                    ButtonState(role: .cancel) {
+                                        TextState("Cancel")
+                                    }
+                                    ButtonState(action: .openSettings) {
+                                        TextState("Open Settings")
+                                    }
+                                } message: {
+                                    TextState(
+                                        "Enable notifications in Settings to receive alerts when this channel posts new videos."
+                                    )
+                                }))
                     }
                 }
 
-            case let .updateAlertState(alertState):
+            case .updateAlertState(let alertState):
                 state.alert = alertState
                 return .none
 
-            case let .updateNotificationState(notify):
+            case .updateNotificationState(let notify):
                 state.notifyOnNewVideo = notify
                 return .run { [videoDetails = state.videoDetails, notify = notify] _ in
                     guard let videoDetails = videoDetails,
-                          let channel = videoDetails.channel,
-                          let channelUsername = channel.name,
-                          let channelHost = channel.host else { return }
+                        let channel = videoDetails.channel,
+                        let channelUsername = channel.name,
+                        let channelHost = channel.host
+                    else { return }
 
                     let channelId = "\(channelUsername)@\(channelHost)"
                     try? await saveNotificationPreference(channelId: channelId, notify: notify)
@@ -156,20 +167,21 @@ struct ChannelPreviewFeature {
                 state.alert = nil
                 return .none
 
-            case let .changeSubscriptionState(newSubscriptionState):
+            case .changeSubscriptionState(let newSubscriptionState):
                 state.isSubscribedToChannel = newSubscriptionState
                 let videoDetails = state.videoDetails
-                return .run { [
-                    client = state.client,
-                    videoDetails = videoDetails,
-                    newSubscriptionState = newSubscriptionState
-                ] _ in
+                return .run {
+                    [
+                        client = state.client,
+                        videoDetails = videoDetails,
+                        newSubscriptionState = newSubscriptionState
+                    ] _ in
                     @Dependency(\.defaultDatabase) var database
 
                     guard let videoDetails = videoDetails,
-                          let channel = videoDetails.channel,
-                          let channelUsername = channel.name,
-                          let channelHost = channel.host
+                        let channel = videoDetails.channel,
+                        let channelUsername = channel.name,
+                        let channelHost = channel.host
                     else {
                         return
                     }
@@ -180,26 +192,26 @@ struct ChannelPreviewFeature {
                         if newSubscriptionState {
                             try await database.write { db in
                                 try PeertubeSubscription.insert {
-                                    PeertubeSubscription.Draft(channelID: channelId, createdAt: .now)
+                                    PeertubeSubscription.Draft(
+                                        channelID: channelId, createdAt: .now)
                                 }.execute(db)
                             }
                             if client.currentToken != nil {
                                 try? await client.addSubscription(channelUri: channelId)
                             }
-                            PostHogSDK.shared.capture("channel_subscribed", properties: ["channel_id": channelId])
                         } else {
                             try await database.write { db in
-                                try PeertubeSubscription.where { $0.channelID == channelId }.delete().execute(db)
+                                try PeertubeSubscription.where { $0.channelID.eq(channelId) }
+                                    .delete().execute(db)
                             }
                             if client.currentToken != nil {
                                 try? await client.removeSubscription(channelUri: channelId)
                             }
-                            PostHogSDK.shared.capture("channel_unsubscribed", properties: ["channel_id": channelId])
                         }
                     }
                 }
 
-            case let .subscriptionStateLoaded(isSubscribed, notifyOnNewVideo):
+            case .subscriptionStateLoaded(let isSubscribed, let notifyOnNewVideo):
                 state.isSubscribedToChannel = isSubscribed
                 state.notifyOnNewVideo = notifyOnNewVideo
                 return .none
@@ -236,7 +248,9 @@ struct ChannelPreviewView: View {
                             .font(.headline)
 
                         if let instanceHost = store.state.videoDetails?.channel?.host {
-                            InstanceIndicator(instanceName: instanceHost, instanceImage: store.state.instance?.avatarUrl)
+                            InstanceIndicator(
+                                instanceName: instanceHost,
+                                instanceImage: store.state.instance?.avatarUrl)
                         }
 
                         Spacer()
@@ -269,30 +283,4 @@ struct ChannelPreviewView: View {
             }
         }
     }
-}
-
-#Preview {
-    let _ = prepareDependencies {
-        try! $0.bootstrapDatabase()
-        try! $0.defaultDatabase.seed()
-    }
-
-    return ChannelPreviewView(
-        store: Store(
-            initialState: ChannelPreviewFeature.State(
-                host: "peertube.cpy.re",
-                videoDetails: TubeSDK.VideoDetails(
-                    channel: TubeSDK.VideoChannel(
-                        id: 1,
-                        name: "chocopie",
-                        host: "peertube.cpy.re",
-                        displayName: "Choco Pie Channel",
-                        description: "This is a test channel description."
-                    )
-                )
-            )
-        ) {
-            ChannelPreviewFeature()
-        }
-    )
 }

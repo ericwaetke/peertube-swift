@@ -5,7 +5,6 @@
 //  Created by Eric Wätke on 25.12.25.
 //
 
-import Dependencies
 import Foundation
 import SQLiteData
 import SwiftUI
@@ -117,6 +116,8 @@ private func performInstanceSync(host: String, database: any DatabaseWriter) asy
         return nil
     }
 }
+
+import Dependencies
 
 extension PeertubeOrchestratorClient: DependencyKey {
     static let liveValue = Self(

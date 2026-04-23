@@ -1,7 +1,4 @@
 import ComposableArchitecture
-#if canImport(PostHog)
-import PostHog
-#endif
 import SwiftUI
 import TubeSDK
 
@@ -14,7 +11,8 @@ struct CommentComposeFeature {
         let targetUsername: String?
         var draftText: String = ""
         var isSubmitting: Bool = false
-        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
+        @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+            scheme: "https", host: "peertube.wtf")
     }
 
     enum Action: BindableAction {
@@ -36,13 +34,19 @@ struct CommentComposeFeature {
                 return .run { _ in await self.dismiss() }
             case .postTapped:
                 state.isSubmitting = true
-                return .run { [client = state.client, videoId = state.videoId, commentId = state.targetCommentId, text = state.draftText] send in
+                return .run {
+                    [
+                        client = state.client, videoId = state.videoId,
+                        commentId = state.targetCommentId, text = state.draftText
+                    ] send in
                     do {
                         let comment: TubeSDK.VideoComment
                         if let commentId = commentId {
-                            comment = try await client.replyToVideoComment(videoID: videoId, commentID: commentId, text: text)
+                            comment = try await client.replyToVideoComment(
+                                videoID: videoId, commentID: commentId, text: text)
                         } else {
-                            comment = try await client.postVideoComment(videoID: videoId, text: text)
+                            comment = try await client.postVideoComment(
+                                videoID: videoId, text: text)
                         }
                         await send(.postResponse(.success(comment)))
                     } catch {
@@ -51,7 +55,6 @@ struct CommentComposeFeature {
                 }
             case .postResponse(.success):
                 state.isSubmitting = false
-                PostHogSDK.shared.capture("comment_posted", properties: ["video_id": state.videoId, "type": state.targetCommentId == nil ? "top_level" : "reply"])
                 return .run { _ in await self.dismiss() }
             case .postResponse(.failure):
                 state.isSubmitting = false
@@ -92,7 +95,9 @@ struct CommentComposeView: View {
                     Button("Post") {
                         store.send(.postTapped)
                     }
-                    .disabled(store.draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isSubmitting)
+                    .disabled(
+                        store.draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            || store.isSubmitting)
                 }
             }
             .overlay {
