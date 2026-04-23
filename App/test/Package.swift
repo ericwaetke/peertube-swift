@@ -3,22 +3,43 @@
 import PackageDescription
 
 let package = Package(
-    name: "test",
+    name: "PeerTubeSwift",
     platforms: [
-        .iOS(.v17),
+        .iOS(.v18),
         .macOS(.v14),
     ],
     products: [
-        // An xtool project should contain exactly one library product,
-        // representing the main app.
         .library(
-            name: "test",
-            targets: ["test"]
+            name: "PeerTubeSwift",
+            targets: ["PeerTubeSwift"]
         ),
+    ],
+    dependencies: [
+        // TCA - Composable Architecture
+        .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.23.1"),
+        
+        // SQLiteData - Database
+        .package(url: "https://github.com/pointfreeco/sqlite-data", from: "1.0.0"),
+        
+        // WebURL - URL handling
+        .package(url: "https://github.com/karwa/swift-url", from: "0.4.0"),
+        
+        // PostHog - Analytics (optional, platforms: iOS only)
+        .package(url: "https://github.com/PostHog/posthog-ios", from: "3.48.2"),
+        
+        // TubeSDK - Local package
+        .package(path: "/home/eric/Documents/GitHub/peertube-swift-sdk"),
     ],
     targets: [
         .target(
-            name: "test"
+            name: "PeerTubeSwift",
+            dependencies: [
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+                .product(name: "SQLiteData", package: "sqlite-data"),
+                .product(name: "WebURL", package: "swift-url"),
+                .product(name: "WebURLFoundationExtras", package: "swift-url"),
+                .product(name: "TubeSDK", package: "peertube-swift-sdk"),
+            ]
         ),
     ]
 )
