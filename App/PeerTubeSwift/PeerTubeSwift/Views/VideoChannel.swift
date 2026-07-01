@@ -33,7 +33,6 @@ struct VideoChannelFeature {
     }
 
     enum Action {
-        case loadChannel(TubeSDK.VideoDetails)
         case loadChannelFromRow(channelId: String, channelName: String, avatarUrl: String?, description: String?, host: String)
         case channelDetailsLoaded(channelId: String, channelName: String, avatarUrl: String?, description: String?, host: String)
         case saveChannel(VideoChannel)
@@ -67,44 +66,6 @@ struct VideoChannelFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case let .loadChannel(videoDetails):
-                return .run { [videoDetails = videoDetails, host = state.host, instance = state.instance] send in
-                    @Dependency(\.defaultDatabase) var database
-                    @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
-
-                    guard let channelDetails = videoDetails.channel,
-                          let channelName = channelDetails.displayName,
-                          let channelUsername = channelDetails.name,
-                          let channelHost = channelDetails.host else { return }
-
-                    let channelId = "\(channelUsername)@\(channelHost)"
-
-                    // Fetch instance info first to get the instance object
-                    let instanceObj = try? await peertubeOrchestrator.syncInstanceInfo(channelHost, database)
-                    if let instanceObj = instanceObj {
-                        await send(.instanceLoaded(instanceObj))
-                    }
-
-                    let channel = await withErrorReporting {
-                        try await database.write { db in
-                            try VideoChannel.upsert {
-                                VideoChannel(
-                                    id: channelId,
-                                    name: channelName,
-                                    avatarUrl: channelDetails.avatars?.first?.fileUrl,
-                                    description: channelDetails.description,
-                                    instanceID: instanceObj?.id ?? channelHost
-                                )
-                            }.returning(\.self).fetchOne(db)
-                        }
-                    }
-                    if let channel = channel {
-                        await send(.saveChannel(channel))
-                    }
-                    // Load videos after saving channel
-                    await send(.loadVideos)
-                }
-
             case let .loadChannelFromRow(channelId, channelName, avatarUrl, description, host):
                 print("🔍 loadChannelFromRow: channelId='\(channelId)', channelName='\(channelName)', host='\(host)'")
                 // Set channel name immediately for navigation title
@@ -143,7 +104,7 @@ struct VideoChannelFeature {
                     // Load subscription state
                     var localNotificationState = false
                     if let subscription = try? await database.read({ db in
-                        try PeertubeSubscription.find(channelId).fetchOne(db)
+                        try PeertubeSubscription.where { $0.channelID == channelId }.fetchOne(db)
                     }) {
                         localNotificationState = subscription.notifyOnNewVideo
                     }
@@ -198,7 +159,12 @@ struct VideoChannelFeature {
                     if let subscription = try? await database.read({ db in
                         try PeertubeSubscription.find(channel.id).fetchOne(db)
                     }) {
+                        print("subscription found in table")
+                        print(subscription)
                         localNotificationState = subscription.notifyOnNewVideo
+                    } else {
+                        print("Subscription not found in table")
+                        print(channel.id)
                     }
 
                     if client.currentToken != nil {
