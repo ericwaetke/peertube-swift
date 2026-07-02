@@ -4,45 +4,41 @@ import PostHog
 import SQLiteData
 import SwiftUI
 import TubeSDK
-import UIKit
-
 @Reducer
 struct ChannelPreviewFeature {
     @ObservableState
     struct State: Equatable {
         let host: String
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
-
-        @Presents var alert: AlertState<AlertAction>?
+        
+        var notificationBell: NotificationBellFeature.State
 
         var videoDetails: TubeSDK.VideoDetails?
         var instance: Instance?
 
         var isSubscribedToChannel = false
-        var notifyOnNewVideo = false
     }
 
     enum Action {
+        case notificationBell(NotificationBellFeature.Action)
+        
         case loadChannelPreview(TubeSDK.VideoDetails)
         case instanceLoaded(Instance)
         case subscribeButtonTapped
-        case toggleNotificationButtonTapped
-        case updateNotificationState(Bool)
-        case updateAlertState(AlertState<AlertAction>?)
         case changeSubscriptionState(Bool)
         case subscriptionStateLoaded(Bool, Bool)
         case channelTapped
-        case alert(PresentationAction<AlertAction>)
-    }
-
-    enum AlertAction: Equatable {
-        case openSettings
-        case dismiss
     }
 
     var body: some ReducerOf<Self> {
+        Scope(state: \.notificationBell, action: \.notificationBell) {
+            NotificationBellFeature()
+        }
         Reduce { state, action in
             switch action {
+            case .notificationBell:
+                return .none
+                
             case let .loadChannelPreview(videoDetails):
                 state.videoDetails = videoDetails
 
@@ -69,7 +65,7 @@ struct ChannelPreviewFeature {
                     // Load subscription state
                     var localNotificationState = false
                     if let subscription = try? await database.read({ db in
-                        try PeertubeSubscription.find(channelId).fetchOne(db)
+                        try PeertubeSubscription.where { $0.channelID == channelId }.fetchOne(db)
                     }) {
                         localNotificationState = subscription.notifyOnNewVideo
                     }
@@ -80,7 +76,7 @@ struct ChannelPreviewFeature {
                         }
                     } else {
                         let hasLocalSub = try? await database.read { db in
-                            try PeertubeSubscription.find(channelId).fetchOne(db) != nil
+                            try PeertubeSubscription.where { $0.channelID == channelId }.fetchOne(db) != nil
                         }
                         await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
                     }
@@ -93,66 +89,6 @@ struct ChannelPreviewFeature {
             case .subscribeButtonTapped:
                 let isSubscribed = state.isSubscribedToChannel
                 return .send(.changeSubscriptionState(!isSubscribed))
-
-            case .toggleNotificationButtonTapped:
-                let currentNotificationState = state.notifyOnNewVideo
-                return .run { send in
-                    let status = await checkNotificationPermission()
-                    switch status {
-                    case .notDetermined:
-                        let granted = await requestNotificationPermission()
-                        if granted {
-                            await send(.updateNotificationState(!currentNotificationState))
-                        }
-                    case .allowed:
-                        await send(.updateNotificationState(!currentNotificationState))
-                    case .denied:
-                        await send(.updateAlertState(AlertState {
-                            TextState("Notifications Disabled")
-                        } actions: {
-                            ButtonState(role: .cancel) {
-                                TextState("Cancel")
-                            }
-                            ButtonState(action: .openSettings) {
-                                TextState("Open Settings")
-                            }
-                        } message: {
-                            TextState("Enable notifications in Settings to receive alerts when this channel posts new videos.")
-                        }))
-                    }
-                }
-
-            case let .updateAlertState(alertState):
-                state.alert = alertState
-                return .none
-
-            case let .updateNotificationState(notify):
-                state.notifyOnNewVideo = notify
-                return .run { [videoDetails = state.videoDetails, notify = notify] _ in
-                    guard let videoDetails = videoDetails,
-                          let channel = videoDetails.channel,
-                          let channelUsername = channel.name,
-                          let channelHost = channel.host else { return }
-
-                    let channelId = "\(channelUsername)@\(channelHost)"
-                    try? await saveNotificationPreference(channelId: channelId, notify: notify)
-                }
-
-            case .alert(.presented(.openSettings)):
-                return .run { _ in
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        @Dependency(\.openURL) var openURL
-                        await openURL(url)
-                    }
-                }
-
-            case .alert(.dismiss):
-                state.alert = nil
-                return .none
-
-            case .alert(.presented(.dismiss)):
-                state.alert = nil
-                return .none
 
             case let .changeSubscriptionState(newSubscriptionState):
                 state.isSubscribedToChannel = newSubscriptionState
@@ -199,14 +135,14 @@ struct ChannelPreviewFeature {
 
             case let .subscriptionStateLoaded(isSubscribed, notifyOnNewVideo):
                 state.isSubscribedToChannel = isSubscribed
-                state.notifyOnNewVideo = notifyOnNewVideo
-                return .none
+                return .run { send in
+                    await send(.notificationBell(.setToggleState(notifyOnNewVideo)))
+                }
 
             case .channelTapped:
                 return .none
             }
         }
-        .ifLet(\.$alert, action: \.alert)
     }
 }
 
@@ -245,7 +181,6 @@ struct ChannelPreviewView: View {
 
             subscribeButton
         }
-        .alert($store.scope(state: \.alert, action: \.alert))
     }
 
     private var subscribeButton: some View {
@@ -257,13 +192,12 @@ struct ChannelPreviewView: View {
             .foregroundStyle(.primary)
 
             if store.state.isSubscribedToChannel {
-                Button {
-                    store.send(.toggleNotificationButtonTapped)
-                } label: {
-                    Image(systemName: store.state.notifyOnNewVideo ? "bell.fill" : "bell")
-                }
-                .buttonStyle(.bordered)
-                .foregroundStyle(.primary)
+                NotificationBell(
+                    store: store.scope(
+                        state: \.notificationBell,
+                        action: \.notificationBell
+                    )
+                )
             }
         }
     }
@@ -279,6 +213,10 @@ struct ChannelPreviewView: View {
         store: Store(
             initialState: ChannelPreviewFeature.State(
                 host: "peertube.cpy.re",
+                notificationBell: NotificationBellFeature.State(
+                    channelId: "chocopie@peertube.cpy.re",
+                    isOn: false
+                ),
                 videoDetails: TubeSDK.VideoDetails(
                     channel: TubeSDK.VideoChannel(
                         id: 1,

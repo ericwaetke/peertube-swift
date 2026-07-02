@@ -9,8 +9,6 @@ import ComposableArchitecture
 import SQLiteData
 import SwiftUI
 import TubeSDK
-import UIKit
-
 @Selection
 struct SubRecord: Equatable {
     let subscription: PeertubeSubscription
@@ -44,8 +42,6 @@ struct SubscriptionFeature {
     @ObservableState
     struct State: Equatable {
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
-
-        @Presents var alert: AlertState<AlertAction>?
 
         @FetchAll(
             PeertubeSubscription
@@ -81,69 +77,12 @@ struct SubscriptionFeature {
         case listElementDeleteSwiped(offsets: IndexSet)
 
         case recommendationSubscribeButtonTapped(Recommendation)
-        case toggleNotification(SubRecord)
-        case updateNotificationState(SubRecord, Bool)
-        case updateAlertState(AlertState<AlertAction>?)
-        case alert(PresentationAction<AlertAction>)
-    }
-
-    enum AlertAction: Equatable {
-        case openSettings
-        case dismiss
     }
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
             case .findChannelsButtonTapped:
-                return .none
-            case let .toggleNotification(row):
-                let currentNotificationState = row.subscription.notifyOnNewVideo
-                return .run { send in
-                    let status = await checkNotificationPermission()
-                    switch status {
-                    case .notDetermined:
-                        let granted = await requestNotificationPermission()
-                        if granted {
-                            await send(.updateNotificationState(row, !currentNotificationState))
-                        }
-                    case .allowed:
-                        await send(.updateNotificationState(row, !currentNotificationState))
-                    case .denied:
-                        await send(.updateAlertState(AlertState {
-                            TextState("Notifications Disabled")
-                        } actions: {
-                            ButtonState(role: .cancel) {
-                                TextState("Cancel")
-                            }
-                            ButtonState(action: .openSettings) {
-                                TextState("Open Settings")
-                            }
-                        } message: {
-                            TextState("Enable notifications in Settings to receive alerts when this channel posts new videos.")
-                        }))
-                    }
-                }
-            case let .updateAlertState(alertState):
-                state.alert = alertState
-                return .none
-            case let .updateNotificationState(row, notify):
-                return .run { _ in
-                    let channelId = row.subscription.channelID
-                    try? await saveNotificationPreference(channelId: channelId, notify: notify)
-                }
-            case .alert(.presented(.openSettings)):
-                return .run { _ in
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        @Dependency(\.openURL) var openURL
-                        await openURL(url)
-                    }
-                }
-            case .alert(.dismiss):
-                state.alert = nil
-                return .none
-            case .alert(.presented(.dismiss)):
-                state.alert = nil
                 return .none
             case let .listElementDeleteSwiped(offsets: offsets):
                 return .run { [client = state.client, subscriptions = state.records] _ in
@@ -226,7 +165,6 @@ struct SubscriptionFeature {
                 }
             }
         }
-        .ifLet(\.$alert, action: \.alert)
     }
 
     @Dependency(\.defaultDatabase) var database
@@ -249,24 +187,7 @@ struct Subscriptions: View {
                 } else {
                     List {
                         ForEach(self.store.records) { row in
-                            HStack {
-                                AvatarView(
-                                    url: row.channel?.avatarUrl,
-                                    name: row.channel?.name ?? "Channel Name Not Available",
-                                    size: 36
-                                )
-
-                                Text(row.channel?.name ?? "Channel Name Not Available")
-
-                                Spacer()
-
-                                Button {
-                                    self.store.send(.toggleNotification(row))
-                                } label: {
-                                    Image(systemName: row.subscription.notifyOnNewVideo ? "bell.fill" : "bell")
-                                }
-                                .buttonStyle(.borderless)
-                            }
+                            SubscriptionRowView(row: row)
                         }
                         .onDelete { offsets in
                             self.store.send(.listElementDeleteSwiped(offsets: offsets))
@@ -311,9 +232,38 @@ struct Subscriptions: View {
             }
         }
         .navigationTitle("Subscriptions")
-        .alert($store.scope(state: \.alert, action: \.alert))
         .onAppear {
             print(self.store.state.records)
+        }
+    }
+}
+
+struct SubscriptionRowView: View {
+    let row: SubRecord
+    @State private var bellStore: StoreOf<NotificationBellFeature>
+
+    init(row: SubRecord) {
+        self.row = row
+        self._bellStore = State(
+            initialValue: Store(
+                initialState: NotificationBellFeature.State(
+                    channelId: row.subscription.channelID,
+                    isOn: row.subscription.notifyOnNewVideo
+                )
+            ) {
+                NotificationBellFeature()
+            }
+        )
+    }
+
+    var body: some View {
+        HStack {
+            AvatarView(url: row.channel?.avatarUrl,
+                       name: row.channel?.name ?? "Channel",
+                       size: 36)
+            Text(row.channel?.name ?? "Channel Name Not Available")
+            Spacer()
+            NotificationBell(store: bellStore)
         }
     }
 }

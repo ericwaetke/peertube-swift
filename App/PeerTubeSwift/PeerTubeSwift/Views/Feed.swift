@@ -105,7 +105,10 @@ struct FeedNavigationFeature {
     ) -> Effect<Action> {
         guard let channelName = channelName else { return .none }
 
-        var channelState = VideoChannelFeature.State(host: host)
+        var channelState = VideoChannelFeature.State(
+            host: host,
+            notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false)
+        )
         channelState.channelName = channelName
         path.append(.channelDetail(channelState))
 
@@ -132,7 +135,11 @@ struct FeedNavigationFeature {
         host: String,
         videoId: String
     ) -> Effect<Action> {
-        path.append(.videoDetail(VideoDetailsFeature.State(host: host, videoId: videoId)))
+        path.append(.videoDetail(VideoDetailsFeature.State(
+            host: host,
+            videoId: videoId,
+            channelId: nil
+        )))
         return .none
     }
 
@@ -147,7 +154,10 @@ struct FeedNavigationFeature {
             return .none
         }
 
-        var channelState = VideoChannelFeature.State(host: instance.host)
+        var channelState = VideoChannelFeature.State(
+            host: instance.host,
+            notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false)
+        )
         channelState.channelName = channel.name
         path.append(.channelDetail(channelState))
 
@@ -174,7 +184,15 @@ struct FeedNavigationFeature {
     ) -> Effect<Action> {
         guard let instance = row.instance else { return .none }
 
-        path.append(.videoDetail(VideoDetailsFeature.State(host: instance.host, videoId: row.video.id.uuidString)))
+        path.append(
+            .videoDetail(
+                VideoDetailsFeature.State(
+                    host: instance.host,
+                    videoId: row.video.id.uuidString,
+                    channelId: row.channel?.id
+                )
+            )
+        )
         return .none
     }
 }

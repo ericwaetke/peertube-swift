@@ -228,7 +228,6 @@ struct VideoCard: View {
                     }
                 }
                 Spacer()
-                Image(systemName: "ellipsis.circle")
             }
         }
         .onTapGesture {

@@ -70,12 +70,13 @@ struct PeerTubeSwiftApp: App {
         }
 
         BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.peertubeswift.refresh", using: nil) { task in
-            Task { @MainActor in
+            let workTask = Task { @MainActor in
                 await Self.handleAppRefresh()
                 task.setTaskCompleted(success: true)
             }
             task.expirationHandler = {
-                // Task was cancelled, let it clean up naturally
+                task.setTaskCompleted(success: false)
+                workTask.cancel()
             }
         }
     }
@@ -139,6 +140,10 @@ struct PeerTubeSwiftApp: App {
             }
 
             for sub in subscriptionsToNotify {
+                guard !Task.isCancelled else {
+                    print("Background task cancelled, stopping refresh")
+                    return
+                }
                 let channelId = sub.channelID
 
                 // Fetch the channel to get its instance ID
@@ -159,6 +164,11 @@ struct PeerTubeSwiftApp: App {
                 do {
                     let videos = try await client.getVideos(channelIdentifier: channelId)
                     print("Found \(videos.count) videos for \(channelId)")
+
+                    guard !Task.isCancelled else {
+                        print("Background task cancelled, stopping refresh")
+                        return
+                    }
 
                     for video in videos {
                         guard let videoId = video.uuid,

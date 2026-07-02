@@ -4,7 +4,6 @@ import PostHog
 import SQLiteData
 import SwiftUI
 import TubeSDK
-import UIKit
 
 @Reducer
 struct VideoChannelFeature {
@@ -13,7 +12,7 @@ struct VideoChannelFeature {
         let host: String
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
 
-        @Presents var alert: AlertState<AlertAction>?
+        var notificationBell: NotificationBellFeature.State
 
         var instance: Instance?
         var videoChannel: VideoChannel?
@@ -21,7 +20,6 @@ struct VideoChannelFeature {
         var channelName: String?
 
         var isSubscribedToChannel = false
-        var notifyOnNewVideo = false
 
         // Video list state
         var videos: [TubeSDK.Video] = []
@@ -37,13 +35,10 @@ struct VideoChannelFeature {
         case channelDetailsLoaded(channelId: String, channelName: String, avatarUrl: String?, description: String?, host: String)
         case saveChannel(VideoChannel)
         case instanceLoaded(Instance)
+        case notificationBell(NotificationBellFeature.Action)
         case subscribeButtonTapped
-        case toggleNotificationButtonTapped
-        case updateNotificationState(Bool)
         case changeSubscriptionState(Bool)
         case subscriptionStateLoaded(Bool, Bool)
-        case alert(PresentationAction<AlertAction>)
-        case updateAlertState(AlertState<AlertAction>)
 
         // Video list actions
         case loadVideos
@@ -58,12 +53,10 @@ struct VideoChannelFeature {
         }
     }
 
-    enum AlertAction: Equatable {
-        case openSettings
-        case dismiss
-    }
-
     var body: some ReducerOf<Self> {
+        Scope(state: \.notificationBell, action: \.notificationBell) {
+            NotificationBellFeature()
+        }
         Reduce { state, action in
             switch action {
             case let .loadChannelFromRow(channelId, channelName, avatarUrl, description, host):
@@ -122,7 +115,6 @@ struct VideoChannelFeature {
                 }
 
             case let .channelDetailsLoaded(channelId, channelName, avatarUrl, description, host):
-                print("🔍 channelDetailsLoaded: channelId='\(channelId)', channelName='\(channelName)', host='\(host)'")
                 // Update channel name if we got a better one from API
                 if channelName != state.channelName {
                     state.channelName = channelName
@@ -149,7 +141,10 @@ struct VideoChannelFeature {
                 )
                 print("🔍 channelDetailsLoaded: videoChannel.id='\(state.videoChannel?.id ?? "nil")', videoDetails.channel.name='\(state.videoDetails?.channel?.name ?? "nil")'")
                 // Now load videos (channel details are set)
-                return .send(.loadVideos)
+                return .run { send in
+                    await send(.notificationBell(.setChannelId(channelId)))
+                    await send(.loadVideos)
+                }
 
             case let .saveChannel(channel):
                 state.videoChannel = channel
@@ -183,64 +178,12 @@ struct VideoChannelFeature {
                 state.instance = instance
                 return .none
 
+            case .notificationBell:
+                return .none
+
             case .subscribeButtonTapped:
                 let isSubscribed = state.isSubscribedToChannel
                 return .send(.changeSubscriptionState(!isSubscribed))
-
-            case .toggleNotificationButtonTapped:
-                let currentNotificationState = state.notifyOnNewVideo
-                return .run { send in
-                    let status = await checkNotificationPermission()
-                    switch status {
-                    case .notDetermined:
-                        let granted = await requestNotificationPermission()
-                        if granted {
-                            await send(.updateNotificationState(!currentNotificationState))
-                        }
-                    case .allowed:
-                        await send(.updateNotificationState(!currentNotificationState))
-                    case .denied:
-                        await send(.updateAlertState(AlertState {
-                            TextState("Notifications Disabled")
-                        } actions: {
-                            ButtonState(role: .cancel) {
-                                TextState("Cancel")
-                            }
-                            ButtonState(action: .openSettings) {
-                                TextState("Open Settings")
-                            }
-                        } message: {
-                            TextState("Enable notifications in Settings to receive alerts when this channel posts new videos.")
-                        }))
-                    }
-                }
-
-            case let .updateAlertState(alertState):
-                state.alert = alertState
-                return .none
-
-            case let .updateNotificationState(notify):
-                state.notifyOnNewVideo = notify
-                return .run { [channel = state.videoChannel, notify = notify] _ in
-                    guard let channelId = channel?.id else { return }
-                    try? await saveNotificationPreference(channelId: channelId, notify: notify)
-                }
-
-            case .alert(.presented(.openSettings)):
-                return .run { _ in
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        @Dependency(\.openURL) var openURL
-                        await openURL(url)
-                    }
-                }
-
-            case .alert(.dismiss):
-                state.alert = nil
-                return .none
-
-            case .alert(.presented(.dismiss)):
-                state.alert = nil
-                return .none
 
             case let .changeSubscriptionState(newSubscriptionState):
                 state.isSubscribedToChannel = newSubscriptionState
@@ -292,10 +235,9 @@ struct VideoChannelFeature {
 
             case let .subscriptionStateLoaded(isSubscribed, notifyOnNewVideo):
                 state.isSubscribedToChannel = isSubscribed
-                state.notifyOnNewVideo = notifyOnNewVideo
-                return .none
-
-            // MARK: - Video List Actions
+                return .run { send in
+                    await send(.notificationBell(.setToggleState(notifyOnNewVideo)))
+                }
 
             case .loadVideos:
                 // Determine channel ID from either videoDetails or videoChannel
@@ -399,7 +341,6 @@ struct VideoChannelFeature {
                 return .none
             }
         }
-        .ifLet(\.$alert, action: \.alert)
     }
 }
 
@@ -427,7 +368,6 @@ struct VideoChannelView: View {
             .padding()
         }
         .navigationTitle(channelDisplayName)
-        .alert($store.scope(state: \.alert, action: \.alert))
     }
 
     private var channelHeader: some View {
@@ -474,13 +414,12 @@ struct VideoChannelView: View {
             .foregroundStyle(.primary)
 
             if store.state.isSubscribedToChannel {
-                Button {
-                    store.send(.toggleNotificationButtonTapped)
-                } label: {
-                    Image(systemName: store.state.notifyOnNewVideo ? "bell.fill" : "bell")
-                }
-                .buttonStyle(.bordered)
-                .foregroundStyle(.primary)
+                NotificationBell(
+                    store: store.scope(
+                        state: \.notificationBell,
+                        action: \.notificationBell
+                    )
+                )
             }
         }
     }
@@ -542,6 +481,10 @@ struct VideoChannelView: View {
             store: Store(
                 initialState: VideoChannelFeature.State(
                     host: "peertube.cpy.re",
+                    notificationBell: NotificationBellFeature.State(
+                        channelId: "chocopie@peertube.cpy.re",
+                        isOn: false
+                    ),
                     videoDetails: TubeSDK.VideoDetails(
                         channel: TubeSDK.VideoChannel(
                             id: 1,

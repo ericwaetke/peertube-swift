@@ -30,11 +30,14 @@ struct VideoDetailsFeature {
         var comments: VideoCommentsFeature.State
         var isNotFound: Bool = false
 
-        init(host: String, videoId: String) {
+        init(host: String, videoId: String, channelId: Optional<String>) {
             self.host = host
             self.videoId = videoId
             actions = VideoActionsFeature.State(host: host, videoId: videoId)
-            channelPreview = ChannelPreviewFeature.State(host: host)
+            channelPreview = ChannelPreviewFeature.State(
+                host: host,
+                notificationBell: NotificationBellFeature.State(channelId: channelId)
+            )
             description = VideoDescriptionFeature.State()
             comments = VideoCommentsFeature.State(videoId: videoId)
         }
@@ -312,7 +315,9 @@ struct VideoDetails: View {
         VideoDetails(
             store: Store(
                 initialState: VideoDetailsFeature.State(
-                    host: "peertube.cpy.re", videoId: "eRbrxETVKN3gxKKD8bcaHK"
+                    host: "peertube.cpy.re",
+                    videoId: "eRbrxETVKN3gxKKD8bcaHK",
+                    channelId: "chocopie@peertube.cpy.re"
                 )
             ) {
                 VideoDetailsFeature()
