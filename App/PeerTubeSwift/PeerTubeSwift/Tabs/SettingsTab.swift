@@ -49,6 +49,8 @@ struct SettingsTabFeature {
         case loginButtonTapped
         case login(PresentationAction<LoginFeature.Action>)
         case logoutButtonTapped
+        
+        case testNotification
 
         case dismiss
 
@@ -184,7 +186,33 @@ struct SettingsTabFeature {
 
             case .delegate:
                 return .none
+                
+            case .testNotification:
+                return .run { _ in
+                    let content = UNMutableNotificationContent()
+                    content.title = "Test Notification"
+                    content.body = "This is a test notification from PeerTubeSwift"
+                    content.sound = .default
+
+                    let trigger = UNTimeIntervalNotificationTrigger(
+                        timeInterval: 5,
+                        repeats: false
+                    )
+                    let request = UNNotificationRequest(
+                        identifier: UUID().uuidString,
+                        content: content,
+                        trigger: trigger
+                    )
+
+                    do {
+                        try await UNUserNotificationCenter.current().add(request)
+                        print("✅ Test notification scheduled")
+                    } catch {
+                        print("❌ Failed to schedule test notification: \(error.localizedDescription)")
+                    }
+                }
             }
+            
         }
         .ifLet(\.$editInstance, action: \.editInstance) {
             InstanceManagerFeature()
@@ -258,6 +286,9 @@ struct SettingsTab: View {
                 Section("Debugging") {
                     Button("Go to Collective Change Video") {
                         self.store.send(.goToCCVideo)
+                    }
+                    Button("Test Notification") {
+                        self.store.send(.testNotification)
                     }
                 }
             }

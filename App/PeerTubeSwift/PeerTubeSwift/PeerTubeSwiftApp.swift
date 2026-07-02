@@ -47,7 +47,10 @@ struct PeerTubeSwiftApp: App {
         AppFeature()
     })
 
+    private let notificationDelegate = NotificationDelegate()
+
     init() {
+        UNUserNotificationCenter.current().delegate = notificationDelegate
         guard let apiKey: String = try? Configuration.value(for: "POSTHOG_PROJECT_TOKEN") else {
             fatalError("Set POSTHOG_PROJECT_TOKEN in the Xcode scheme environment variables.")
         }
@@ -80,6 +83,20 @@ struct PeerTubeSwiftApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(store: PeerTubeSwiftApp.store)
+                .onAppear {
+                    
+                    Task {
+                        let center = UNUserNotificationCenter.current()
+
+
+                        do {
+                            try await center.requestAuthorization(options: [.alert, .sound, .badge])
+                        } catch {
+                            // Handle the error here.
+                        }
+                    }
+                    
+                }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
@@ -89,6 +106,7 @@ struct PeerTubeSwiftApp: App {
     }
 
     static func scheduleAppRefresh() {
+        print("scheduling app refresh")
         let request = BGAppRefreshTaskRequest(identifier: "com.peertubeswift.refresh")
         // Fetch somewhat frequently, but let the system decide
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
@@ -105,6 +123,8 @@ struct PeerTubeSwiftApp: App {
         scheduleAppRefresh()
 
         @Dependency(\.defaultDatabase) var database
+        
+        print("background app refresh")
 
         // 1. Get all subscriptions that have notifyOnNewVideo == true
         do {
@@ -183,5 +203,15 @@ struct PeerTubeSwiftApp: App {
         } catch {
             print("Background fetch failed: \(error)")
         }
+    }
+}
+
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .badge])
     }
 }

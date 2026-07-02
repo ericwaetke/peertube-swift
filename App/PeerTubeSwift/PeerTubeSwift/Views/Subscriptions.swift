@@ -312,6 +312,9 @@ struct Subscriptions: View {
         }
         .navigationTitle("Subscriptions")
         .alert($store.scope(state: \.alert, action: \.alert))
+        .onAppear {
+            print(self.store.state.records)
+        }
     }
 }
 
