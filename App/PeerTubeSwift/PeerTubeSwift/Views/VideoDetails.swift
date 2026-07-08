@@ -22,6 +22,7 @@ struct VideoDetailsFeature {
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
 
         var videoDetails: TubeSDK.VideoDetails?
+        var chapters: [TubeSDK.VideoChapter]?
         var pauseTrigger: Int = 0
 
         var actions: VideoActionsFeature.State
@@ -30,7 +31,7 @@ struct VideoDetailsFeature {
         var comments: VideoCommentsFeature.State
         var isNotFound: Bool = false
 
-        init(host: String, videoId: String, channelId: Optional<String>) {
+        init(host: String, videoId: String, channelId: String?) {
             self.host = host
             self.videoId = videoId
             actions = VideoActionsFeature.State(host: host, videoId: videoId)
@@ -51,6 +52,7 @@ struct VideoDetailsFeature {
         case instanceLoaded(Instance)
         case screenLoaded
         case videoLoadFailed
+        case chaptersLoaded([TubeSDK.VideoChapter])
 
         case actions(VideoActionsFeature.Action)
         case channelPreview(ChannelPreviewFeature.Action)
@@ -134,6 +136,11 @@ struct VideoDetailsFeature {
                     }
 
                     await send(.loadVideo(videoDetails))
+
+                    // Fetch chapters (PeerTube >= 6.0)
+                    if let chapters = try? await client.getVideoChapters(id: videoId) {
+                        await send(.chaptersLoaded(chapters.chapters))
+                    }
                 } catch: { error, send in
                     print("Error loading video: \(error)")
                     if let tubeError = error as? TubeError, case .notFound = tubeError {
@@ -145,6 +152,10 @@ struct VideoDetailsFeature {
 
             case .videoLoadFailed:
                 state.isNotFound = true
+                return .none
+
+            case let .chaptersLoaded(chapters):
+                state.chapters = chapters
                 return .none
 
             case let .loadVideo(videoDetails):
@@ -224,7 +235,12 @@ struct VideoDetails: View {
                                 videoTitle: videoDetails.name,
                                 channelName: videoDetails.channel?.displayName,
                                 thumbnailPath: videoDetails.bestThumbnailUrl(client: store.client, size: .large),
-                                pauseTrigger: self.store.pauseTrigger
+                                pauseTrigger: self.store.pauseTrigger,
+                                chapters: self.store.chapters,
+                                videoDuration: videoDetails.duration,
+                                onChapterSeek: { timecode in
+                                    self.store.send(.seekTo(timecode))
+                                }
                             )
                             .frame(
                                 minWidth: 0,

@@ -26,6 +26,11 @@ struct VideoPlayerView: View {
     var channelName: String?
     var thumbnailPath: String?
     var pauseTrigger: Int = 0
+    var chapters: [TubeSDK.VideoChapter]?
+    var videoDuration: Int?
+    var onChapterSeek: ((Int) -> Void)?
+
+    @State private var currentPlaybackTime: Int = 0
 
     // Legacy initializer for single URL (backwards compatibility)
     init(videoURL _: URL) {
@@ -38,6 +43,9 @@ struct VideoPlayerView: View {
         channelName = nil
         thumbnailPath = nil
         pauseTrigger = 0
+        chapters = nil
+        videoDuration = nil
+        onChapterSeek = nil
     }
 
     // New initializer for VideoFile arrays with quality selection
@@ -51,7 +59,10 @@ struct VideoPlayerView: View {
         videoTitle: String? = nil,
         channelName: String? = nil,
         thumbnailPath: String? = nil,
-        pauseTrigger: Int = 0
+        pauseTrigger: Int = 0,
+        chapters: [TubeSDK.VideoChapter]? = nil,
+        videoDuration: Int? = nil,
+        onChapterSeek: ((Int) -> Void)? = nil
     ) {
         _isPlayerReady = isPlayerReady
         self.onTimeUpdate = onTimeUpdate
@@ -63,13 +74,19 @@ struct VideoPlayerView: View {
         self.channelName = channelName
         self.thumbnailPath = thumbnailPath
         self.pauseTrigger = pauseTrigger
+        self.chapters = chapters
+        self.videoDuration = videoDuration
+        self.onChapterSeek = onChapterSeek
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             VideoPlayerViewControllerRepresentable(
                 isPlayerReady: $isPlayerReady,
-                onTimeUpdate: onTimeUpdate,
+                onTimeUpdate: { time in
+                    currentPlaybackTime = time
+                    onTimeUpdate?(time)
+                },
                 videoFiles: videoFiles,
                 selectedVideoFile: selectedVideoFile,
                 startTime: startTime,
@@ -90,6 +107,104 @@ struct VideoPlayerView: View {
                     .tint(.white)
                     .scaleEffect(1.2)
             }
+
+            // Chapter bar overlay (always visible when chapters are available)
+            if isPlayerReady, let chapters = chapters, let duration = videoDuration, !chapters.isEmpty {
+                ChapterBarView(
+                    chapters: chapters,
+                    duration: duration,
+                    currentTime: currentPlaybackTime,
+                    onChapterTapped: { timecode in
+                        onChapterSeek?(timecode)
+                    }
+                )
+                .padding(.horizontal, 8)
+                .padding(.bottom, 4)
+            }
+        }
+    }
+}
+
+// MARK: - Chapter Bar View
+
+struct ChapterBarView: View {
+    let chapters: [TubeSDK.VideoChapter]
+    let duration: Int
+    let currentTime: Int
+    var onChapterTapped: ((Int) -> Void)?
+
+    private var currentChapterIndex: Int {
+        for i in (0 ..< chapters.count).reversed() {
+            if currentTime >= chapters[i].timecode {
+                return i
+            }
+        }
+        return 0
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            // Chapter title indicator
+            if currentChapterIndex < chapters.count {
+                Text(chapters[currentChapterIndex].title)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.8), radius: 2, x: 0, y: 1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+            }
+
+            // Chapter progress bar
+            GeometryReader { geometry in
+                let totalWidth = geometry.size.width
+                let totalDuration = max(Double(duration), 1)
+
+                ZStack(alignment: .leading) {
+                    // Background bar
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.white.opacity(0.25))
+                        .frame(height: 6)
+
+                    // Chapter segments
+                    HStack(spacing: 0) {
+                        ForEach(Array(chapters.enumerated()), id: \.offset) { index, chapter in
+                            let chapterStart = Double(chapter.timecode)
+                            let chapterEnd: Double = {
+                                if index + 1 < chapters.count {
+                                    return Double(chapters[index + 1].timecode)
+                                }
+                                return Double(duration)
+                            }()
+                            let chapterWidth = max((chapterEnd - chapterStart) / totalDuration * totalWidth, 4)
+                            let isActive = index == currentChapterIndex
+
+                            Rectangle()
+                                .fill(isActive ? Color.white : Color.white.opacity(0.45))
+                                .frame(width: max(chapterWidth - 1, 2))
+                                .onTapGesture {
+                                    onChapterTapped?(chapter.timecode)
+                                }
+                        }
+                    }
+
+                    // Current position indicator
+                    let progress = min(Double(currentTime) / totalDuration, 1.0)
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 8, height: 8)
+                        .offset(x: max(progress * totalWidth - 4, 0))
+                }
+                .frame(height: 6)
+            }
+            .frame(height: 6)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(.ultraThinMaterial)
+                .opacity(0.85)
         }
     }
 }
