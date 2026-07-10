@@ -9,6 +9,7 @@ import ComposableArchitecture
 import SQLiteData
 import SwiftUI
 import TubeSDK
+
 @Selection
 struct SubRecord: Equatable {
     let subscription: PeertubeSubscription
@@ -244,7 +245,7 @@ struct SubscriptionRowView: View {
 
     init(row: SubRecord) {
         self.row = row
-        self._bellStore = State(
+        _bellStore = State(
             initialValue: Store(
                 initialState: NotificationBellFeature.State(
                     channelId: row.subscription.channelID,

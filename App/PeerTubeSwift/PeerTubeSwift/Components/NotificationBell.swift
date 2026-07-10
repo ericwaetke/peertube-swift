@@ -17,7 +17,7 @@ struct NotificationBellFeature {
         var hadInteraction = false
         @Presents var alert: AlertState<AlertAction>?
     }
-    
+
     enum Action {
         case setChannelId(String)
         case tapped
@@ -27,22 +27,23 @@ struct NotificationBellFeature {
         case dismissAlert
         case alert(PresentationAction<AlertAction>)
         case delegate(Delegate)
-        
+
         enum Delegate: Equatable {
             case notificationStateChanged(channelId: String, isOn: Bool)
         }
     }
-    
+
     enum AlertAction {
         case openSettings
     }
-    
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .setChannelId(let newChannelId):
+            case let .setChannelId(newChannelId):
                 state.channelId = newChannelId
                 return .none
+
             case .tapped:
                 state.hadInteraction = true
                 let newState = !state.isOn
@@ -51,7 +52,7 @@ struct NotificationBellFeature {
                     switch status {
                     case .notDetermined:
                         let granted = await requestNotificationPermission()
-                        if (granted) {
+                        if granted {
                             await send(.toggleDidSucceed(newState))
                         }
                     case .allowed:
@@ -60,6 +61,7 @@ struct NotificationBellFeature {
                         await send(.showPermissionDeniedAlert)
                     }
                 }
+
             case let .toggleDidSucceed(isOn):
                 guard let channelId = state.channelId else {
                     print("this did not go as planned. No channel ID")
@@ -70,11 +72,11 @@ struct NotificationBellFeature {
                     try? await saveNotificationPreference(channelId: channelId, notify: isOn)
                     await send(.delegate(.notificationStateChanged(channelId: channelId, isOn: isOn)))
                 }
-                
+
             case let .setToggleState(isOn):
                 state.isOn = isOn
                 return .none
-                
+
             case .showPermissionDeniedAlert:
                 state.alert = AlertState {
                     TextState("Notification Disabled")
@@ -89,11 +91,11 @@ struct NotificationBellFeature {
                     TextState("Enable notifications in Settings to receive alerts when this channel posts new videos.")
                 }
                 return .none
-                
+
             case .dismissAlert:
                 state.alert = nil
                 return .none
-                
+
             case .alert(.presented(.openSettings)):
                 return .run { _ in
                     if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -101,15 +103,14 @@ struct NotificationBellFeature {
                         await openURL(url)
                     }
                 }
-                
+
             case .alert(.dismiss):
                 state.alert = nil
                 return .none
-                
+
             case .delegate:
                 return .none
             }
-            
         }
         .ifLet(\.$alert, action: \.alert)
     }
@@ -117,7 +118,7 @@ struct NotificationBellFeature {
 
 struct NotificationBell: View {
     @Bindable var store: StoreOf<NotificationBellFeature>
-    
+
     var body: some View {
         Button {
             store.send(.tapped)
@@ -125,10 +126,10 @@ struct NotificationBell: View {
             Image(systemName: store.isOn ? "bell.fill" : "bell")
                 .symbolEffect(.wiggle, options: .nonRepeating, isActive: store.isOn && store.hadInteraction)
                 .sensoryFeedback(.success, trigger: store.isOn) { old, new in
-                    return old == false && new == true && store.hadInteraction
+                    old == false && new == true && store.hadInteraction
                 }
                 .sensoryFeedback(.decrease, trigger: store.isOn) { old, new in
-                    return old == true && new == false && store.hadInteraction
+                    old == true && new == false && store.hadInteraction
                 }
         }
         .buttonStyle(.bordered)

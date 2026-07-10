@@ -17,62 +17,62 @@ struct SettingsTabFeature {
     @ObservableState
     struct State: Equatable {
         var path = StackState<SettingsPath.State>()
-        
+
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
         @Presents var editInstance: InstanceManagerFeature.State?
         @Presents var login: LoginFeature.State?
         @Shared(.inMemory("session")) var session: UserSession?
-        
+
         enum HealthStatus: Equatable {
             case loading
             case healthy(ServerConfig)
             case error(String)
         }
-        
+
         var healthStatus: HealthStatus = .loading
     }
-    
+
     enum Action {
         case path(StackActionOf<SettingsPath>)
-        
+
         case onAppear
         case sessionLoaded(UserSession?)
-        
+
         case checkInstanceHealth
         case instanceHealthResponse(Result<ServerConfig, NetworkError>)
-        
+
         case editInstanceButtonTapped
         case editInstance(PresentationAction<InstanceManagerFeature.Action>)
         case goToCCVideo
         case setClient(TubeSDKClient)
-        
+
         case loginButtonTapped
         case login(PresentationAction<LoginFeature.Action>)
         case logoutButtonTapped
-        
+
         case testNotification
-        
+
         case dismiss
-        
+
         case delegate(Delegate)
-        
+
         enum Delegate {
             case didLogin
             case didLogout
         }
     }
-    
+
     @Reducer
     struct SettingsPath {
         enum State: Equatable {}
         enum Action {}
         var body: some ReducerOf<Self> {}
     }
-    
+
     @Dependency(\.authClient) var authClient
     @Dependency(\.dismiss) var dismiss
     @Dependency(\.urlSession) var urlSession
-    
+
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
@@ -82,7 +82,7 @@ struct SettingsTabFeature {
                     await send(.sessionLoaded(session))
                     await send(.checkInstanceHealth)
                 }
-                
+
             case let .sessionLoaded(session):
                 state.$session.withLock { $0 = session }
                 if let session = session {
@@ -93,7 +93,7 @@ struct SettingsTabFeature {
                     state.$client.withLock { $0.currentToken = nil }
                 }
                 return .none
-                
+
             case .checkInstanceHealth:
                 state.healthStatus = .loading
                 return .run { [client = state.client] send in
@@ -104,28 +104,28 @@ struct SettingsTabFeature {
                         await send(.instanceHealthResponse(.failure(.connectionFailed(error.localizedDescription))))
                     }
                 }
-                
+
             case let .instanceHealthResponse(.success(config)):
                 state.healthStatus = .healthy(config)
                 return .none
-                
+
             case let .instanceHealthResponse(.failure(error)):
                 state.healthStatus = .error(error.localizedDescription)
                 return .none
-                
+
             case .path:
                 return .none
-                
+
             case .goToCCVideo:
                 return .none
-                
+
             case .editInstanceButtonTapped:
                 guard let url = state.client.instance.urlComponents.url?.absoluteString else {
                     return .none
                 }
                 state.editInstance = InstanceManagerFeature.State(instanceUrlString: url)
                 return .none
-                
+
             case let .editInstance(.presented(.delegate(delegate))):
                 switch delegate {
                 case let .saveNewInstance(url):
@@ -137,7 +137,7 @@ struct SettingsTabFeature {
                         } catch {}
                     }
                 }
-                
+
             case let .setClient(client):
                 state.$client.withLock { $0 = client }
                 return .merge(
@@ -146,14 +146,14 @@ struct SettingsTabFeature {
                         PostHogSDK.shared.capture("instance_changed", properties: ["instance_host": host])
                     }
                 )
-                
+
             case .editInstance:
                 return .none
-                
+
             case .loginButtonTapped:
                 state.login = LoginFeature.State()
                 return .none
-                
+
             case let .login(.presented(.delegate(.didLogin(session)))):
                 state.$session.withLock { $0 = session }
                 state.$client.withLock {
@@ -163,10 +163,10 @@ struct SettingsTabFeature {
                     .send(.checkInstanceHealth),
                     .send(.delegate(.didLogin))
                 )
-                
+
             case .login:
                 return .none
-                
+
             case .logoutButtonTapped:
                 state.$session.withLock { $0 = nil }
                 state.$client.withLock { $0.currentToken = nil }
@@ -178,21 +178,20 @@ struct SettingsTabFeature {
                     },
                     .send(.delegate(.didLogout))
                 )
-                
+
             case .dismiss:
                 return .run { [dismiss] _ in
                     await dismiss()
                 }
-                
+
             case .delegate:
                 return .none
-                
+
             case .testNotification:
                 return .run { @MainActor _ in
-                    await PeerTubeSwiftApp.handleAppRefresh()
+                    await PeerTubeSwiftApp.performSubscriptionRefresh()
                 }
             }
-            
         }
         .ifLet(\.$editInstance, action: \.editInstance) {
             InstanceManagerFeature()
@@ -212,7 +211,7 @@ struct SettingsTab: View {
                     HStack {
                         VStack(alignment: .leading) {
                             Text("Connected to: \(self.store.client.instance.host)")
-                            
+
                             switch self.store.healthStatus {
                             case .loading:
                                 EmptyView()
@@ -229,9 +228,9 @@ struct SettingsTab: View {
                                     .foregroundStyle(.red)
                             }
                         }
-                        
+
                         Spacer()
-                        
+
                         switch self.store.healthStatus {
                         case .loading:
                             ProgressView()
@@ -244,12 +243,12 @@ struct SettingsTab: View {
                                 .foregroundColor(.red)
                         }
                     }
-                    
+
                     Button("Change Connected Instance") {
                         self.store.send(.editInstanceButtonTapped)
                     }
                 }
-                
+
                 Section("Account") {
                     if let session = store.session {
                         Text("Logged in as \(session.username)@\(session.host)")
@@ -262,7 +261,7 @@ struct SettingsTab: View {
                         }
                     }
                 }
-                
+
                 Section("Debugging") {
                     Button("Go to Collective Change Video") {
                         self.store.send(.goToCCVideo)
@@ -306,7 +305,7 @@ struct SettingsTab: View {
         try! $0.bootstrapDatabase()
         try! $0.defaultDatabase.seed()
     }
-    
+
     SettingsTab(
         store: Store(initialState: SettingsTabFeature.State()) {
             SettingsTabFeature()

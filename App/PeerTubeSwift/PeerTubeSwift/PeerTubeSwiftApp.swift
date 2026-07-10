@@ -41,6 +41,13 @@ enum Configuration {
 
 @main
 struct PeerTubeSwiftApp: App {
+    enum AppRefreshTaskIdentifiers {
+        static let appRefresh = "design.woven.PeerTubeSwift.refresh"
+    }
+
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "AppRefresh")
+    private static var isAppRefreshScheduled = false
+
     @Environment(\.scenePhase) var scenePhase
 
     static let store = Store(initialState: AppFeature.State(), reducer: {
@@ -69,14 +76,19 @@ struct PeerTubeSwiftApp: App {
             try! $0.bootstrapDatabase()
         }
 
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.peertubeswift.refresh", using: nil) { task in
-            let workTask = Task { @MainActor in
-                await Self.handleAppRefresh()
-                task.setTaskCompleted(success: true)
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: AppRefreshTaskIdentifiers.appRefresh,
+            using: .main
+        ) { task in
+            let swiftTask = Task { @MainActor in
+                PeerTubeSwiftApp.logger.info("Background app refresh started")
+                let success = await Self.performSubscriptionRefresh()
+                task.setTaskCompleted(success: success)
+                task.expirationHandler = nil
             }
             task.expirationHandler = {
-                task.setTaskCompleted(success: false)
-                workTask.cancel()
+                PeerTubeSwiftApp.logger.warning("Background app refresh expired")
+                swiftTask.cancel()
             }
         }
     }
@@ -85,10 +97,8 @@ struct PeerTubeSwiftApp: App {
         WindowGroup {
             ContentView(store: PeerTubeSwiftApp.store)
                 .onAppear {
-                    
                     Task {
                         let center = UNUserNotificationCenter.current()
-
 
                         do {
                             try await center.requestAuthorization(options: [.alert, .sound, .badge])
@@ -96,38 +106,34 @@ struct PeerTubeSwiftApp: App {
                             // Handle the error here.
                         }
                     }
-                    
                 }
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .background {
-                Self.scheduleAppRefresh()
-            }
+                .task {
+                    Self.scheduleAppRefresh()
+                }
         }
     }
 
     static func scheduleAppRefresh() {
-        print("scheduling app refresh")
-        let request = BGAppRefreshTaskRequest(identifier: "com.peertubeswift.refresh")
-        // Fetch somewhat frequently, but let the system decide
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
+        guard !isAppRefreshScheduled else {
+            logger.info("App refresh already scheduled, skipping")
+            return
+        }
+        let request = BGAppRefreshTaskRequest(identifier: AppRefreshTaskIdentifiers.appRefresh)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
         do {
             try BGTaskScheduler.shared.submit(request)
-            print("Successfully scheduled background task")
+            isAppRefreshScheduled = true
+            logger.info("Scheduled background app refresh")
         } catch {
-            print("Could not schedule app refresh: \(error)")
+            logger.error("Could not schedule app refresh: \(error.localizedDescription)")
         }
     }
 
-    @MainActor
-    static func handleAppRefresh() async {
-        scheduleAppRefresh()
-
+    @discardableResult
+    static func performSubscriptionRefresh() async -> Bool {
         @Dependency(\.defaultDatabase) var database
-        
-        print("background app refresh")
+        logger.info("Subscription refresh starting")
 
-        // 1. Get all subscriptions that have notifyOnNewVideo == true
         do {
             let subscriptionsToNotify = try await database.read { db in
                 try PeertubeSubscription
@@ -136,13 +142,14 @@ struct PeerTubeSwiftApp: App {
             }
 
             if subscriptionsToNotify.isEmpty {
-                return
+                logger.info("No subscriptions to notify")
+                return true
             }
 
             for sub in subscriptionsToNotify {
                 guard !Task.isCancelled else {
-                    print("Background task cancelled, stopping refresh")
-                    return
+                    logger.info("Background task cancelled, stopping refresh")
+                    return false
                 }
                 let channelId = sub.channelID
 
@@ -150,24 +157,24 @@ struct PeerTubeSwiftApp: App {
                 guard let channel = try? await database.read({ db in
                     try VideoChannel.find(channelId).fetchOne(db)
                 }) else {
-                    print("Could not find channel \(channelId) in database")
+                    logger.warning("Could not find channel \(channelId) in database")
                     continue
                 }
 
                 guard let client = try? TubeSDKClient(scheme: "https", host: channel.instanceID) else {
-                    print("Could not initialize client for host \(channel.instanceID)")
+                    logger.error("Could not initialize client for host \(channel.instanceID)")
                     continue
                 }
 
-                print("Fetching videos for channel \(channelId) on \(channel.instanceID)")
+                logger.info("Fetching videos for channel \(channelId) on \(channel.instanceID)")
                 // Get latest videos for this channel
                 do {
                     let videos = try await client.getVideos(channelIdentifier: channelId)
-                    print("Found \(videos.count) videos for \(channelId)")
+                    logger.info("Found \(videos.count) videos for \(channelId)")
 
                     guard !Task.isCancelled else {
-                        print("Background task cancelled, stopping refresh")
-                        return
+                        logger.info("Background task cancelled, stopping refresh")
+                        return false
                     }
 
                     for video in videos {
@@ -203,23 +210,29 @@ struct PeerTubeSwiftApp: App {
                             try? await UNUserNotificationCenter.current().add(request)
                         } catch {
                             // Video already exists - no notification needed
-                            print("Video \(videoId) already exists, skipping notification")
+                            logger.debug("Video \(videoId) already exists, skipping notification")
                         }
                     }
                 } catch {
-                    print("Failed to fetch videos for \(channelId): \(error)")
+                    logger.error("Failed to fetch videos for \(channelId): \(error)")
                 }
             }
+            isAppRefreshScheduled = false
+            scheduleAppRefresh()
+            return true
         } catch {
-            print("Background fetch failed: \(error)")
+            logger.error("Background fetch failed: \(error.localizedDescription)")
+            isAppRefreshScheduled = false
+            scheduleAppRefresh()
+            return false
         }
     }
 }
 
 final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
+        _: UNUserNotificationCenter,
+        willPresent _: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .sound, .badge])

@@ -4,13 +4,14 @@ import PostHog
 import SQLiteData
 import SwiftUI
 import TubeSDK
+
 @Reducer
 struct ChannelPreviewFeature {
     @ObservableState
     struct State: Equatable {
         let host: String
         @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(scheme: "https", host: "peertube.wtf")
-        
+
         var notificationBell: NotificationBellFeature.State
 
         var videoDetails: TubeSDK.VideoDetails?
@@ -21,7 +22,7 @@ struct ChannelPreviewFeature {
 
     enum Action {
         case notificationBell(NotificationBellFeature.Action)
-        
+
         case loadChannelPreview(TubeSDK.VideoDetails)
         case instanceLoaded(Instance)
         case subscribeButtonTapped
@@ -38,7 +39,7 @@ struct ChannelPreviewFeature {
             switch action {
             case .notificationBell:
                 return .none
-                
+
             case let .loadChannelPreview(videoDetails):
                 state.videoDetails = videoDetails
 

@@ -14,7 +14,7 @@ run = "swiftlint App/PeerTubeSwift"
 run = "swiftformat App/PeerTubeSwift"
 
 [tasks.build]
-run = "cd App/PeerTubeSwift && xcodebuild -project PeerTubeSwift.xcodeproj -scheme PeerTubeSwift -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' build"
+run = "cd App/PeerTubeSwift && xcodebuild -project PeerTubeSwift.xcodeproj -scheme PeerTubeSwift -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' -skipMacroValidation build"
 
 [tasks.test]
 run = "cd PeerTubeSwift && swift test"

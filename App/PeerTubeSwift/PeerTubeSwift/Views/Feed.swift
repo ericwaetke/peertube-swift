@@ -98,7 +98,7 @@ struct FeedNavigationFeature {
     static func navigateToChannel(
         _ path: inout StackState<Path.State>,
         host: String,
-        channelIdentifier: String,  // Can be Int? from VideoChannelSummary or String?
+        channelIdentifier: String, // Can be Int? from VideoChannelSummary or String?
         channelName: String?,
         avatarUrl: String?,
         channelDescription: String?

@@ -2,19 +2,21 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>POSTHOG_PROJECT_TOKEN</key>
-	<string>$(POSTHOG_PROJECT_TOKEN)</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>design.woven.PeerTubeSwift.refresh</string>
+		<string>design.woven.PeerTubeSwift.bg-processing</string>
+	</array>
 	<key>POSTHOG_HOST</key>
 	<string>$(POSTHOG_HOST)</string>
+	<key>POSTHOG_PROJECT_TOKEN</key>
+	<string>$(POSTHOG_PROJECT_TOKEN)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 		<string>audio</string>
 		<string>fetch</string>
-	</array>
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array>
-		<string>com.peertubeswift.refresh</string>
+		<string>processing</string>
 	</array>
 </dict>
 </plist>

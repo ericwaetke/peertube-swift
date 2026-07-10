@@ -30,7 +30,7 @@ struct VideoDetailsFeature {
         var comments: VideoCommentsFeature.State
         var isNotFound: Bool = false
 
-        init(host: String, videoId: String, channelId: Optional<String>) {
+        init(host: String, videoId: String, channelId: String?) {
             self.host = host
             self.videoId = videoId
             actions = VideoActionsFeature.State(host: host, videoId: videoId)
