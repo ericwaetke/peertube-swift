@@ -64,3 +64,4 @@ fastlane/test_output
 
 **/.derived/**/*
 **/Secrets.xcconfig
+.DS_Store
