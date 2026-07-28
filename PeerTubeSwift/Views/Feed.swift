@@ -1069,7 +1069,7 @@ struct Feed: View {
         } else {
           VStack(spacing: 0) {
             LazyVGrid(
-              columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12
+              columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 0
             ) {
               ForEach(
                 self.store.scope(state: \.videoCards, action: \.videoCards)
@@ -1077,7 +1077,6 @@ struct Feed: View {
                 VideoCardView(store: cardStore)
               }
             }
-            .padding()
 
             // Load More Button
             if self.store.hasMoreVideos && self.store.hasLoadedAtLeastOnce {
