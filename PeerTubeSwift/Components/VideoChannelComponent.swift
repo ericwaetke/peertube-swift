@@ -18,6 +18,8 @@ struct VideoChannelComponentFeature {
     struct State: Equatable {
         let avatarUrl: String
         let channelDisplayName: String
+        let instanceDisplayName: String
+        let instanceIconUrl: String
     }
 
     enum Action {
@@ -38,19 +40,33 @@ struct VideoChannelComponent: View {
     @Bindable var store: StoreOf<VideoChannelComponentFeature>
     
   var body: some View {
-      HStack {
-          AvatarView(url: self.store.state.avatarUrl, name: self.store.state.channelDisplayName)
-            .onTapGesture {
-                self.store.send(.openChannel)
-            }
-      }
+          HStack (alignment: .bottom, spacing: 8) {
+              AvatarView(url: self.store.state.avatarUrl, name: self.store.state.channelDisplayName, size: 38)
+                .onTapGesture {
+                    self.store.send(.openChannel)
+                }
+              VStack (alignment: .leading, spacing: -2) {
+                  Text(self.store.state.channelDisplayName)
+                      .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 15, relativeTo: .subheadline))
+                  InstanceIndicator(
+                    instanceName: store.state.instanceDisplayName,
+                    instanceImage: store.state.instanceIconUrl
+                  )
+                  .offset(x: -26, y: 4)
+              }
+              
+          }
+          
+      
   }
 }
 
 #Preview {
     VideoChannelComponent(store: Store(initialState: VideoChannelComponentFeature.State(
         avatarUrl: "https://picsum.photos/200",
-        channelDisplayName: "Gronkh"
+        channelDisplayName: "Gronkh",
+        instanceDisplayName: "PeerTube.WTF",
+        instanceIconUrl: "https://picsum.photos/40"
     )) {
         VideoChannelComponentFeature()
     })
