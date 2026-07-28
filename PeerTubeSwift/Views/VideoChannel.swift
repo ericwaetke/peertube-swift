@@ -23,6 +23,7 @@ struct VideoChannelFeature {
 
     // Video list state
     var videos: [TubeSDK.Video] = []
+    var videoCards: IdentifiedArrayOf<VideoCardFeature.State> = []
     var isLoadingVideos = false
     var hasLoadedAtLeastOnce = false
     var currentPage = 0
@@ -46,9 +47,10 @@ struct VideoChannelFeature {
 
     // Video list actions
     case loadVideos
-    case loadMoreVideosIfNeeded(currentItem: TubeSDK.Video?)
+    case loadMoreVideosIfNeeded(currentItemId: String?)
     case finishLoadingVideos([TubeSDK.Video])
     case videoTapped(TubeSDK.Video)
+    case videoCards(IdentifiedActionOf<VideoCardFeature>)
 
     case delegate(Delegate)
 
@@ -297,9 +299,9 @@ struct VideoChannelFeature {
           }
         }
 
-      case .loadMoreVideosIfNeeded(let currentItem):
+      case .loadMoreVideosIfNeeded(let currentItemId):
         // Load more when user scrolls near the end
-        guard let currentItem = currentItem,
+        guard let currentItemId = currentItemId,
           state.hasMoreVideos,
           !state.isLoadingVideos
         else {
@@ -307,7 +309,7 @@ struct VideoChannelFeature {
         }
 
         // Check if we're near the end (last 3 items)
-        let currentIndex = state.videos.firstIndex { $0.uuid == currentItem.uuid } ?? -1
+        let currentIndex = state.videos.firstIndex { $0.uuid?.uuidString == currentItemId } ?? -1
         guard currentIndex >= state.videos.count - 3 else {
           return .none
         }
@@ -350,6 +352,39 @@ struct VideoChannelFeature {
         } else {
           state.videos.append(contentsOf: newVideos)
         }
+        let newCards = newVideos.map { video in
+          let thumbnailUrl = video.bestThumbnailUrl(client: state.client, size: .medium)
+          let cdName = state.videoChannel?.name ?? state.channelName ?? "Channel"
+          let caUrl = video.channel?.avatars?.first?.fileUrl
+          return VideoCardFeature.State(
+            id: video.uuid?.uuidString ?? UUID().uuidString,
+            videoUUID: video.uuid?.uuidString,
+            videoName: video.name ?? "Unknown",
+            videoThumbnailUrl: thumbnailUrl,
+            videoDuration: video.duration,
+            videoCurrentTime: video.userHistory?.currentTime,
+            videoPublishDate: video.publishedAt,
+            videoViews: video.views,
+            channelDisplayName: cdName,
+            channelAvatarUrl: caUrl,
+            channelId: video.channel.flatMap { $0.name.map { "\($0)@\(state.host)" } },
+            channelDescription: nil,
+            instanceDisplayHost: state.host,
+            instanceDisplayAvatarUrl: state.instance?.avatarUrl,
+            videoChannelComponent: VideoChannelComponentFeature.State(
+              avatarUrl: caUrl ?? "",
+              channelDisplayName: cdName,
+              instanceDisplayName: state.host,
+              instanceIconUrl: state.instance?.avatarUrl ?? ""
+            ),
+            videoRow: nil
+          )
+        }
+        if state.currentPage == 0 {
+          state.videoCards = IdentifiedArray(uncheckedUniqueElements: newCards)
+        } else {
+          state.videoCards.append(contentsOf: newCards)
+        }
         state.hasMoreVideos = newVideos.count >= state.pageSize
         state.currentPage += 1
         state.isLoadingVideos = false
@@ -360,9 +395,25 @@ struct VideoChannelFeature {
         guard let videoId = video.uuid?.uuidString else { return .none }
         return .send(.delegate(.navigateToVideo(host: state.host, videoId: videoId)))
 
+      case .videoCards(.element(id: let id, action: .delegate(.videoTapped))):
+        guard let card = state.videoCards[id: id],
+          let videoUUID = card.videoUUID,
+          let video = state.videos.first(where: { $0.uuid?.uuidString == videoUUID })
+        else { return .none }
+        return .send(.videoTapped(video))
+
+      case .videoCards(.element(id: _, action: .delegate(.openChannel))):
+        return .none
+
+      case .videoCards:
+        return .none
+
       case .delegate:
         return .none
       }
+    }
+    .forEach(\.videoCards, action: \.videoCards) {
+      VideoCardFeature()
     }
   }
 }
@@ -461,10 +512,10 @@ struct VideoChannelView: View {
       Text("Videos")
         .font(.headline)
 
-      if store.state.isLoadingVideos && store.state.videos.isEmpty {
+      if store.state.isLoadingVideos && store.state.videoCards.isEmpty {
         ProgressView()
           .frame(maxWidth: .infinity, minHeight: 200)
-      } else if store.state.videos.isEmpty && store.state.hasLoadedAtLeastOnce {
+      } else if store.state.videoCards.isEmpty && store.state.hasLoadedAtLeastOnce {
         ContentUnavailableView {
           Label("No videos", systemImage: "video")
         } description: {
@@ -472,27 +523,16 @@ struct VideoChannelView: View {
         }
       } else {
         LazyVStack(spacing: 16) {
-          ForEach(store.state.videos, id: \.uuid) { video in
-            VideoCard(
-              video: video,
-              channelName: channelDisplayName,
-              channelAvatarUrl: video.channel?.avatars?.first?.fileUrl,
-              instanceHost: store.host,
-              instanceAvatarUrl: store.state.instance?.avatarUrl,
-              client: store.client,
-              onVideoTap: {
-                store.send(.videoTapped(video))
-              },
-              openChannel: {
-                // Already in channel view, don't navigate
+          ForEach(
+            store.scope(state: \.videoCards, action: \.videoCards)
+          ) { cardStore in
+            VideoCardView(store: cardStore)
+              .onAppear {
+                store.send(.loadMoreVideosIfNeeded(currentItemId: cardStore.state.videoUUID))
               }
-            )
-            .onAppear {
-              store.send(.loadMoreVideosIfNeeded(currentItem: video))
-            }
           }
 
-          if store.state.isLoadingVideos && !store.state.videos.isEmpty {
+          if store.state.isLoadingVideos && !store.state.videoCards.isEmpty {
             ProgressView()
               .padding()
           }

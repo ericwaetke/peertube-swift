@@ -6,9 +6,9 @@
 //
 
 import CoreImage
+import FontKit
 import SwiftUI
 import UIKit
-import FontKit
 
 struct InstanceIndicator: View {
   let instanceName: String

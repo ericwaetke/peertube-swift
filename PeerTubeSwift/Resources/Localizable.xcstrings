@@ -7,6 +7,9 @@
     "·" : {
 
     },
+    "@%@" : {
+
+    },
     "^[%lld View](inflect: true)" : {
       "comment" : "View Count with automatic inflection (pluralisation). E.g. “1 View” or “2 Views”"
     },

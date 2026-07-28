@@ -349,8 +349,7 @@ struct FeedFeature {
 
     @FetchAll var instances: [Instance] = []
 
-    //        @FetchAll(VideoRow.none)
-    var feed: [VideoRow] = []
+    var videoCards: IdentifiedArrayOf<VideoCardFeature.State> = []
   }
 
   enum Action {
@@ -362,6 +361,8 @@ struct FeedFeature {
     case channelTapped(row: VideoRow)
     case instanceTapped
     case addInstanceButtonTapped
+
+    case videoCards(IdentifiedActionOf<VideoCardFeature>)
 
     case loadVideos
     case finishLoading([VideoRow])
@@ -822,7 +823,7 @@ struct FeedFeature {
         return .run {
           [
             client = state.client, authClient = self.authClient, feedType = state.feedType,
-            stateFeedEmpty = state.feed.isEmpty
+            stateFeedEmpty = state.videoCards.isEmpty
           ] send in
           let localVideos = await self.fetchLocalVideos(for: feedType)
 
@@ -901,21 +902,21 @@ struct FeedFeature {
           let videos = await self.fetchLocalVideos(for: feedType)
           await send(.finishLoading(videos ?? []))
         }
-      case .finishLoading(let videos):
-        // First load (offset 0): replace feed
+      case .finishLoading(let rows):
+        let newCards = rows.map(VideoCardFeature.State.init(row:))
+        // First load (offset 0): replace
         if state.currentOffset == 0 {
-          state.feed = videos
-          state.currentOffset = videos.count
+          state.videoCards = IdentifiedArray(uncheckedUniqueElements: newCards)
+          state.currentOffset = rows.count
         }
-        // Second batch or more: append to existing feed
+        // Second batch or more: append
         else {
-          state.feed.append(contentsOf: videos)
-          state.currentOffset += videos.count
+          state.videoCards.append(contentsOf: newCards)
+          state.currentOffset += rows.count
         }
         state.isLoadingVideos = false
         state.hasLoadedAtLeastOnce = true
-        // If we got any videos, there might be more
-        state.hasMoreVideos = videos.count > 0
+        state.hasMoreVideos = rows.count > 0
         return .none
       case .loadMoreVideos:
         return .run {
@@ -973,12 +974,12 @@ struct FeedFeature {
 
           await send(.finishLoadingMore(videos))
         }
-      case .finishLoadingMore(let videos):
-        state.feed.append(contentsOf: videos)
-        state.currentOffset += videos.count
+      case .finishLoadingMore(let rows):
+        let newCards = rows.map(VideoCardFeature.State.init(row:))
+        state.videoCards.append(contentsOf: newCards)
+        state.currentOffset += rows.count
         state.isLoadingMore = false
-        // If we got any videos, there might be more
-        state.hasMoreVideos = videos.count > 0
+        state.hasMoreVideos = rows.count > 0
         return .none
       case .setLoadingMore(let isLoading):
         state.isLoadingMore = isLoading
@@ -1001,7 +1002,18 @@ struct FeedFeature {
         return .none
       case .addInstanceButtonTapped:
         return .none
+      case .videoCards(.element(id: let id, action: .delegate(.videoTapped))):
+        guard let card = state.videoCards[id: id], let row = card.videoRow else { return .none }
+        return .send(.videoTapped(row: row))
+      case .videoCards(.element(id: let id, action: .delegate(.openChannel))):
+        guard let card = state.videoCards[id: id], let row = card.videoRow else { return .none }
+        return .send(.channelTapped(row: row))
+      case .videoCards:
+        return .none
       }
+    }
+    .forEach(\.videoCards, action: \.videoCards) {
+      VideoCardFeature()
     }
   }
 }
@@ -1026,10 +1038,10 @@ struct Feed: View {
             }
           }
           .containerRelativeFrame([.horizontal, .vertical])
-        } else if self.store.isLoadingVideos && self.store.feed.isEmpty {
+        } else if self.store.isLoadingVideos && self.store.videoCards.isEmpty {
           ProgressView()
             .containerRelativeFrame([.horizontal, .vertical])
-        } else if self.store.feed.isEmpty && self.store.hasLoadedAtLeastOnce {
+        } else if self.store.videoCards.isEmpty && self.store.hasLoadedAtLeastOnce {
           if self.store.instances.isEmpty {
             ContentUnavailableView {
               Label("Your Feed is empty", systemImage: "video")
@@ -1059,12 +1071,10 @@ struct Feed: View {
             LazyVGrid(
               columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 12
             ) {
-              ForEach(self.store.feed, id: \.self) { row in
-                VideoCard(row: row) {
-                  self.store.send(.videoTapped(row: row))
-                } openChannel: {
-                  self.store.send(.channelTapped(row: row))
-                }
+              ForEach(
+                self.store.scope(state: \.videoCards, action: \.videoCards)
+              ) { cardStore in
+                VideoCardView(store: cardStore)
               }
             }
             .padding()

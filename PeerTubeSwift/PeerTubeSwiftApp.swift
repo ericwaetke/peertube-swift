@@ -86,13 +86,13 @@ struct PeerTubeSwiftApp: App {
     WindowGroup {
       ContentView(store: PeerTubeSwiftApp.store)
         .onAppear {
-            CustomFont.registerFonts([
-                CustomFont.fjallaOne,
-                CustomFont.inclusiveSansRegular,
-                CustomFont.inclusiveSansItalic,
-                CustomFont.inclusiveSansSemiBold,
-                CustomFont.inclusiveSansSemiBoldItalic
-            ])
+          CustomFont.registerFonts([
+            CustomFont.fjallaOne,
+            CustomFont.inclusiveSansRegular,
+            CustomFont.inclusiveSansItalic,
+            CustomFont.inclusiveSansSemiBold,
+            CustomFont.inclusiveSansSemiBoldItalic,
+          ])
           Task {
             let center = UNUserNotificationCenter.current()
 
