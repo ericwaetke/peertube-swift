@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import PostHog
 import SwiftUI
 import TubeSDK
 
@@ -80,8 +79,6 @@ public struct LoginFeature {
         state.isLoading = false
         return .run { [authClient = self.authClient, dismiss = self.dismiss, session] send in
           try await authClient.saveSession(session)
-          PostHogSDK.shared.identify(session.username, userProperties: ["host": session.host])
-          PostHogSDK.shared.capture("user_logged_in", properties: ["host": session.host])
           await send(.delegate(.didLogin(session)))
           await dismiss()
         } catch: { _, _ in

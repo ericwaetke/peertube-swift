@@ -6,7 +6,6 @@
 //
 
 import ComposableArchitecture
-import PostHog
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -144,12 +143,7 @@ struct SettingsTabFeature {
 
       case .setClient(let client):
         state.$client.withLock { $0 = client }
-        return .merge(
-          .send(.checkInstanceHealth),
-          .run { [host = client.instance.host] _ in
-            PostHogSDK.shared.capture("instance_changed", properties: ["instance_host": host])
-          }
-        )
+        return .send(.checkInstanceHealth)
 
       case .editInstance:
         return .none
@@ -175,14 +169,10 @@ struct SettingsTabFeature {
       case .logoutButtonTapped:
         state.$session.withLock { $0 = nil }
         state.$client.withLock { $0.currentToken = nil }
-        return .merge(
-          .run { _ in
-            try? await authClient.deleteSession()
-            PostHogSDK.shared.capture("user_logged_out")
-            PostHogSDK.shared.reset()
-          },
-          .send(.delegate(.didLogout))
-        )
+        return .run { send in
+          try? await authClient.deleteSession()
+          await send(.delegate(.didLogout))
+        }
 
       case .dismiss:
         return .run { [dismiss] _ in

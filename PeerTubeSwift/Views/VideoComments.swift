@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import PostHog
 import SwiftUI
 import TubeSDK
 
@@ -42,9 +41,6 @@ struct VideoCommentsFeature {
 
       case .commentsVisibleChanged:
         state.commentsVisible.toggle()
-        if state.commentsVisible {
-          PostHogSDK.shared.capture("comments_viewed", properties: ["video_id": state.videoId])
-        }
         return .none
 
       case .loadComments:
@@ -108,8 +104,6 @@ struct VideoCommentsFeature {
         return .none
 
       case .addCommentTapped:
-        PostHogSDK.shared.capture(
-          "comment_compose_started", properties: ["video_id": state.videoId, "type": "top_level"])
         state.composeSheet = CommentComposeFeature.State(
           videoId: state.videoId,
           targetCommentId: nil,
@@ -119,12 +113,6 @@ struct VideoCommentsFeature {
 
       case .toggleThreadCollapsed(let id):
         let willCollapse = !state.collapsedCommentIds.contains(id)
-        PostHogSDK.shared.capture(
-          "comment_thread_toggled",
-          properties: [
-            "video_id": state.videoId, "comment_id": id,
-            "action": willCollapse ? "collapsed" : "expanded",
-          ])
         if willCollapse {
           state.collapsedCommentIds.insert(id)
         } else {
@@ -134,9 +122,6 @@ struct VideoCommentsFeature {
 
       case .replyTapped(let comment):
         if let id = comment.id {
-          PostHogSDK.shared.capture(
-            "comment_compose_started",
-            properties: ["video_id": state.videoId, "type": "reply", "parent_comment_id": id])
           let username = comment.account?.displayName ?? comment.account?.name ?? "Unknown"
           state.composeSheet = CommentComposeFeature.State(
             videoId: state.videoId,

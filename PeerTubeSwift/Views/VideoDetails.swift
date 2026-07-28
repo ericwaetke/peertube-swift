@@ -7,7 +7,6 @@
 
 import ComposableArchitecture
 import Dependencies
-import PostHog
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -167,14 +166,6 @@ struct VideoDetailsFeature {
           .send(.channelPreview(.loadChannelPreview(videoDetails))),
           .send(.actions(.loadUserRating)),
           .send(.comments(.loadComments)),
-          .run { [videoDetails] _ in
-            PostHogSDK.shared.capture(
-              "video_viewed",
-              properties: [
-                "video_id": videoDetails.uuid?.uuidString ?? "",
-                "video_name": videoDetails.name ?? "",
-              ])
-          }
         )
 
       case .description(.delegate(.seekTo(let time))):
@@ -213,32 +204,32 @@ struct VideoDetails: View {
           description: Text("The video you are looking for does not exist or has been removed.")
         )
       } else if let videoDetails = self.store.videoDetails {
-        
-          VStack(spacing: 16) {
-            if let videoFiles = videoDetails.streamingPlaylists?.first?.files,
-              !videoFiles.isEmpty
-            {
-              VideoPlayerView(
-                isPlayerReady: $isPlayerReady,
-                onTimeUpdate: { time in self.store.send(.timeUpdate(time)) },
-                videoFiles: videoFiles,
-                selectedVideoFile: self.store.actions.selectedQuality,
-                startTime: videoDetails.userHistory?.currentTime,
-                seekRequest: self.store.seekRequest,
-                videoTitle: videoDetails.name,
-                channelName: videoDetails.channel?.displayName,
-                thumbnailPath: videoDetails.bestThumbnailUrl(client: store.client, size: .large),
-                pauseTrigger: self.store.pauseTrigger
-              )
-              .frame(
-                minWidth: 0,
-                maxWidth: .infinity,
-                minHeight: 100,
-                maxHeight: .infinity
-              )
-              .aspectRatio(16 / 9, contentMode: .fit)
-            }
-              ScrollView {
+
+        VStack(spacing: 16) {
+          if let videoFiles = videoDetails.streamingPlaylists?.first?.files,
+            !videoFiles.isEmpty
+          {
+            VideoPlayerView(
+              isPlayerReady: $isPlayerReady,
+              onTimeUpdate: { time in self.store.send(.timeUpdate(time)) },
+              videoFiles: videoFiles,
+              selectedVideoFile: self.store.actions.selectedQuality,
+              startTime: videoDetails.userHistory?.currentTime,
+              seekRequest: self.store.seekRequest,
+              videoTitle: videoDetails.name,
+              channelName: videoDetails.channel?.displayName,
+              thumbnailPath: videoDetails.bestThumbnailUrl(client: store.client, size: .large),
+              pauseTrigger: self.store.pauseTrigger
+            )
+            .frame(
+              minWidth: 0,
+              maxWidth: .infinity,
+              minHeight: 100,
+              maxHeight: .infinity
+            )
+            .aspectRatio(16 / 9, contentMode: .fit)
+          }
+          ScrollView {
             VStack(alignment: .leading, spacing: 16) {
               Button {
                 let newValue = !self.store.state.description.descriptionVisible

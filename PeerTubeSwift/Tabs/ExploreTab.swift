@@ -99,7 +99,7 @@ struct ExploreTabFeature {
         state.isSearchActive = active
         return .none
       case .navigation(.videoDetail(_)):
-          return .none
+        return .none
       }
     }
   }

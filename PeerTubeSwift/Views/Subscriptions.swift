@@ -75,7 +75,7 @@ struct SubscriptionFeature {
       switch action {
       case .findChannelsButtonTapped:
         return .none
-      case .listElementDeleteSwiped(offsets: let offsets):
+      case .listElementDeleteSwiped(let offsets):
         return .run { [client = state.client, subscriptions = state.records] _ in
           withErrorReporting {
             try database.write { db in

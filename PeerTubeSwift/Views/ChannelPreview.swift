@@ -1,6 +1,5 @@
 import ComposableArchitecture
 import Dependencies
-import PostHog
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -126,7 +125,6 @@ struct ChannelPreviewFeature {
               if client.currentToken != nil {
                 try? await client.addSubscription(channelUri: channelId)
               }
-              PostHogSDK.shared.capture("channel_subscribed", properties: ["channel_id": channelId])
             } else {
               try await database.write { db in
                 try PeertubeSubscription.where { $0.channelID == channelId }.delete().execute(db)
@@ -134,8 +132,6 @@ struct ChannelPreviewFeature {
               if client.currentToken != nil {
                 try? await client.removeSubscription(channelUri: channelId)
               }
-              PostHogSDK.shared.capture(
-                "channel_unsubscribed", properties: ["channel_id": channelId])
             }
           }
         }

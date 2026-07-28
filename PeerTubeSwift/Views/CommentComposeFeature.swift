@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import PostHog
 import SwiftUI
 import TubeSDK
 
@@ -55,11 +54,6 @@ struct CommentComposeFeature {
         }
       case .postResponse(.success):
         state.isSubmitting = false
-        PostHogSDK.shared.capture(
-          "comment_posted",
-          properties: [
-            "video_id": state.videoId, "type": state.targetCommentId == nil ? "top_level" : "reply",
-          ])
         return .run { _ in await self.dismiss() }
       case .postResponse(.failure):
         state.isSubmitting = false

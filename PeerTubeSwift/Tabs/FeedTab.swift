@@ -72,13 +72,13 @@ struct FeedTabFeature {
 
       case .subscriptionFeed(let action):
         switch action {
-        case .videoTapped(row: let row):
+        case .videoTapped(let row):
           return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation, row: row)
             .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
               .navigation(action)
             }
 
-        case .channelTapped(row: let row):
+        case .channelTapped(let row):
           return FeedNavigationFeature.navigateToChannelFromRow(&state.navigation.path, row: row)
             .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
               .navigation(action)
@@ -91,7 +91,7 @@ struct FeedTabFeature {
       case .delegate:
         return .none
       case .navigation(.videoDetail(_)):
-          return .none
+        return .none
       }
     }
     .ifLet(\.$manageSubscriptions, action: \.manageSubsctiptions) {
@@ -169,7 +169,7 @@ struct FeedTab: View {
       VideoDetails(store: store)
         .presentationDragIndicator(.visible)
     }
-    
+
     .sheet(item: $store.scope(state: \.manageSubscriptions, action: \.manageSubsctiptions)) {
       store in
       NavigationStack {

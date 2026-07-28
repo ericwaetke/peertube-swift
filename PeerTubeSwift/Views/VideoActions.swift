@@ -1,6 +1,5 @@
 import ComposableArchitecture
 import Dependencies
-import PostHog
 import SwiftUI
 import TubeSDK
 
@@ -52,9 +51,6 @@ struct VideoActionsFeature {
         return .run {
           [client = state.client, videoId = state.videoId, hasDisliked = state.hasDisliked] _ in
           try? await client.rate(videoID: videoId, rating: hasDisliked ? .dislike : .none)
-          PostHogSDK.shared.capture(
-            hasDisliked ? "video_disliked" : "video_dislike_removed",
-            properties: ["video_id": videoId])
         }
 
       case .likeButtonTapped:
@@ -79,8 +75,6 @@ struct VideoActionsFeature {
         return .run {
           [client = state.client, videoId = state.videoId, hasLiked = state.hasLiked] _ in
           try? await client.rate(videoID: videoId, rating: hasLiked ? .like : .none)
-          PostHogSDK.shared.capture(
-            hasLiked ? "video_liked" : "video_like_removed", properties: ["video_id": videoId])
         }
 
       case .loadUserRating:
@@ -99,14 +93,7 @@ struct VideoActionsFeature {
 
       case .newResolutionSelected(let resolution):
         state.selectedQuality = resolution
-        return .run { [videoId = state.videoId, resolution] _ in
-          PostHogSDK.shared.capture(
-            "video_quality_changed",
-            properties: [
-              "video_id": videoId,
-              "quality": resolution.resolution?.label ?? "",
-            ])
-        }
+        return .none
       }
     }
   }

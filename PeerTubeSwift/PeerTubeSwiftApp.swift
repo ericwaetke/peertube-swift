@@ -10,7 +10,6 @@ import Combine
 import ComposableArchitecture
 import Dependencies
 import OSLog
-@_spi(Experimental) import PostHog
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -60,19 +59,6 @@ struct PeerTubeSwiftApp: App {
 
   init() {
     UNUserNotificationCenter.current().delegate = notificationDelegate
-    guard let apiKey: String = try? Configuration.value(for: "POSTHOG_PROJECT_TOKEN") else {
-      fatalError("Set POSTHOG_PROJECT_TOKEN in the Xcode scheme environment variables.")
-    }
-    guard let host: String = try? Configuration.value(for: "POSTHOG_HOST") else {
-      fatalError("Set POSTHOG_HOST in the Xcode scheme environment variables.")
-    }
-    guard let url = URL(string: "https://" + host) else {
-      fatalError("Set POSTHOG_HOST in the Xcode scheme environment variables.")
-    }
-    let config = PostHogConfig(apiKey: apiKey, host: url.absoluteString)
-    config.captureApplicationLifecycleEvents = true
-    config.errorTrackingConfig.autoCapture = true
-    PostHogSDK.shared.setup(config)
 
     prepareDependencies {
       try! $0.bootstrapDatabase()

@@ -12,10 +12,10 @@
 		F660BBFB2F0406070049A3BA /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = F660BBFA2F0406070049A3BA /* AppIcon.icon */; };
 		F66EE81F2F0140DB00793122 /* WebURL in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE81E2F0140DB00793122 /* WebURL */; };
 		F66EE8212F0140DB00793122 /* WebURLFoundationExtras in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE8202F0140DB00793122 /* WebURLFoundationExtras */; };
-		F6AA11132F100000001AA11A /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = F6AA11122F100000001AA11A /* PostHog */; };
 		F6BFCE672EFAEB890043499D /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE662EFAEB890043499D /* SQLiteData */; };
 		F6BFCE692EFAEB890043499D /* SQLiteDataTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE682EFAEB890043499D /* SQLiteDataTestSupport */; };
 		F6DCA01C2EFD99C000A39CED /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */; };
+		F6E15AF43018D63400A917C6 /* FontKit in Frameworks */ = {isa = PBXBuildFile; productRef = F6E15AF33018D63400A917C6 /* FontKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,8 +85,8 @@
 				F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */,
 				F6DCA01C2EFD99C000A39CED /* ComposableArchitecture in Frameworks */,
 				F66EE81F2F0140DB00793122 /* WebURL in Frameworks */,
+				F6E15AF43018D63400A917C6 /* FontKit in Frameworks */,
 				F66EE8212F0140DB00793122 /* WebURLFoundationExtras in Frameworks */,
-				F6AA11132F100000001AA11A /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -166,7 +166,7 @@
 				F6DCA01B2EFD99C000A39CED /* ComposableArchitecture */,
 				F66EE81E2F0140DB00793122 /* WebURL */,
 				F66EE8202F0140DB00793122 /* WebURLFoundationExtras */,
-				F6AA11122F100000001AA11A /* PostHog */,
+				F6E15AF33018D63400A917C6 /* FontKit */,
 			);
 			productName = PeerTubeSwift;
 			productReference = F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */;
@@ -256,7 +256,7 @@
 				F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */,
 				F6DCA01A2EFD99C000A39CED /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 				F66EE81D2F0140DB00793122 /* XCRemoteSwiftPackageReference "swift-url" */,
-				F6AA11112F100000001AA11A /* XCRemoteSwiftPackageReference "posthog-ios" */,
+				F6E15AF23018D63400A917C6 /* XCRemoteSwiftPackageReference "FontKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F67428E22EF4AFC6000600DB /* Products */;
@@ -691,14 +691,6 @@
 				minimumVersion = 0.4.2;
 			};
 		};
-		F6AA11112F100000001AA11A /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/PostHog/posthog-ios";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.48.2;
-			};
-		};
 		F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pointfreeco/sqlite-data";
@@ -713,6 +705,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.23.1;
+			};
+		};
+		F6E15AF23018D63400A917C6 /* XCRemoteSwiftPackageReference "FontKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/danielsaidi/FontKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.3.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -732,11 +732,6 @@
 			package = F66EE81D2F0140DB00793122 /* XCRemoteSwiftPackageReference "swift-url" */;
 			productName = WebURLFoundationExtras;
 		};
-		F6AA11122F100000001AA11A /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F6AA11112F100000001AA11A /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
-		};
 		F6BFCE662EFAEB890043499D /* SQLiteData */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */;
@@ -751,6 +746,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F6DCA01A2EFD99C000A39CED /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
 			productName = ComposableArchitecture;
+		};
+		F6E15AF33018D63400A917C6 /* FontKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F6E15AF23018D63400A917C6 /* XCRemoteSwiftPackageReference "FontKit" */;
+			productName = FontKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
