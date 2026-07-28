@@ -90,6 +90,9 @@ struct VideoCardView: View {
   @Dependency(\.defaultDatabase) var database
 
   let formatter = RelativeDateTimeFormatter()
+  let hourStyle = Duration.TimeFormatStyle(pattern: .hourMinuteSecond(padHourToLength: 2))
+  let minuteStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 1))
+  let secondStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 2))
 
   var body: some View {
     VStack {
@@ -105,6 +108,10 @@ struct VideoCardView: View {
           .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: .infinity)
           .aspectRatio(16 / 9, contentMode: .fit)
           .clipShape(.rect(cornerRadius: 8))
+          .overlay(
+            RoundedRectangle(cornerRadius: 8)
+              .stroke(.separator, lineWidth: 0.3)
+          )
           .task {
             try? await peertubeOrchestrator.cacheImageIfNeeded(thumbnailUrl, database)
           }
@@ -116,14 +123,20 @@ struct VideoCardView: View {
             HStack {
               Spacer()
               if let durationInt = store.videoDuration {
-                Text(Duration.seconds(durationInt).formatted())
-                  .font(
-                    CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline)
-                  )
-                  .padding(.horizontal, 4)
-                  .padding(.vertical, 2)
-                  .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
-                  .padding(8)
+                Text(
+                  Duration
+                    .seconds(durationInt)
+                    .formatted(
+                      durationInt > 3_600 ? hourStyle : durationInt > 60 ? minuteStyle : secondStyle
+                    )
+                )
+                .font(
+                  CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline)
+                )
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
+                .padding(8)
               }
             }
           }
@@ -184,7 +197,9 @@ struct VideoCardView: View {
         }
         Spacer()
       }
+      .padding(.horizontal, 8)
     }
+    .padding(8)
     .onTapGesture { store.send(.videoTapped) }
   }
 }
