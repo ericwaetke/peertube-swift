@@ -9,6 +9,7 @@ import BackgroundTasks
 import Combine
 import ComposableArchitecture
 import Dependencies
+import FontKit
 import OSLog
 import SQLiteData
 import SwiftUI
@@ -85,6 +86,13 @@ struct PeerTubeSwiftApp: App {
     WindowGroup {
       ContentView(store: PeerTubeSwiftApp.store)
         .onAppear {
+            CustomFont.registerFonts([
+                CustomFont.fjallaOne,
+                CustomFont.inclusiveSansRegular,
+                CustomFont.inclusiveSansItalic,
+                CustomFont.inclusiveSansSemiBold,
+                CustomFont.inclusiveSansSemiBoldItalic
+            ])
           Task {
             let center = UNUserNotificationCenter.current()
 
