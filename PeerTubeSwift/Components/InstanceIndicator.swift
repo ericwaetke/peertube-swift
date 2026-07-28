@@ -8,6 +8,7 @@
 import CoreImage
 import SwiftUI
 import UIKit
+import FontKit
 
 struct InstanceIndicator: View {
   let instanceName: String
@@ -29,7 +30,7 @@ struct InstanceIndicator: View {
   }
 
   var body: some View {
-    HStack(spacing: 2) {
+    HStack(spacing: -6) {
       if let url = URL(string: instanceImage ?? "") {
         AsyncImage(url: url) { image in
           image.resizable()
@@ -37,28 +38,34 @@ struct InstanceIndicator: View {
           ProgressView()
             .frame(width: 12, height: 12)
         }
-        .frame(width: 12, height: 12)
+        .frame(width: 20, height: 20)
         .foregroundStyle(.black)
         .frame(width: 20, height: 20)
-        .background(backgroundColor)
-        .clipShape(.rect(cornerRadius: 8))
+        .background(.white)
+        .clipShape(.rect(cornerRadius: 7))
         .rotationEffect(Angle(degrees: -3))
+        .shadow(radius: 2)
       } else {
         Image(systemName: "laser.burst")
           .frame(width: 12, height: 12)
           .foregroundStyle(foregroundColor)
           .frame(width: 20, height: 20)
-          .background(backgroundColor)
-          .clipShape(.rect(cornerRadius: 8))
+          .background(.white)
+          .clipShape(.rect(cornerRadius: 7))
           .rotationEffect(Angle(degrees: -3))
+          .shadow(radius: 2)
       }
 
-      Text(instanceName)
-        .font(.caption2)
-        .padding(.horizontal, 6)
-        .foregroundStyle(foregroundColor)
-        .background(backgroundColor)
+      Text("@\(instanceName)")
+        .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote))
+        .textCase(.uppercase)
+        .padding(.leading, 12)
+        .padding(.trailing, 6)
+        .padding(.vertical, 1)
+        .foregroundStyle(.highlight)
+        .background(.quinary)
         .clipShape(.rect(cornerRadius: 4))
+        .zIndex(-1)
     }
     .task(id: instanceImage) {
       await extractColor()
