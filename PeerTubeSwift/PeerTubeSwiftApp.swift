@@ -82,6 +82,8 @@ struct PeerTubeSwiftApp: App {
     }
   }
 
+  let font = UIFont(name: "FjallaOne-Regular", size: 34)
+
   var body: some Scene {
     WindowGroup {
       ContentView(store: PeerTubeSwiftApp.store)
@@ -93,6 +95,15 @@ struct PeerTubeSwiftApp: App {
             CustomFont.inclusiveSansSemiBold,
             CustomFont.inclusiveSansSemiBoldItalic,
           ])
+          UINavigationBar.appearance().largeTitleTextAttributes = [
+            .font: UIFont(name: CustomFont.fjallaOne.name, size: 28)
+              ?? .preferredFont(forTextStyle: .largeTitle)
+          ]
+          UINavigationBar.appearance().titleTextAttributes = [
+            .font: UIFont(name: CustomFont.fjallaOne.name, size: 17)
+              ?? .preferredFont(forTextStyle: .headline)
+          ]
+
           Task {
             let center = UNUserNotificationCenter.current()
 
