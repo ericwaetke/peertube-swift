@@ -192,8 +192,8 @@ struct ContentView: View {
       if store.isLoaded {
         TabView(selection: $store.selectedTab.sending(\.selectedTabChanged)) {
           Tab(
-            "Feed",
-            systemImage: "heart",
+            "Subscriptions",
+            systemImage: "rectangle.stack.badge.play",
             value: .feed
           ) {
             FeedTab(
@@ -203,7 +203,7 @@ struct ContentView: View {
 
           Tab(
             "Explore",
-            systemImage: "play.tv",
+            systemImage: "binoculars",
             value: .explore
           ) {
             ExploreTab(
