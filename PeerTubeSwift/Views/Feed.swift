@@ -47,7 +47,6 @@ enum FeedOrder: Equatable, Hashable {
 struct FeedNavigationFeature {
   @Reducer
   enum Path {
-    case videoDetail(VideoDetailsFeature)
     case channelDetail(VideoChannelFeature)
     case feed(FeedFeature)
   }
@@ -55,10 +54,12 @@ struct FeedNavigationFeature {
   @ObservableState
   struct State: Equatable {
     var path = StackState<Path.State>()
+    @Presents var videoDetail: VideoDetailsFeature.State?
   }
 
   enum Action {
     case path(StackActionOf<Path>)
+    case videoDetail(PresentationAction<VideoDetailsFeature.Action>)
   }
 
   var body: some ReducerOf<Self> {
@@ -68,34 +69,42 @@ struct FeedNavigationFeature {
         switch action {
         case .element(
           id: _,
-          action: .videoDetail(.delegate(.navigateToChannel(host: let host, channel: let channel)))):
-          guard let channelName = channel.name else {
-            // TODO: Error handeling
-            return .none
-          }
-          let channelIdentifier = "\(channelName)@\(host)"
-          return Self.navigateToChannel(
-            &state.path,
-            host: host,
-            channelIdentifier: channelIdentifier,
-            channelName: channel.name,
-            avatarUrl: channel.avatars?.first?.fileUrl,
-            channelDescription: channel.description
-          )
-        case .element(
-          id: _,
           action: .channelDetail(.delegate(.navigateToVideo(host: let host, videoId: let videoId)))):
-          return Self.navigateToVideo(&state.path, host: host, videoId: videoId)
+          state.videoDetail = VideoDetailsFeature.State(
+            host: host, videoId: videoId, channelId: nil)
+          return .none
         case .element(id: _, action: .feed(.videoTapped(row: let row))):
-          return Self.navigateToVideoFromRow(&state.path, row: row)
+          return Self.navigateToVideoFromRow(&state, row: row)
         case .element(id: _, action: .feed(.channelTapped(row: let row))):
           return Self.navigateToChannelFromRow(&state.path, row: row)
         default:
           return .none
         }
+
+      case .videoDetail(
+        .presented(.delegate(.navigateToChannel(host: let host, channel: let channel)))):
+        state.videoDetail = nil
+        guard let channelName = channel.name else {
+          return .none
+        }
+        let channelIdentifier = "\(channelName)@\(host)"
+        return Self.navigateToChannel(
+          &state.path,
+          host: host,
+          channelIdentifier: channelIdentifier,
+          channelName: channel.name,
+          avatarUrl: channel.avatars?.first?.fileUrl,
+          channelDescription: channel.description
+        )
+
+      case .videoDetail:
+        return .none
       }
     }
     .forEach(\.path, action: \.path)
+    .ifLet(\.$videoDetail, action: \.videoDetail) {
+      VideoDetailsFeature()
+    }
   }
 
   /// Helper to navigate to a channel with proper state management
@@ -138,17 +147,10 @@ struct FeedNavigationFeature {
 
   /// Navigate to video detail
   static func navigateToVideo(
-    _ path: inout StackState<Path.State>,
-    host: String,
-    videoId: String
+    _ state: inout State, host: String, videoId: String
   ) -> Effect<Action> {
-    path.append(
-      .videoDetail(
-        VideoDetailsFeature.State(
-          host: host,
-          videoId: videoId,
-          channelId: nil
-        )))
+    state.videoDetail = VideoDetailsFeature.State(
+      host: host, videoId: videoId, channelId: nil)
     return .none
   }
 
@@ -191,19 +193,15 @@ struct FeedNavigationFeature {
 
   /// Navigate to video from a VideoRow
   static func navigateToVideoFromRow(
-    _ path: inout StackState<Path.State>,
+    _ state: inout State,
     row: VideoRow
   ) -> Effect<Action> {
     guard let instance = row.instance else { return .none }
 
-    path.append(
-      .videoDetail(
-        VideoDetailsFeature.State(
-          host: instance.host,
-          videoId: row.video.id.uuidString,
-          channelId: row.channel?.id
-        )
-      )
+    state.videoDetail = VideoDetailsFeature.State(
+      host: instance.host,
+      videoId: row.video.id.uuidString,
+      channelId: row.channel?.id
     )
     return .none
   }

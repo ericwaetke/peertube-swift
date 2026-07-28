@@ -60,29 +60,9 @@ struct ExploreTabFeature {
         switch action {
         case .element(
           id: _,
-          action: .videoDetail(.delegate(.navigateToChannel(host: let host, channel: let channel)))):
-          guard let channelName = channel.name else {
-            // TODO: Error handeling
-            return .none
-          }
-          let channelIdentifier = "\(channelName)@\(host)"
-          return FeedNavigationFeature.navigateToChannel(
-            &state.navigation.path,
-            host: host,
-            channelIdentifier: channelIdentifier,
-            channelName: channel.name,
-            avatarUrl: channel.avatars?.first?.fileUrl,
-            channelDescription: channel.description
-          )
-          .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in
-            .navigation(action)
-          }
-
-        case .element(
-          id: _,
           action: .channelDetail(.delegate(.navigateToVideo(host: let host, videoId: let videoId)))):
           return FeedNavigationFeature.navigateToVideo(
-            &state.navigation.path, host: host, videoId: videoId
+            &state.navigation, host: host, videoId: videoId
           )
           .map { (action: FeedNavigationFeature.Action) -> ExploreTabFeature.Action in
             .navigation(action)
@@ -118,6 +98,8 @@ struct ExploreTabFeature {
       case .setSearchActive(let active):
         state.isSearchActive = active
         return .none
+      case .navigation(.videoDetail(_)):
+          return .none
       }
     }
   }
@@ -131,6 +113,14 @@ struct ExploreTab: View {
       contentView
     } destination: { pathStore in
       destinationView(for: pathStore)
+    }
+    .sheet(
+      item: $store.scope(
+        state: \.navigation.videoDetail, action: \.navigation.videoDetail
+      )
+    ) { store in
+      VideoDetails(store: store)
+        .presentationDragIndicator(.visible)
     }
   }
 
@@ -177,8 +167,6 @@ struct ExploreTab: View {
   @ViewBuilder
   private func destinationView(for pathStore: StoreOf<FeedNavigationFeature.Path>) -> some View {
     switch pathStore.case {
-    case .videoDetail(let store):
-      VideoDetails(store: store)
     case .channelDetail(let store):
       VideoChannelView(store: store)
     case .feed(let store):

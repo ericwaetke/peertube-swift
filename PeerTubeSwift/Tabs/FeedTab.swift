@@ -58,30 +58,9 @@ struct FeedTabFeature {
         switch action {
         case .element(
           id: _,
-          action: .videoDetail(.delegate(.navigateToChannel(host: let host, channel: let channel)))):
-          // Map FeedNavigationFeature.Action to FeedTabFeature.Action
-          guard let channelName = channel.name else {
-            // TODO: Error handeling
-            return .none
-          }
-          let channelIdentifier = "\(channelName)@\(host)"
-          return FeedNavigationFeature.navigateToChannel(
-            &state.navigation.path,
-            host: host,
-            channelIdentifier: channelIdentifier,
-            channelName: channel.name,
-            avatarUrl: channel.avatars?.first?.fileUrl,
-            channelDescription: channel.description
-          )
-          .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
-            .navigation(action)
-          }
-
-        case .element(
-          id: _,
           action: .channelDetail(.delegate(.navigateToVideo(host: let host, videoId: let videoId)))):
           return FeedNavigationFeature.navigateToVideo(
-            &state.navigation.path, host: host, videoId: videoId
+            &state.navigation, host: host, videoId: videoId
           )
           .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
             .navigation(action)
@@ -94,7 +73,7 @@ struct FeedTabFeature {
       case .subscriptionFeed(let action):
         switch action {
         case .videoTapped(row: let row):
-          return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation.path, row: row)
+          return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation, row: row)
             .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
               .navigation(action)
             }
@@ -111,6 +90,8 @@ struct FeedTabFeature {
 
       case .delegate:
         return .none
+      case .navigation(.videoDetail(_)):
+          return .none
       }
     }
     .ifLet(\.$manageSubscriptions, action: \.manageSubsctiptions) {
@@ -174,14 +155,21 @@ struct FeedTab: View {
         }
     } destination: { pathStore in
       switch pathStore.case {
-      case .videoDetail(let store):
-        VideoDetails(store: store)
       case .channelDetail(let store):
         VideoChannelView(store: store)
       case .feed(let store):
         Feed(store: store)
       }
     }
+    .sheet(
+      item: $store.scope(
+        state: \.navigation.videoDetail, action: \.navigation.videoDetail
+      )
+    ) { store in
+      VideoDetails(store: store)
+        .presentationDragIndicator(.visible)
+    }
+    
     .sheet(item: $store.scope(state: \.manageSubscriptions, action: \.manageSubsctiptions)) {
       store in
       NavigationStack {
