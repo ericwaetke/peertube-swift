@@ -213,7 +213,7 @@ struct VideoDetails: View {
           description: Text("The video you are looking for does not exist or has been removed.")
         )
       } else if let videoDetails = self.store.videoDetails {
-        ScrollView {
+        
           VStack(spacing: 16) {
             if let videoFiles = videoDetails.streamingPlaylists?.first?.files,
               !videoFiles.isEmpty
@@ -238,6 +238,7 @@ struct VideoDetails: View {
               )
               .aspectRatio(16 / 9, contentMode: .fit)
             }
+              ScrollView {
             VStack(alignment: .leading, spacing: 16) {
               Button {
                 let newValue = !self.store.state.description.descriptionVisible
