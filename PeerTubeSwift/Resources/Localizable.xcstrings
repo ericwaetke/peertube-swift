@@ -1,0 +1,319 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "... more" : {
+      "comment" : "The text hint for the video description. Clicking it reveals the entire description"
+    },
+    "·" : {
+
+    },
+    "^[%lld View](inflect: true)" : {
+      "comment" : "View Count with automatic inflection (pluralisation). E.g. “1 View” or “2 Views”"
+    },
+    "Account" : {
+
+    },
+    "Add a comment …" : {
+
+    },
+    "Add an Instance to get their latest videos" : {
+
+    },
+    "Attempt connection" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Change Connected Instance" : {
+
+    },
+    "Comments" : {
+      "comment" : "Disclosure Headline of the Comments Disclosure Group",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kommentare"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comments"
+          }
+        }
+      }
+    },
+    "Connected to: %@" : {
+      "comment" : "The Placeholder is the instance’s host",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden mit: %@"
+          }
+        }
+      }
+    },
+    "Connection" : {
+      "comment" : "Section Title of the instance connection section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindung"
+          }
+        }
+      }
+    },
+    "Connection failed: %@" : {
+      "comment" : "When the internet connection to the instance fails. The placeholder is the error message.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindung fehlgeschlagen: %@"
+          }
+        }
+      }
+    },
+    "Continue Watching" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angefangene Videos weiterschauen"
+          }
+        }
+      }
+    },
+    "Couldn’t get recommendations" : {
+
+    },
+    "Credentials" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmeldedaten"
+          }
+        }
+      }
+    },
+    "Debugging" : {
+
+    },
+    "Done" : {
+
+    },
+    "Edit Instance" : {
+
+    },
+    "Enable notifications in Settings to receive alerts when this channel posts new videos." : {
+
+    },
+    "Error loading feed" : {
+
+    },
+    "Error: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fehler: %@"
+          }
+        }
+      }
+    },
+    "Explore" : {
+
+    },
+    "Feed" : {
+
+    },
+    "Go to Collective Change Video" : {
+
+    },
+    "Hide replies" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antworten verbergen"
+          }
+        }
+      }
+    },
+    "Instance Details" : {
+
+    },
+    "Instance is working fine, ready to add" : {
+
+    },
+    "Instance URL" : {
+
+    },
+    "Load More" : {
+
+    },
+    "Loading more..." : {
+
+    },
+    "Loading..." : {
+
+    },
+    "Log In" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmelden"
+          }
+        }
+      }
+    },
+    "Log In to %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei %@ anmelden"
+          }
+        }
+      }
+    },
+    "Log Out" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abmelden"
+          }
+        }
+      }
+    },
+    "Logged in as %@@%@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als %1$@@%2$@ angemeldet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Logged in as %1$@@%2$@"
+          }
+        }
+      }
+    },
+    "Login" : {
+
+    },
+    "Manage Subscriptions" : {
+
+    },
+    "New Comment" : {
+
+    },
+    "Newest" : {
+
+    },
+    "No videos" : {
+
+    },
+    "Not logged in" : {
+
+    },
+    "Notification Disabled" : {
+
+    },
+    "Open Settings" : {
+
+    },
+    "Password" : {
+
+    },
+    "Post" : {
+
+    },
+    "Recommendations" : {
+
+    },
+    "Recommended" : {
+
+    },
+    "Reload" : {
+
+    },
+    "Reply" : {
+
+    },
+    "Replying to @%@" : {
+
+    },
+    "Retry" : {
+
+    },
+    "Save" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Show ^[%lld reply](inflect: true)" : {
+
+    },
+    "Subscribe" : {
+
+    },
+    "Subscriptions" : {
+
+    },
+    "Test Notification" : {
+
+    },
+    "The Instance URL doesn’t seem to be valid." : {
+
+    },
+    "The video you are looking for does not exist or has been removed." : {
+
+    },
+    "This channel doesn't have any videos yet" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Unsubscribe" : {
+
+    },
+    "Username" : {
+
+    },
+    "v%@" : {
+
+    },
+    "Video Not Found" : {
+
+    },
+    "Videos" : {
+
+    },
+    "You are not subscribed to anyone" : {
+
+    },
+    "You have instances added, but they dont seem to have any videos right now" : {
+
+    },
+    "Your Feed is empty" : {
+
+    },
+    "Your Home Instance" : {
+
+    }
+  },
+  "version" : "1.1"
+}

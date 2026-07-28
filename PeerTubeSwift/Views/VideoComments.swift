@@ -175,7 +175,7 @@ struct VideoCommentsView: View {
             } label: {
               HStack {
                 Image(systemName: "plus.bubble")
-                Text("Add a comment...")
+                Text("Add a comment …")
                 Spacer()
               }
               .padding(.vertical, 8)

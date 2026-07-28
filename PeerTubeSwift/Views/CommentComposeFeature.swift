@@ -83,7 +83,7 @@ struct CommentComposeView: View {
           if let username = store.targetUsername {
             Text("Replying to @\(username)")
           } else {
-            Text("Add a comment")
+            Text("Add a comment …")
           }
         }
       }
