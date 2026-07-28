@@ -36,6 +36,10 @@ struct AvatarView: View {
           .aspectRatio(contentMode: .fill)
           .frame(width: size, height: size)
           .clipShape(Circle())
+          .overlay {
+            Circle()
+              .stroke(.separator, lineWidth: 0.3)
+          }
       } else {
         AsyncImage(url: imageUrl) { image in
           image
@@ -46,6 +50,10 @@ struct AvatarView: View {
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
+        .overlay {
+          Circle()
+            .stroke(.separator)
+        }
         .task {
           try? await peertubeOrchestrator.cacheImageIfNeeded(avatarUrl, database)
         }
