@@ -19,8 +19,10 @@ struct AppFeature {
 
     var feedTab = FeedTabFeature.State()
     var exploreTab = ExploreTabFeature.State()
+      
+      var profileTab = SettingsTabFeature.State()
 
-    @Presents var settingsSheet: SettingsTabFeature.State?
+//    @Presents var settingsSheet: SettingsTabFeature.State?
 
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
       scheme: "https", host: "peertube.wtf")
@@ -36,8 +38,10 @@ struct AppFeature {
 
     case feedTab(FeedTabFeature.Action)
     case exploreTab(ExploreTabFeature.Action)
+      
+      case profileTab(SettingsTabFeature.Action)
 
-    case settingsSheet(PresentationAction<SettingsTabFeature.Action>)
+//    case settingsSheet(PresentationAction<SettingsTabFeature.Action>)
   }
 
   @Dependency(\.authClient) var authClient
@@ -126,14 +130,15 @@ struct AppFeature {
         state.selectedTab = tab
         return .none
       case .feedTab(.delegate(.openSettings)):
-        state.settingsSheet = SettingsTabFeature.State()
+//        state.settingsSheet = SettingsTabFeature.State()
         return .none
       case .exploreTab(.delegate(.openSettings)):
-        state.settingsSheet = SettingsTabFeature.State()
+//        state.settingsSheet = SettingsTabFeature.State()
         return .none
       case .feedTab(_), .exploreTab:
         return .none
-      case .settingsSheet(.presented(.delegate(.didLogin))):
+      
+      case .profileTab(.delegate(.didLogin)):
         return .run { send in
           @Dependency(\.defaultDatabase) var database
           do {
@@ -148,7 +153,7 @@ struct AppFeature {
           await send(.syncSubscriptions)
           await send(.feedTab(.subscriptionFeed(.loadVideos)))
         }
-      case .settingsSheet(.presented(.delegate(.didLogout))):
+      case .profileTab(.delegate(.didLogout)):
         return .run { send in
           @Dependency(\.defaultDatabase) var database
           do {
@@ -162,7 +167,7 @@ struct AppFeature {
           }
           await send(.feedTab(.subscriptionFeed(.loadVideos)))
         }
-      case .settingsSheet:
+      case .profileTab:
         return .none
       }
     }
@@ -173,15 +178,20 @@ struct AppFeature {
     Scope(state: \.exploreTab, action: \.exploreTab) {
       ExploreTabFeature()
     }
-    .ifLet(\.$settingsSheet, action: \.settingsSheet) {
-      SettingsTabFeature()
-    }
+      Scope(state: \.profileTab, action: \.profileTab) {
+        SettingsTabFeature()
+      }
+//    .ifLet(\.$settingsSheet, action: \.settingsSheet) {
+//      SettingsTabFeature()
+//    }
   }
 }
 
 enum TubeTab {
   case feed
   case explore
+    case search
+    case profile
 }
 
 struct ContentView: View {
@@ -210,26 +220,36 @@ struct ContentView: View {
               store: self.store.scope(state: \.exploreTab, action: \.exploreTab)
             )
           }
+            
+            Tab(
+                "Search",
+                systemImage: "magnifyingglass",
+                value: .search
+            ) {
+                Text("wip")
+            }
+            
+            Tab(
+                "Profile",
+                systemImage: "person.circle.fill",
+                value: .profile
+            ) {
+                NavigationStack {
+                  SettingsTab(store: self.store.scope(state: \.profileTab, action: \.profileTab))
+                    
+                }
+            }
         }
       } else {
-        ProgressView("Loading...")
+        ProgressView("Loading …")
       }
     }
     .task {
       await store.send(.task).finish()
     }
-    .sheet(item: $store.scope(state: \.settingsSheet, action: \.settingsSheet)) { store in
-      NavigationStack {
-        SettingsTab(store: store)
-          .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-              Button("Done") {
-                store.send(.dismiss)
-              }
-            }
-          }
-      }
-    }
+//    .sheet(item: $store.scope(state: \.settingsSheet, action: \.settingsSheet)) { store in
+//      
+//    }
   }
 }
 

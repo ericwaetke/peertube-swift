@@ -107,9 +107,6 @@
     "Debugging" : {
 
     },
-    "Done" : {
-
-    },
     "Edit Instance" : {
 
     },
@@ -157,10 +154,10 @@
     "Load More" : {
 
     },
-    "Loading more..." : {
+    "Loading …" : {
 
     },
-    "Loading..." : {
+    "Loading more..." : {
 
     },
     "Log In" : {
@@ -239,6 +236,9 @@
     "Post" : {
 
     },
+    "Profile" : {
+
+    },
     "Recommendations" : {
 
     },
@@ -258,6 +258,9 @@
 
     },
     "Save" : {
+
+    },
+    "Search" : {
 
     },
     "Settings" : {
@@ -302,6 +305,9 @@
     "Videos" : {
 
     },
+    "wip" : {
+
+    },
     "You are not subscribed to anyone" : {
 
     },
@@ -312,6 +318,9 @@
 
     },
     "Your Home Instance" : {
+
+    },
+    "Your Subscriptions" : {
 
     }
   },

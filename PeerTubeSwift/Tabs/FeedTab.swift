@@ -106,54 +106,53 @@ struct FeedTab: View {
   var body: some View {
     NavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
       Feed(store: self.store.scope(state: \.subscriptionFeed, action: \.subscriptionFeed))
-        .navigationTitle("Subscriptions")
-        .background(.group)
-        .toolbar {
-          ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-              if let session = store.session {
-                VStack(alignment: .leading) {
-                  Text(session.username)
-                    .font(.headline)
-                  Text(session.host)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-                Divider()
-
-                Button {
-                  self.store.send(.manageSubscriptionButtonTapped)
-                } label: {
-                  Label("Manage Subscriptions", systemImage: "heart")
-                }
-              } else {
-                Text("Not logged in")
-                  .font(.headline)
-              }
-
-              Divider()
-
-              Button {
-                self.store.send(.delegate(.openSettings))
-              } label: {
-                Label("Settings", systemImage: "gear")
-              }
-            } label: {
-              if let session = store.session {
-                AvatarView(
-                  url: session.avatarUrl,
-                  name: session.username,
-                  size: 32
-                )
-              } else {
-                Image(systemName: "person.circle.fill")
-                  .resizable()
-                  .frame(width: 32, height: 32)
-                  .foregroundStyle(.secondary)
-              }
-            }
-          }
-        }
+        .navigationTitle("Your Subscriptions")
+//        .toolbar {
+//          ToolbarItem(placement: .topBarTrailing) {
+//            Menu {
+//              if let session = store.session {
+//                VStack(alignment: .leading) {
+//                  Text(session.username)
+//                    .font(.headline)
+//                  Text(session.host)
+//                    .font(.caption)
+//                    .foregroundStyle(.secondary)
+//                }
+//                Divider()
+//
+//                Button {
+//                  self.store.send(.manageSubscriptionButtonTapped)
+//                } label: {
+//                  Label("Manage Subscriptions", systemImage: "heart")
+//                }
+//              } else {
+//                Text("Not logged in")
+//                  .font(.headline)
+//              }
+//
+//              Divider()
+//
+//              Button {
+//                self.store.send(.delegate(.openSettings))
+//              } label: {
+//                Label("Settings", systemImage: "gear")
+//              }
+//            } label: {
+//              if let session = store.session {
+//                AvatarView(
+//                  url: session.avatarUrl,
+//                  name: session.username,
+//                  size: 32
+//                )
+//              } else {
+//                Image(systemName: "person.circle.fill")
+//                  .resizable()
+//                  .frame(width: 32, height: 32)
+//                  .foregroundStyle(.secondary)
+//              }
+//            }
+//          }
+//        }
     } destination: { pathStore in
       switch pathStore.case {
       case .channelDetail(let store):

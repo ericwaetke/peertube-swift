@@ -1124,6 +1124,7 @@ struct Feed: View {
     .refreshable {
       await self.store.send(.pulledToRefresh).finish()
     }
+    .background(Color(uiColor: UIColor.systemGroupedBackground))
     .navigationTitle(navigationTitle)
   }
 
