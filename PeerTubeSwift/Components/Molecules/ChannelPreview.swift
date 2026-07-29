@@ -31,6 +31,7 @@ struct ChannelPreviewFeature {
       self.instance = instance
       self.isSubscribedToChannel = isSubscribedToChannel
       self.userBadge = UserBadgeFeature.State(
+        variant: .medium,
         avatarUrl: videoDetails?.channel?.avatars?.first?.fileUrl,
         channelDisplayName: videoDetails?.channel?.displayName ?? "Unknown Channel",
         instanceDisplayName: videoDetails?.channel?.host ?? "Unknown Community",
@@ -63,6 +64,7 @@ struct ChannelPreviewFeature {
       case .loadChannelPreview(let videoDetails):
         state.videoDetails = videoDetails
         state.userBadge = UserBadgeFeature.State(
+            variant: .medium,
           avatarUrl: videoDetails.channel?.avatars?.first?.fileUrl,
           channelDisplayName: videoDetails.channel?.displayName ?? "Unknown Channel",
           instanceDisplayName: videoDetails.channel?.host ?? "Unknown Community",
@@ -115,6 +117,7 @@ struct ChannelPreviewFeature {
       case .instanceLoaded(let instance):
         state.instance = instance
         state.userBadge = UserBadgeFeature.State(
+            variant: .medium,
           avatarUrl: state.videoDetails?.channel?.avatars?.first?.fileUrl,
           channelDisplayName: state.videoDetails?.channel?.displayName ?? "Unknown Channel",
           instanceDisplayName: state.videoDetails?.channel?.host ?? "Unknown Community",

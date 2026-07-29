@@ -372,6 +372,7 @@ struct VideoChannelFeature {
             instanceDisplayHost: state.host,
             instanceDisplayAvatarUrl: state.instance?.avatarUrl,
             videoChannelComponent: UserBadgeFeature.State(
+                variant: .medium,
               avatarUrl: caUrl ?? "",
               channelDisplayName: cdName,
               instanceDisplayName: state.host,

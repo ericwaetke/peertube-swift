@@ -73,6 +73,7 @@ extension VideoCardFeature.State {
     self.instanceDisplayHost = row.instance?.host ?? ""
     self.instanceDisplayAvatarUrl = row.instance?.avatarUrl
     self.videoChannelComponent = UserBadgeFeature.State(
+        variant: .medium,
       avatarUrl: row.channel?.avatarUrl ?? "",
       channelDisplayName: row.channel?.name ?? "unknown",
       instanceDisplayName: row.instance?.host ?? "",
@@ -223,6 +224,7 @@ struct VideoCardView: View {
         instanceDisplayHost: "peertube.example.com",
         instanceDisplayAvatarUrl: "https://picsum.photos/40",
         videoChannelComponent: UserBadgeFeature.State(
+            variant: .medium,
           avatarUrl: "https://picsum.photos/40",
           channelDisplayName: "Test Channel",
           instanceDisplayName: "peertube.example.com",
