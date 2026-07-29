@@ -12,10 +12,17 @@ import SQLiteData
 import SwiftUI
 import TubeSDK
 
+enum UserBadgeVariant {
+  case large
+  case medium
+  case small
+}
+
 @Reducer
 struct UserBadgeFeature {
   @ObservableState
   struct State: Equatable {
+    let variant: UserBadgeVariant
     let avatarUrl: String?
     let channelDisplayName: String
     let instanceDisplayName: String
