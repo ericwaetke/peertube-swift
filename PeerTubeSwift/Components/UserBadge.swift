@@ -16,10 +16,10 @@ import TubeSDK
 struct UserBadgeFeature {
   @ObservableState
   struct State: Equatable {
-    let avatarUrl: String
+    let avatarUrl: String?
     let channelDisplayName: String
     let instanceDisplayName: String
-    let instanceIconUrl: String
+    let instanceIconUrl: String?
   }
 
   enum Action {

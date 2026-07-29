@@ -104,16 +104,16 @@ struct PeerTubeSwiftApp: App {
               ?? .preferredFont(forTextStyle: .title3)
           ]
 
-//            TODO: DO NOT Request Notification Permissions here. Only when needed
-//          Task {
-//            let center = UNUserNotificationCenter.current()
-//
-//            do {
-//              try await center.requestAuthorization(options: [.alert, .sound, .badge])
-//            } catch {
-//              // Handle the error here.
-//            }
-//          }
+          //            TODO: DO NOT Request Notification Permissions here. Only when needed
+          //          Task {
+          //            let center = UNUserNotificationCenter.current()
+          //
+          //            do {
+          //              try await center.requestAuthorization(options: [.alert, .sound, .badge])
+          //            } catch {
+          //              // Handle the error here.
+          //            }
+          //          }
         }
         .task {
           Self.scheduleAppRefresh()

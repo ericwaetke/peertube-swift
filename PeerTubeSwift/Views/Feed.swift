@@ -1084,14 +1084,16 @@ struct Feed: View {
               columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 0
             ) {
               ForEach(
-                Array(Array(self.store.scope(state: \.videoCards, action: \.videoCards)).enumerated()),
+                Array(
+                  Array(self.store.scope(state: \.videoCards, action: \.videoCards)).enumerated()),
                 id: \.element
               ) { index, cardStore in
-                  if (index == 3) {
-                      Spacer().frame(height: 16)
-                      ContinueWatching(store: self.store.scope(state: \.continueWatching, action: \.continueWatching))
-                      Spacer().frame(height: 16)
-                  }
+                if index == 3 {
+                  Spacer().frame(height: 16)
+                  ContinueWatching(
+                    store: self.store.scope(state: \.continueWatching, action: \.continueWatching))
+                  Spacer().frame(height: 16)
+                }
                 VideoCardView(store: cardStore)
               }
             }
