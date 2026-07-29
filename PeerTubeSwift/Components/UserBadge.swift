@@ -13,7 +13,7 @@ import SwiftUI
 import TubeSDK
 
 @Reducer
-struct VideoChannelComponentFeature {
+struct UserBadgeFeature {
   @ObservableState
   struct State: Equatable {
     let avatarUrl: String
@@ -36,8 +36,8 @@ struct VideoChannelComponentFeature {
   }
 }
 
-struct VideoChannelComponent: View {
-  @Bindable var store: StoreOf<VideoChannelComponentFeature>
+struct UserBadge: View {
+  @Bindable var store: StoreOf<UserBadgeFeature>
 
   var body: some View {
     HStack(alignment: .bottom, spacing: 8) {
@@ -63,15 +63,15 @@ struct VideoChannelComponent: View {
 }
 
 #Preview {
-  VideoChannelComponent(
+  UserBadge(
     store: Store(
-      initialState: VideoChannelComponentFeature.State(
+      initialState: UserBadgeFeature.State(
         avatarUrl: "https://picsum.photos/200",
         channelDisplayName: "Gronkh",
         instanceDisplayName: "PeerTube.WTF",
         instanceIconUrl: "https://picsum.photos/40"
       )
     ) {
-      VideoChannelComponentFeature()
+      UserBadgeFeature()
     })
 }

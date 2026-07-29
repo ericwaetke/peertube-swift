@@ -22,13 +22,13 @@ struct VideoCardFeature {
     var channelDescription: String?
     var instanceDisplayHost: String
     var instanceDisplayAvatarUrl: String?
-    var videoChannelComponent: VideoChannelComponentFeature.State
+    var videoChannelComponent: UserBadgeFeature.State
     var videoRow: VideoRow?
   }
 
   enum Action {
     case videoTapped
-    case videoChannelComponent(VideoChannelComponentFeature.Action)
+    case videoChannelComponent(UserBadgeFeature.Action)
     case delegate(Delegate)
 
     enum Delegate: Equatable {
@@ -39,7 +39,7 @@ struct VideoCardFeature {
 
   var body: some ReducerOf<Self> {
     Scope(state: \.videoChannelComponent, action: \.videoChannelComponent) {
-      VideoChannelComponentFeature()
+      UserBadgeFeature()
     }
     Reduce { state, action in
       switch action {
@@ -72,7 +72,7 @@ extension VideoCardFeature.State {
     self.channelDescription = row.channel?.description
     self.instanceDisplayHost = row.instance?.host ?? ""
     self.instanceDisplayAvatarUrl = row.instance?.avatarUrl
-    self.videoChannelComponent = VideoChannelComponentFeature.State(
+    self.videoChannelComponent = UserBadgeFeature.State(
       avatarUrl: row.channel?.avatarUrl ?? "",
       channelDisplayName: row.channel?.name ?? "unknown",
       instanceDisplayName: row.instance?.host ?? "",
@@ -190,7 +190,7 @@ struct VideoCardView: View {
             }
           }
 
-          VideoChannelComponent(
+          UserBadge(
             store: store.scope(state: \.videoChannelComponent, action: \.videoChannelComponent)
           )
           .onTapGesture { store.send(.videoChannelComponent(.openChannel)) }
@@ -222,7 +222,7 @@ struct VideoCardView: View {
         channelDescription: nil,
         instanceDisplayHost: "peertube.example.com",
         instanceDisplayAvatarUrl: "https://picsum.photos/40",
-        videoChannelComponent: VideoChannelComponentFeature.State(
+        videoChannelComponent: UserBadgeFeature.State(
           avatarUrl: "https://picsum.photos/40",
           channelDisplayName: "Test Channel",
           instanceDisplayName: "peertube.example.com",
