@@ -23,6 +23,14 @@ enum VideoCardVariant {
     case .large: CustomFont.fjallaOne.swiftUIFont(size: 22, relativeTo: .title2)
     }
   }
+
+  var durationFont: Font {
+    switch self {
+    case .small: CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote)
+    case .medium, .large:
+      CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline)
+    }
+  }
 }
 
 @Reducer
@@ -118,114 +126,143 @@ struct VideoCardView: View {
   let minuteStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 1))
   let secondStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 2))
 
-  var body: some View {
-    VStack {
-      if let thumbnailUrl = store.videoThumbnailUrl,
-        let url = URL(string: thumbnailUrl)
-      {
-        ZStack(alignment: .topLeading) {
-          AsyncImage(url: url) { image in
-            image.resizable()
-          } placeholder: {
-            Color.secondary
-          }
-          .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: .infinity)
-          .aspectRatio(16 / 9, contentMode: .fit)
-          .clipShape(.rect(cornerRadius: 8))
-          .overlay(
-            RoundedRectangle(cornerRadius: 8)
-              .stroke(.separator, lineWidth: 0.3)
-          )
-          .task {
-            try? await peertubeOrchestrator.cacheImageIfNeeded(thumbnailUrl, database)
-          }
+  @ViewBuilder
+  private var videoThumbnail: some View {
+    if let thumbnailUrl = store.videoThumbnailUrl,
+      let url = URL(string: thumbnailUrl)
+    {
+      ZStack(alignment: .topLeading) {
+        AsyncImage(url: url) { image in
+          image.resizable()
+        } placeholder: {
+          Color.secondary
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: .infinity)
+        .aspectRatio(16 / 9, contentMode: .fit)
+        .clipShape(.rect(cornerRadius: 8))
+        .overlay(
+          RoundedRectangle(cornerRadius: 8)
+            .stroke(.separator, lineWidth: 0.3)
+        )
+        .task {
+          try? await peertubeOrchestrator.cacheImageIfNeeded(thumbnailUrl, database)
+        }
 
-          VStack(alignment: .leading) {
-
+        VStack(alignment: .leading) {
+          Spacer()
+          HStack {
             Spacer()
-
-            HStack {
-              Spacer()
-              if let durationInt = store.videoDuration {
-                Text(
-                  Duration
-                    .seconds(durationInt)
-                    .formatted(
-                      durationInt > 3_600 ? hourStyle : durationInt > 60 ? minuteStyle : secondStyle
-                    )
-                )
-                .font(
-                  CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline)
-                )
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
-                .padding(8)
-              }
-            }
-          }
-
-          if let duration = store.videoDuration,
-            let currentTime = store.videoCurrentTime,
-            duration > 0, currentTime > 0
-          {
-            VStack {
-              Spacer()
-              GeometryReader { geometry in
-                Rectangle()
-                  .fill(Color.red)
-                  .frame(
-                    width: geometry.size.width
-                      * CGFloat(min(Double(currentTime) / Double(duration), 1.0))
+            if let durationInt = store.videoDuration {
+              Text(
+                Duration
+                  .seconds(durationInt)
+                  .formatted(
+                    durationInt > 3_600 ? hourStyle : durationInt > 60 ? minuteStyle : secondStyle
                   )
-              }
-              .frame(height: 4)
+              )
+              .font(self.store.state.variant.durationFont)
+              .padding(.horizontal, 4)
+              .padding(.vertical, 2)
+              .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
+              .padding(8)
             }
-            .clipShape(.rect(cornerRadius: 8))
           }
         }
-        .aspectRatio(16 / 9, contentMode: .fit)
-      } else {
-        Color.secondary
-          .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: .infinity)
-          .aspectRatio(16 / 9, contentMode: .fit)
+
+        if let duration = store.videoDuration,
+          let currentTime = store.videoCurrentTime,
+          duration > 0, currentTime > 0
+        {
+          VStack {
+            Spacer()
+            GeometryReader { geometry in
+              Rectangle()
+                .fill(Color.red)
+                .frame(
+                  width: geometry.size.width
+                    * CGFloat(min(Double(currentTime) / Double(duration), 1.0))
+                )
+            }
+            .frame(height: 4)
+          }
           .clipShape(.rect(cornerRadius: 8))
+        }
+      }
+      .aspectRatio(16 / 9, contentMode: .fit)
+    } else {
+      Color.secondary
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: .infinity)
+        .aspectRatio(16 / 9, contentMode: .fit)
+        .clipShape(.rect(cornerRadius: 8))
+    }
+  }
+
+  @ViewBuilder
+  private var viewsAndDate: some View {
+    HStack(spacing: 6) {
+      if let views = store.videoViews {
+        Text("^[\(views) View](inflect: true)")
+          .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
       }
 
-      HStack(alignment: .top) {
-        VStack(alignment: .leading, spacing: 4) {
-          VStack(alignment: .leading) {
-            Text(store.videoName)
-              .font(store.state.variant.titleFont)
-              .lineLimit(2)
+      Text("·")
+        .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
 
-            HStack {
-              if let views = store.videoViews {
-                Text("^[\(views) View](inflect: true)")
-                  .font(.caption)
-              }
+      if let publishDate = store.videoPublishDate {
+        Text(formatter.localizedString(for: publishDate, relativeTo: Date.now))
+          .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
+      }
+    }
+  }
 
-              Text("·")
+  @ViewBuilder
+  private var videoDetails: some View {
+    HStack(alignment: .top) {
+      VStack(alignment: .leading, spacing: 4) {
 
-              if let publishDate = store.videoPublishDate {
-                Text(formatter.localizedString(for: publishDate, relativeTo: Date.now))
-                  .font(.caption)
-              }
-            }
-          }
+        // Video Title
+        Text(store.videoName)
+          .font(store.state.variant.titleFont)
+          .lineLimit(2)
 
+        if store.state.variant == .small {
+          UserBadge(
+            store: store.scope(state: \.userBadge, action: \.userBadge)
+          )
+          .onTapGesture { store.send(.userBadge(.openChannel)) }
+          viewsAndDate
+        } else {
+          viewsAndDate
           UserBadge(
             store: store.scope(state: \.userBadge, action: \.userBadge)
           )
           .onTapGesture { store.send(.userBadge(.openChannel)) }
         }
-        Spacer()
+
       }
-      .padding(.horizontal, 8)
+      Spacer()
     }
-    .padding(8)
-    .frame(width: store.state.variant.videoCardWidth)
-    .onTapGesture { store.send(.videoTapped) }
+    .padding(.horizontal, 8)
+  }
+
+  var body: some View {
+    switch store.state.variant {
+    case .small:
+      HStack {
+        videoThumbnail
+
+        videoDetails
+      }
+    case .medium, .large:
+      VStack {
+        videoThumbnail
+
+        videoDetails
+      }
+      .padding(8)
+      .frame(width: store.state.variant.videoCardWidth)
+      .onTapGesture { store.send(.videoTapped) }
+    }
   }
 }
 
@@ -311,7 +348,7 @@ struct VideoCardView: View {
             instanceDisplayHost: "peertube.example.com",
             instanceDisplayAvatarUrl: "https://picsum.photos/40",
             userBadge: UserBadgeFeature.State(
-              variant: .small,
+              variant: .tiny,
               avatarUrl: "https://picsum.photos/40",
               channelDisplayName: "Test Channel",
               instanceDisplayName: "peertube.example.com",

@@ -59,6 +59,8 @@ struct InstanceIndicator: View {
       Text("@\(instanceName)")
         .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote))
         .textCase(.uppercase)
+        .truncationMode(.tail)
+        .lineLimit(1)
         .padding(.leading, 12)
         .padding(.trailing, 6)
         .padding(.vertical, 1)
@@ -94,6 +96,8 @@ struct InstanceIndicator: View {
 
 #Preview {
   InstanceIndicator(instanceName: "example.com", instanceImage: nil)
+  InstanceIndicator(
+    instanceName: "very long truncation instance nameexample.com", instanceImage: nil)
   InstanceIndicator(
     instanceName: "example.com",
     instanceImage:
