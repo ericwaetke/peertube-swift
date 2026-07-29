@@ -350,6 +350,8 @@ struct FeedFeature {
     @FetchAll var instances: [Instance] = []
 
     var videoCards: IdentifiedArrayOf<VideoCardFeature.State> = []
+
+    var continueWatching: ContinueWatchingFeature.State = .init()
   }
 
   enum Action {
@@ -363,6 +365,7 @@ struct FeedFeature {
     case addInstanceButtonTapped
 
     case videoCards(IdentifiedActionOf<VideoCardFeature>)
+    case continueWatching(ContinueWatchingFeature.Action)
 
     case loadVideos
     case finishLoading([VideoRow])
@@ -1010,10 +1013,19 @@ struct FeedFeature {
         return .send(.channelTapped(row: row))
       case .videoCards:
         return .none
+      case .continueWatching(.delegate(.videoTapped(let row))):
+        return .send(.videoTapped(row: row))
+      case .continueWatching(.delegate(.channelTapped(let row))):
+        return .send(.channelTapped(row: row))
+      case .continueWatching:
+        return .none
       }
     }
     .forEach(\.videoCards, action: \.videoCards) {
       VideoCardFeature()
+    }
+    Scope(state: \.continueWatching, action: \.continueWatching) {
+      ContinueWatchingFeature()
     }
   }
 }
@@ -1072,8 +1084,14 @@ struct Feed: View {
               columns: [GridItem(.adaptive(minimum: 350))], alignment: .leading, spacing: 0
             ) {
               ForEach(
-                self.store.scope(state: \.videoCards, action: \.videoCards)
-              ) { cardStore in
+                Array(Array(self.store.scope(state: \.videoCards, action: \.videoCards)).enumerated()),
+                id: \.element
+              ) { index, cardStore in
+                  if (index == 3) {
+                      Spacer().frame(height: 16)
+                      ContinueWatching(store: self.store.scope(state: \.continueWatching, action: \.continueWatching))
+                      Spacer().frame(height: 16)
+                  }
                 VideoCardView(store: cardStore)
               }
             }

@@ -107,6 +107,7 @@ struct FeedTab: View {
     NavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
       Feed(store: self.store.scope(state: \.subscriptionFeed, action: \.subscriptionFeed))
         .navigationTitle("Subscriptions")
+        .background(.group)
         .toolbar {
           ToolbarItem(placement: .topBarTrailing) {
             Menu {

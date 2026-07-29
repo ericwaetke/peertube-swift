@@ -90,7 +90,7 @@ struct VideoCardView: View {
   @Dependency(\.defaultDatabase) var database
 
   let formatter = RelativeDateTimeFormatter()
-  let hourStyle = Duration.TimeFormatStyle(pattern: .hourMinuteSecond(padHourToLength: 2))
+  let hourStyle = Duration.TimeFormatStyle(pattern: .hourMinuteSecond(padHourToLength: 1))
   let minuteStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 1))
   let secondStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 2))
 
@@ -174,6 +174,7 @@ struct VideoCardView: View {
             Text(store.videoName)
               .font(CustomFont.fjallaOne.swiftUIFont(size: 22, relativeTo: .title2))
               .fontWeight(.bold)
+              .lineLimit(2)
 
             HStack {
               if let views = store.videoViews {

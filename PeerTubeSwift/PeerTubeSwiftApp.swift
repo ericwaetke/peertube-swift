@@ -100,19 +100,20 @@ struct PeerTubeSwiftApp: App {
               ?? .preferredFont(forTextStyle: .largeTitle)
           ]
           UINavigationBar.appearance().titleTextAttributes = [
-            .font: UIFont(name: CustomFont.fjallaOne.name, size: 17)
-              ?? .preferredFont(forTextStyle: .headline)
+            .font: UIFont(name: CustomFont.fjallaOne.name, size: 20)
+              ?? .preferredFont(forTextStyle: .title3)
           ]
 
-          Task {
-            let center = UNUserNotificationCenter.current()
-
-            do {
-              try await center.requestAuthorization(options: [.alert, .sound, .badge])
-            } catch {
-              // Handle the error here.
-            }
-          }
+//            TODO: DO NOT Request Notification Permissions here. Only when needed
+//          Task {
+//            let center = UNUserNotificationCenter.current()
+//
+//            do {
+//              try await center.requestAuthorization(options: [.alert, .sound, .badge])
+//            } catch {
+//              // Handle the error here.
+//            }
+//          }
         }
         .task {
           Self.scheduleAppRefresh()
