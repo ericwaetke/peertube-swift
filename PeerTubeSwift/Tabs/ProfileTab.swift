@@ -12,7 +12,7 @@ import TubeSDK
 import WebURL
 
 @Reducer
-struct SettingsTabFeature {
+struct ProfileTabFeature {
   @ObservableState
   struct State: Equatable {
     var path = StackState<SettingsPath.State>()
@@ -197,8 +197,8 @@ struct SettingsTabFeature {
   }
 }
 
-struct SettingsTab: View {
-  @Bindable var store: StoreOf<SettingsTabFeature>
+struct ProfileTab: View {
+  @Bindable var store: StoreOf<ProfileTabFeature>
   var body: some View {
     NavigationStack {
       Form {
@@ -301,9 +301,9 @@ struct SettingsTab: View {
     try! $0.defaultDatabase.seed()
   }
 
-  SettingsTab(
-    store: Store(initialState: SettingsTabFeature.State()) {
-      SettingsTabFeature()
+  ProfileTab(
+    store: Store(initialState: ProfileTabFeature.State()) {
+      ProfileTabFeature()
     }
   )
 }

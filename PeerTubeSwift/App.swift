@@ -20,7 +20,7 @@ struct AppFeature {
     var feedTab = FeedTabFeature.State()
     var exploreTab = ExploreTabFeature.State()
 
-    var profileTab = SettingsTabFeature.State()
+    var profileTab = ProfileTabFeature.State()
 
     //    @Presents var settingsSheet: SettingsTabFeature.State?
 
@@ -39,7 +39,7 @@ struct AppFeature {
     case feedTab(FeedTabFeature.Action)
     case exploreTab(ExploreTabFeature.Action)
 
-    case profileTab(SettingsTabFeature.Action)
+    case profileTab(ProfileTabFeature.Action)
 
     //    case settingsSheet(PresentationAction<SettingsTabFeature.Action>)
   }
@@ -179,7 +179,7 @@ struct AppFeature {
       ExploreTabFeature()
     }
     Scope(state: \.profileTab, action: \.profileTab) {
-      SettingsTabFeature()
+      ProfileTabFeature()
     }
     //    .ifLet(\.$settingsSheet, action: \.settingsSheet) {
     //      SettingsTabFeature()
@@ -235,7 +235,7 @@ struct ContentView: View {
             value: .profile
           ) {
             NavigationStack {
-              SettingsTab(store: self.store.scope(state: \.profileTab, action: \.profileTab))
+              ProfileTab(store: self.store.scope(state: \.profileTab, action: \.profileTab))
 
             }
           }
