@@ -173,7 +173,6 @@ struct VideoCardView: View {
           VStack(alignment: .leading) {
             Text(store.videoName)
               .font(CustomFont.fjallaOne.swiftUIFont(size: 22, relativeTo: .title2))
-              .fontWeight(.bold)
               .lineLimit(2)
 
             HStack {

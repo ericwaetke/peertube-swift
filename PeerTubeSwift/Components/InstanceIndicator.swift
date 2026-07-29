@@ -62,7 +62,7 @@ struct InstanceIndicator: View {
         .padding(.leading, 12)
         .padding(.trailing, 6)
         .padding(.vertical, 1)
-        .foregroundStyle(.highlight)
+        .foregroundStyle(Color.labelHighlight)
         .background(.quinary)
         .clipShape(.rect(cornerRadius: 4))
         .zIndex(-1)

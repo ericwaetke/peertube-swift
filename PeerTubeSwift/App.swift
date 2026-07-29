@@ -19,10 +19,10 @@ struct AppFeature {
 
     var feedTab = FeedTabFeature.State()
     var exploreTab = ExploreTabFeature.State()
-      
-      var profileTab = SettingsTabFeature.State()
 
-//    @Presents var settingsSheet: SettingsTabFeature.State?
+    var profileTab = SettingsTabFeature.State()
+
+    //    @Presents var settingsSheet: SettingsTabFeature.State?
 
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
       scheme: "https", host: "peertube.wtf")
@@ -38,10 +38,10 @@ struct AppFeature {
 
     case feedTab(FeedTabFeature.Action)
     case exploreTab(ExploreTabFeature.Action)
-      
-      case profileTab(SettingsTabFeature.Action)
 
-//    case settingsSheet(PresentationAction<SettingsTabFeature.Action>)
+    case profileTab(SettingsTabFeature.Action)
+
+    //    case settingsSheet(PresentationAction<SettingsTabFeature.Action>)
   }
 
   @Dependency(\.authClient) var authClient
@@ -130,14 +130,14 @@ struct AppFeature {
         state.selectedTab = tab
         return .none
       case .feedTab(.delegate(.openSettings)):
-//        state.settingsSheet = SettingsTabFeature.State()
+        //        state.settingsSheet = SettingsTabFeature.State()
         return .none
       case .exploreTab(.delegate(.openSettings)):
-//        state.settingsSheet = SettingsTabFeature.State()
+        //        state.settingsSheet = SettingsTabFeature.State()
         return .none
       case .feedTab(_), .exploreTab:
         return .none
-      
+
       case .profileTab(.delegate(.didLogin)):
         return .run { send in
           @Dependency(\.defaultDatabase) var database
@@ -178,20 +178,20 @@ struct AppFeature {
     Scope(state: \.exploreTab, action: \.exploreTab) {
       ExploreTabFeature()
     }
-      Scope(state: \.profileTab, action: \.profileTab) {
-        SettingsTabFeature()
-      }
-//    .ifLet(\.$settingsSheet, action: \.settingsSheet) {
-//      SettingsTabFeature()
-//    }
+    Scope(state: \.profileTab, action: \.profileTab) {
+      SettingsTabFeature()
+    }
+    //    .ifLet(\.$settingsSheet, action: \.settingsSheet) {
+    //      SettingsTabFeature()
+    //    }
   }
 }
 
 enum TubeTab {
   case feed
   case explore
-    case search
-    case profile
+  case search
+  case profile
 }
 
 struct ContentView: View {
@@ -220,25 +220,25 @@ struct ContentView: View {
               store: self.store.scope(state: \.exploreTab, action: \.exploreTab)
             )
           }
-            
-            Tab(
-                "Search",
-                systemImage: "magnifyingglass",
-                value: .search
-            ) {
-                Text("wip")
+
+          Tab(
+            "Search",
+            systemImage: "magnifyingglass",
+            value: .search
+          ) {
+            Text("wip")
+          }
+
+          Tab(
+            "Profile",
+            systemImage: "person.circle.fill",
+            value: .profile
+          ) {
+            NavigationStack {
+              SettingsTab(store: self.store.scope(state: \.profileTab, action: \.profileTab))
+
             }
-            
-            Tab(
-                "Profile",
-                systemImage: "person.circle.fill",
-                value: .profile
-            ) {
-                NavigationStack {
-                  SettingsTab(store: self.store.scope(state: \.profileTab, action: \.profileTab))
-                    
-                }
-            }
+          }
         }
       } else {
         ProgressView("Loading …")
@@ -247,9 +247,9 @@ struct ContentView: View {
     .task {
       await store.send(.task).finish()
     }
-//    .sheet(item: $store.scope(state: \.settingsSheet, action: \.settingsSheet)) { store in
-//      
-//    }
+    //    .sheet(item: $store.scope(state: \.settingsSheet, action: \.settingsSheet)) { store in
+    //
+    //    }
   }
 }
 

@@ -18,7 +18,7 @@ struct InnerSectionDisclosureGroup: DisclosureGroupStyle {
             } label: {
                 HStack(alignment: .center) {
                     configuration.label
-                        .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 15, relativeTo: .footnote))
+                        .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote))
                         .textCase(.uppercase)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13))
