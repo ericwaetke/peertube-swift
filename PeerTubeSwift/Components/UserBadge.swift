@@ -92,6 +92,7 @@ struct UserBadge: View {
   private var textContent: some View {
     Text(self.store.state.channelDisplayName)
       .font(self.store.state.variant.channelFont)
+      .lineLimit(1)
 
     if self.store.state.variant != .tiny {
       InstanceIndicator(
