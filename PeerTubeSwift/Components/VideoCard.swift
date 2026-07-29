@@ -4,10 +4,32 @@ import FontKit
 import SwiftUI
 import TubeSDK
 
+enum VideoCardVariant {
+  case large
+  case medium
+  case small
+
+  var videoCardWidth: CGFloat {
+    switch self {
+    case .small: .infinity
+    case .medium: 300
+    case .large: .infinity
+    }
+  }
+
+  var titleFont: Font {
+    switch self {
+    case .small, .medium: CustomFont.fjallaOne.swiftUIFont(size: 20, relativeTo: .title3)
+    case .large: CustomFont.fjallaOne.swiftUIFont(size: 22, relativeTo: .title2)
+    }
+  }
+}
+
 @Reducer
 struct VideoCardFeature {
   @ObservableState
   struct State: Equatable, Identifiable {
+    var variant: VideoCardVariant
     var id: String
     var videoUUID: String?
     var videoName: String
@@ -22,13 +44,13 @@ struct VideoCardFeature {
     var channelDescription: String?
     var instanceDisplayHost: String
     var instanceDisplayAvatarUrl: String?
-    var videoChannelComponent: UserBadgeFeature.State
+    var userBadge: UserBadgeFeature.State
     var videoRow: VideoRow?
   }
 
   enum Action {
     case videoTapped
-    case videoChannelComponent(UserBadgeFeature.Action)
+    case userBadge(UserBadgeFeature.Action)
     case delegate(Delegate)
 
     enum Delegate: Equatable {
@@ -38,16 +60,16 @@ struct VideoCardFeature {
   }
 
   var body: some ReducerOf<Self> {
-    Scope(state: \.videoChannelComponent, action: \.videoChannelComponent) {
+    Scope(state: \.userBadge, action: \.userBadge) {
       UserBadgeFeature()
     }
     Reduce { state, action in
       switch action {
       case .videoTapped:
         return .send(.delegate(.videoTapped))
-      case .videoChannelComponent(.openChannel):
+      case .userBadge(.openChannel):
         return .send(.delegate(.openChannel))
-      case .videoChannelComponent:
+      case .userBadge:
         return .none
       case .delegate:
         return .none
@@ -57,7 +79,8 @@ struct VideoCardFeature {
 }
 
 extension VideoCardFeature.State {
-  init(row: VideoRow) {
+  init(row: VideoRow, variant: VideoCardVariant) {
+    self.variant = variant
     self.id = row.video.id.uuidString
     self.videoUUID = row.video.id.uuidString
     self.videoName = row.video.name
@@ -72,8 +95,8 @@ extension VideoCardFeature.State {
     self.channelDescription = row.channel?.description
     self.instanceDisplayHost = row.instance?.host ?? ""
     self.instanceDisplayAvatarUrl = row.instance?.avatarUrl
-    self.videoChannelComponent = UserBadgeFeature.State(
-        variant: .medium,
+    self.userBadge = UserBadgeFeature.State(
+      variant: variant == .small ? .small : variant == .medium ? .small : .medium,
       avatarUrl: row.channel?.avatarUrl ?? "",
       channelDisplayName: row.channel?.name ?? "unknown",
       instanceDisplayName: row.instance?.host ?? "",
@@ -173,7 +196,7 @@ struct VideoCardView: View {
         VStack(alignment: .leading, spacing: 4) {
           VStack(alignment: .leading) {
             Text(store.videoName)
-              .font(CustomFont.fjallaOne.swiftUIFont(size: 22, relativeTo: .title2))
+              .font(store.state.variant.titleFont)
               .lineLimit(2)
 
             HStack {
@@ -192,47 +215,113 @@ struct VideoCardView: View {
           }
 
           UserBadge(
-            store: store.scope(state: \.videoChannelComponent, action: \.videoChannelComponent)
+            store: store.scope(state: \.userBadge, action: \.userBadge)
           )
-          .onTapGesture { store.send(.videoChannelComponent(.openChannel)) }
+          .onTapGesture { store.send(.userBadge(.openChannel)) }
         }
         Spacer()
       }
       .padding(.horizontal, 8)
     }
     .padding(8)
+    .frame(width: store.state.variant.videoCardWidth)
     .onTapGesture { store.send(.videoTapped) }
   }
 }
 
 #Preview {
-  VideoCardView(
-    store: Store(
-      initialState: VideoCardFeature.State(
-        id: "preview",
-        videoUUID: "preview-uuid",
-        videoName: "Sample Video",
-        videoThumbnailUrl: "https://picsum.photos/400/225",
-        videoDuration: 3600,
-        videoCurrentTime: nil,
-        videoPublishDate: Date().addingTimeInterval(-86400),
-        videoViews: 420,
-        channelDisplayName: "Test Channel",
-        channelAvatarUrl: "https://picsum.photos/40",
-        channelId: "test@peertube.example.com",
-        channelDescription: nil,
-        instanceDisplayHost: "peertube.example.com",
-        instanceDisplayAvatarUrl: "https://picsum.photos/40",
-        videoChannelComponent: UserBadgeFeature.State(
+  ScrollView {
+    VStack {
+      VideoCardView(
+        store: Store(
+          initialState: VideoCardFeature.State(
+            variant: .large,
+            id: "preview",
+            videoUUID: "preview-uuid",
+            videoName: "Sample Video",
+            videoThumbnailUrl: "https://picsum.photos/400/225",
+            videoDuration: 3600,
+            videoCurrentTime: nil,
+            videoPublishDate: Date().addingTimeInterval(-86400),
+            videoViews: 420,
+            channelDisplayName: "Test Channel",
+            channelAvatarUrl: "https://picsum.photos/40",
+            channelId: "test@peertube.example.com",
+            channelDescription: nil,
+            instanceDisplayHost: "peertube.example.com",
+            instanceDisplayAvatarUrl: "https://picsum.photos/40",
+            userBadge: UserBadgeFeature.State(
+              variant: .medium,
+              avatarUrl: "https://picsum.photos/40",
+              channelDisplayName: "Test Channel",
+              instanceDisplayName: "peertube.example.com",
+              instanceIconUrl: "https://picsum.photos/40"
+            ),
+            videoRow: nil
+          ),
+          reducer: { VideoCardFeature() }
+        )
+      )
+      VideoCardView(
+        store: Store(
+          initialState: VideoCardFeature.State(
             variant: .medium,
-          avatarUrl: "https://picsum.photos/40",
-          channelDisplayName: "Test Channel",
-          instanceDisplayName: "peertube.example.com",
-          instanceIconUrl: "https://picsum.photos/40"
-        ),
-        videoRow: nil
-      ),
-      reducer: { VideoCardFeature() }
-    )
-  )
+            id: "preview",
+            videoUUID: "preview-uuid",
+            videoName: "Sample Video",
+            videoThumbnailUrl: "https://picsum.photos/400/225",
+            videoDuration: 3600,
+            videoCurrentTime: nil,
+            videoPublishDate: Date().addingTimeInterval(-86400),
+            videoViews: 420,
+            channelDisplayName: "Test Channel",
+            channelAvatarUrl: "https://picsum.photos/40",
+            channelId: "test@peertube.example.com",
+            channelDescription: nil,
+            instanceDisplayHost: "peertube.example.com",
+            instanceDisplayAvatarUrl: "https://picsum.photos/40",
+            userBadge: UserBadgeFeature.State(
+              variant: .small,
+              avatarUrl: "https://picsum.photos/40",
+              channelDisplayName: "Test Channel",
+              instanceDisplayName: "peertube.example.com",
+              instanceIconUrl: "https://picsum.photos/40"
+            ),
+            videoRow: nil
+          ),
+          reducer: { VideoCardFeature() }
+        )
+      )
+      VideoCardView(
+        store: Store(
+          initialState: VideoCardFeature.State(
+            variant: .small,
+            id: "preview",
+            videoUUID: "preview-uuid",
+            videoName: "Sample Video",
+            videoThumbnailUrl: "https://picsum.photos/400/225",
+            videoDuration: 3600,
+            videoCurrentTime: nil,
+            videoPublishDate: Date().addingTimeInterval(-86400),
+            videoViews: 420,
+            channelDisplayName: "Test Channel",
+            channelAvatarUrl: "https://picsum.photos/40",
+            channelId: "test@peertube.example.com",
+            channelDescription: nil,
+            instanceDisplayHost: "peertube.example.com",
+            instanceDisplayAvatarUrl: "https://picsum.photos/40",
+            userBadge: UserBadgeFeature.State(
+              variant: .small,
+              avatarUrl: "https://picsum.photos/40",
+              channelDisplayName: "Test Channel",
+              instanceDisplayName: "peertube.example.com",
+              instanceIconUrl: "https://picsum.photos/40"
+            ),
+            videoRow: nil
+          ),
+          reducer: { VideoCardFeature() }
+        )
+      )
+    }
+  }
 }

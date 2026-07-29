@@ -357,6 +357,7 @@ struct VideoChannelFeature {
           let cdName = state.videoChannel?.name ?? state.channelName ?? "Channel"
           let caUrl = video.channel?.avatars?.first?.fileUrl
           return VideoCardFeature.State(
+            variant: .small,
             id: video.uuid?.uuidString ?? UUID().uuidString,
             videoUUID: video.uuid?.uuidString,
             videoName: video.name ?? "Unknown",
@@ -371,8 +372,8 @@ struct VideoChannelFeature {
             channelDescription: nil,
             instanceDisplayHost: state.host,
             instanceDisplayAvatarUrl: state.instance?.avatarUrl,
-            videoChannelComponent: UserBadgeFeature.State(
-                variant: .medium,
+            userBadge: UserBadgeFeature.State(
+              variant: .medium,
               avatarUrl: caUrl ?? "",
               channelDisplayName: cdName,
               instanceDisplayName: state.host,

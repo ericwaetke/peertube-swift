@@ -906,7 +906,9 @@ struct FeedFeature {
           await send(.finishLoading(videos ?? []))
         }
       case .finishLoading(let rows):
-        let newCards = rows.map(VideoCardFeature.State.init(row:))
+        let newCards = rows.map {
+          VideoCardFeature.State.init(row: $0, variant: .large)
+        }
         // First load (offset 0): replace
         if state.currentOffset == 0 {
           state.videoCards = IdentifiedArray(uncheckedUniqueElements: newCards)
@@ -978,7 +980,9 @@ struct FeedFeature {
           await send(.finishLoadingMore(videos))
         }
       case .finishLoadingMore(let rows):
-        let newCards = rows.map(VideoCardFeature.State.init(row:))
+        let newCards = rows.map {
+          VideoCardFeature.State.init(row: $0, variant: .large)
+        }
         state.videoCards.append(contentsOf: newCards)
         state.currentOffset += rows.count
         state.isLoadingMore = false

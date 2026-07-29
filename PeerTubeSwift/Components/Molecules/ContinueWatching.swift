@@ -33,7 +33,10 @@ struct ContinueWatchingFeature {
         }
       case .continueWatchingResponse(let rows):
         state.cards = IdentifiedArray(
-          uncheckedUniqueElements: rows.map(VideoCardFeature.State.init(row:)))
+          uncheckedUniqueElements: rows.map {
+            VideoCardFeature.State.init(row: $0, variant: .medium)
+          }
+        )
         return .none
       case .cards(.element(id: let id, action: .delegate(.videoTapped))):
         guard let card = state.cards[id: id], let row = card.videoRow else { return .none }
