@@ -19,10 +19,8 @@ struct AppFeature {
 
     var feedTab = FeedTabFeature.State()
     var exploreTab = ExploreTabFeature.State()
-
+    var searchTab = SearchTabFeature.State()
     var profileTab = ProfileTabFeature.State()
-
-    //    @Presents var settingsSheet: SettingsTabFeature.State?
 
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
       scheme: "https", host: "peertube.wtf")
@@ -38,10 +36,8 @@ struct AppFeature {
 
     case feedTab(FeedTabFeature.Action)
     case exploreTab(ExploreTabFeature.Action)
-
+    case searchTab(SearchTabFeature.Action)
     case profileTab(ProfileTabFeature.Action)
-
-    //    case settingsSheet(PresentationAction<SettingsTabFeature.Action>)
   }
 
   @Dependency(\.authClient) var authClient
@@ -130,12 +126,12 @@ struct AppFeature {
         state.selectedTab = tab
         return .none
       case .feedTab(.delegate(.openSettings)):
-        //        state.settingsSheet = SettingsTabFeature.State()
         return .none
       case .exploreTab(.delegate(.openSettings)):
-        //        state.settingsSheet = SettingsTabFeature.State()
         return .none
       case .feedTab(_), .exploreTab:
+        return .none
+      case .searchTab:
         return .none
 
       case .profileTab(.delegate(.didLogin)):
@@ -178,12 +174,12 @@ struct AppFeature {
     Scope(state: \.exploreTab, action: \.exploreTab) {
       ExploreTabFeature()
     }
+    Scope(state: \.searchTab, action: \.searchTab) {
+      SearchTabFeature()
+    }
     Scope(state: \.profileTab, action: \.profileTab) {
       ProfileTabFeature()
     }
-    //    .ifLet(\.$settingsSheet, action: \.settingsSheet) {
-    //      SettingsTabFeature()
-    //    }
   }
 }
 
@@ -226,7 +222,7 @@ struct ContentView: View {
             systemImage: "magnifyingglass",
             value: .search
           ) {
-            Text("wip")
+            SearchTab(store: self.store.scope(state: \.searchTab, action: \.searchTab))
           }
 
           Tab(
@@ -247,9 +243,6 @@ struct ContentView: View {
     .task {
       await store.send(.task).finish()
     }
-    //    .sheet(item: $store.scope(state: \.settingsSheet, action: \.settingsSheet)) { store in
-    //
-    //    }
   }
 }
 
