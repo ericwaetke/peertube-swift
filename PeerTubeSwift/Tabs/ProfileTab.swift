@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import FontKit
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -202,71 +203,61 @@ struct ProfileTab: View {
   var body: some View {
     NavigationStack {
       Form {
-        Section("Your Home Instance") {
-          HStack {
+        Button {
+        } label: {
+          HStack(spacing: 8) {
+            Circle()
+              .frame(height: 68)
             VStack(alignment: .leading) {
-              Text("Connected to: \(self.store.client.instance.host)")
-
-              switch self.store.healthStatus {
-              case .loading:
-                EmptyView()
-              case .healthy(let config):
-                Text(config.instance.name)
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-                Text("v\(config.serverVersion)")
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-              case .error(let error):
-                Text("Error: \(error)")
-                  .font(.caption)
-                  .foregroundStyle(.red)
-              }
+              Text("User Name")
+                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+                .lineLimit(1)
+                .foregroundStyle(Color(uiColor: .label))
+              Text("Account & App Settings")
+                .font(
+                  CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline)
+                )
+                .scaledToFit()
+                .lineLimit(1)
+                .foregroundStyle(Color(uiColor: .secondaryLabel))
             }
-
             Spacer()
-
-            switch self.store.healthStatus {
-            case .loading:
-              ProgressView()
-                .scaleEffect(0.8)
-            case .healthy:
-              Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
-            case .error:
-              Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.red)
-            }
-          }
-
-          Button("Change Connected Instance") {
-            self.store.send(.editInstanceButtonTapped)
+            Image(systemName: "chevron.right")
+              .foregroundStyle(Color(uiColor: .tertiaryLabel))
           }
         }
 
-        Section("Account") {
-          if let session = store.session {
-            Text("Logged in as \(session.username)@\(session.host)")
-            Button("Log Out", role: .destructive) {
-              self.store.send(.logoutButtonTapped)
-            }
-          } else {
-            Button("Log In to \(self.store.client.instance.host)") {
-              self.store.send(.loginButtonTapped)
-            }
+        Section {
+
+        } header: {
+          HStack {
+            Text("Watch History")
+              .font(
+                CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+              )
+              .textCase(.uppercase)
+              .foregroundStyle(Color.labelSecondary)
+            Spacer()
+            Button("Show All") {}
           }
         }
 
-        Section("Debugging") {
-          Button("Go to Collective Change Video") {
-            self.store.send(.goToCCVideo)
-          }
-          Button("Test Notification") {
-            self.store.send(.testNotification)
+        Section {
+
+        } header: {
+          HStack {
+            Text("Playlists")
+              .font(
+                CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+              )
+              .textCase(.uppercase)
+              .foregroundStyle(Color.labelSecondary)
+            Spacer()
+            Button("Show All") {}
           }
         }
       }
-      .navigationTitle("Settings")
+      .navigationTitle("Your Profile")
       .task {
         self.store.send(.onAppear)
       }

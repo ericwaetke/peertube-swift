@@ -10,13 +10,10 @@
     "@%@" : {
 
     },
-    "^[%@ View](inflect: true)" : {
-
-    },
     "^[%lld View](inflect: true)" : {
       "comment" : "View Count with automatic inflection (pluralisation). E.g. “1 View” or “2 Views”"
     },
-    "Account" : {
+    "Account & App Settings" : {
 
     },
     "Add a comment …" : {
@@ -29,9 +26,6 @@
 
     },
     "Cancel" : {
-
-    },
-    "Change Connected Instance" : {
 
     },
     "Comments" : {
@@ -53,6 +47,7 @@
     },
     "Connected to: %@" : {
       "comment" : "The Placeholder is the instance’s host",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -107,9 +102,6 @@
         }
       }
     },
-    "Debugging" : {
-
-    },
     "Edit Instance" : {
 
     },
@@ -120,6 +112,7 @@
 
     },
     "Error: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -130,9 +123,6 @@
       }
     },
     "Explore" : {
-
-    },
-    "Go to Collective Change Video" : {
 
     },
     "Hide replies" : {
@@ -174,6 +164,7 @@
       }
     },
     "Log In to %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -184,6 +175,7 @@
       }
     },
     "Log Out" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -194,6 +186,7 @@
       }
     },
     "Logged in as %@@%@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -210,6 +203,9 @@
       }
     },
     "Login" : {
+
+    },
+    "lol" : {
 
     },
     "Manage Subscriptions" : {
@@ -234,6 +230,9 @@
 
     },
     "Password" : {
+
+    },
+    "Playlists" : {
 
     },
     "Post" : {
@@ -272,13 +271,13 @@
     "Show ^[%lld reply](inflect: true)" : {
 
     },
+    "Show All" : {
+
+    },
     "Subscribe" : {
 
     },
     "Subscriptions" : {
-
-    },
-    "Test Notification" : {
 
     },
     "The Instance URL doesn’t seem to be valid." : {
@@ -296,16 +295,22 @@
     "Unsubscribe" : {
 
     },
-    "Username" : {
+    "User Name" : {
 
     },
-    "v%@" : {
+    "Username" : {
 
     },
     "Video Not Found" : {
 
     },
     "Videos" : {
+
+    },
+    "Views" : {
+
+    },
+    "Watch History" : {
 
     },
     "You are not subscribed to anyone" : {
@@ -317,7 +322,7 @@
     "Your Feed is empty" : {
 
     },
-    "Your Home Instance" : {
+    "Your Profile" : {
 
     },
     "Your Subscriptions" : {
