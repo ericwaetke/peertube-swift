@@ -121,16 +121,6 @@ struct VideoCardView: View {
   @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
   @Dependency(\.defaultDatabase) var database
 
-  var formatter: RelativeDateTimeFormatter {
-    let formatter = RelativeDateTimeFormatter()
-    if store.state.variant != .small {
-      formatter.unitsStyle = .full
-    } else {
-      formatter.unitsStyle = .short
-    }
-    return formatter
-  }
-
   let hourStyle = Duration.TimeFormatStyle(pattern: .hourMinuteSecond(padHourToLength: 1))
   let minuteStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 1))
   let secondStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 2))
@@ -207,30 +197,6 @@ struct VideoCardView: View {
   }
 
   @ViewBuilder
-  private var viewsAndDate: some View {
-    HStack(spacing: 4) {
-      if let views = store.videoViews?.formatted(
-        .number
-          .locale(.autoupdatingCurrent)
-          .notation(.compactName)
-      ) {
-        Text("Views")
-          .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
-          .lineLimit(1)
-      }
-
-      Text("·")
-        .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
-
-      if let publishDate = store.videoPublishDate {
-        Text(formatter.localizedString(for: publishDate, relativeTo: Date.now))
-          .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
-          .lineLimit(1)
-      }
-    }
-  }
-
-  @ViewBuilder
   private var videoDetails: some View {
     HStack(alignment: .top) {
       VStack(alignment: .leading, spacing: 4) {
@@ -245,9 +211,15 @@ struct VideoCardView: View {
             store: store.scope(state: \.userBadge, action: \.userBadge)
           )
           .onTapGesture { store.send(.userBadge(.openChannel)) }
-          viewsAndDate
+
+          ViewsAndDate(
+            views: store.state.videoViews, videoPublishDate: store.state.videoPublishDate,
+            unitStyle: store.state.variant != .small ? .full : .short)
+
         } else {
-          viewsAndDate
+          ViewsAndDate(
+            views: store.state.videoViews, videoPublishDate: store.state.videoPublishDate,
+            unitStyle: store.state.variant != .small ? .full : .short)
           UserBadge(
             store: store.scope(state: \.userBadge, action: \.userBadge)
           )

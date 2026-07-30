@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import Dependencies
+import FontKit
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -239,30 +240,15 @@ struct VideoDetails: View {
               } label: {
                 VStack(alignment: .leading, spacing: 8) {
                   Text(videoDetails.name ?? "Unknown Video Title")
-                    .font(.title2)
+                    .font(CustomFont.fjallaOne.swiftUIFont(size: 22, relativeTo: .title2))
                     .fontWeight(.bold)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.labelPrimary)
                     .multilineTextAlignment(.leading)
 
-                  HStack(spacing: 4) {
-                    if let views = videoDetails.views {
-                      Text("^[\(views) View](inflect: true)")
-                    }
-
-                    if let publishedAt = videoDetails.publishedAt {
-                      Text("·")
-                      Text(
-                        formatter.localizedString(
-                          for: publishedAt, relativeTo: Date.now
-                        )
-                      )
-                    }
-
-                    if !self.store.state.description.descriptionVisible {
-                      Text("... more")
-                        .fontWeight(.semibold)
-                    }
-                  }
+                  ViewsAndDate(
+                    views: videoDetails.views, videoPublishDate: videoDetails.publishedAt,
+                    unitStyle: .full
+                  )
                   .font(.callout)
                   .opacity(0.5)
                   .foregroundStyle(.primary)
