@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F60CC6322F77099100E40D88 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = F60CC6312F77099100E40D88 /* Secrets.xcconfig */; };
 		F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F627376B2EF9A871001DAA70 /* TubeSDK */; };
 		F66EE81F2F0140DB00793122 /* WebURL in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE81E2F0140DB00793122 /* WebURL */; };
 		F66EE8212F0140DB00793122 /* WebURLFoundationExtras in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE8202F0140DB00793122 /* WebURLFoundationExtras */; };
@@ -35,7 +34,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		F60CC6312F77099100E40D88 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		F660BBF72F0404F00049A3BA /* peertubeswift.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = peertubeswift.icon; sourceTree = "<group>"; };
 		F67428E12EF4AFC6000600DB /* PeerTubeSwift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PeerTubeSwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F67428F22EF4AFC9000600DB /* PeerTubeSwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeerTubeSwiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -117,7 +115,6 @@
 		F67428D82EF4AFC6000600DB = {
 			isa = PBXGroup;
 			children = (
-				F60CC6312F77099100E40D88 /* Secrets.xcconfig */,
 				F6BF922F2EF860F6001EAFBD /* peertube-swift-sdk */,
 				F67428E32EF4AFC6000600DB /* PeerTubeSwift */,
 				F67428F52EF4AFC9000600DB /* PeerTubeSwiftTests */,
@@ -147,7 +144,6 @@
 				F67428DD2EF4AFC6000600DB /* Sources */,
 				F67428DE2EF4AFC6000600DB /* Frameworks */,
 				F67428DF2EF4AFC6000600DB /* Resources */,
-				F6DE52E42F781E3600F19AAD /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -272,7 +268,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F60CC6322F77099100E40D88 /* Secrets.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -291,26 +286,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		F6DE52E42F781E3600F19AAD /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\n${BUILD_DIR%/Build/*}/SourcePackages/checkouts/posthog-ios/build-tools/upload-symbols.sh\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		F67428DD2EF4AFC6000600DB /* Sources */ = {
@@ -352,7 +327,6 @@
 /* Begin XCBuildConfiguration section */
 		F67429062EF4AFC9000600DB /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F60CC6312F77099100E40D88 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -391,7 +365,6 @@
 		};
 		F67429072EF4AFC9000600DB /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F60CC6312F77099100E40D88 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

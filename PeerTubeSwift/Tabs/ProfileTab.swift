@@ -31,6 +31,7 @@ struct ProfileTabFeature {
     }
 
     var healthStatus: HealthStatus = .loading
+    var watchHistory = WatchHistoryFeature.State()
   }
 
   enum Action {
@@ -54,6 +55,8 @@ struct ProfileTabFeature {
     case testNotification
 
     case dismiss
+
+    case watchHistory(WatchHistoryFeature.Action)
 
     case delegate(Delegate)
 
@@ -180,6 +183,9 @@ struct ProfileTabFeature {
           await dismiss()
         }
 
+      case .watchHistory:
+        return .none
+
       case .delegate:
         return .none
 
@@ -194,6 +200,9 @@ struct ProfileTabFeature {
     }
     .ifLet(\.$login, action: \.login) {
       LoginFeature()
+    }
+    Scope(state: \.watchHistory, action: \.watchHistory) {
+      WatchHistoryFeature()
     }
   }
 }
@@ -228,7 +237,12 @@ struct ProfileTab: View {
         }
 
         Section {
-
+          WatchHistory(
+            store: store.scope(
+              state: \.watchHistory,
+              action: \.watchHistory
+            )
+          )
         } header: {
           HStack {
             Text("Watch History")
