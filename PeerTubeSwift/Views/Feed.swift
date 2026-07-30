@@ -24,14 +24,21 @@ import TubeSDK
   let instance: Instance?
 }
 
-// MARK: - Feed Filter Types (Top-level to allow referencing from FeedCacheActor)
-
 enum FeedFilter: Equatable, Hashable {
   case exploreNewest
   case recommended
   case subscriptions
   case search
   case continueWatching
+
+  var videoCardVariant: VideoCardVariant {
+    switch self {
+    case .search:
+      .small
+    default:
+      .large
+    }
+  }
 }
 
 enum FeedOrder: Equatable, Hashable {
@@ -374,7 +381,6 @@ struct FeedFeature {
     case loadInitialVideos
     case loadSecondBatch
     case loadMoreVideos
-    case finishLoadingMore([VideoRow])
     case setLoadingMore(Bool)
 
     case loadChannelVideos
@@ -655,7 +661,6 @@ struct FeedFeature {
 
           // Check global cache first
           if let cachedVideos = await FeedCacheActor.shared.get(feedType) {
-            print("[CACHE] Using cached videos for initial load")
             await send(.finishLoading(cachedVideos))
             return
           }
@@ -676,7 +681,6 @@ struct FeedFeature {
             sort = nil
           }
 
-          print("[TIMING] InitialLoad: Starting fetch (4 videos)...")
           let fetchStart = Date()
 
           // Load first 4 videos with pagination
@@ -686,25 +690,16 @@ struct FeedFeature {
           } else {
             peertubeVideos = try await client.getVideos(count: 4, start: 0)
           }
-          let apiTime = Date().timeIntervalSince(fetchStart)
-          print(
-            "[TIMING] InitialLoad: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)"
-          )
 
           // Save to DB for caching and use returned VideoRows
           let dbStart = Date()
           let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
-          let dbTime = Date().timeIntervalSince(dbStart)
-          print("[TIMING] InitialLoad: DB writes took \(String(format: "%.3f", dbTime))s")
 
           // Update global cache
           await FeedCacheActor.shared.set(feedType, videos: videos)
 
           // Fire-and-forget image preloading
           self.preloadThumbnails(for: videos)
-
-          let totalTime = Date().timeIntervalSince(fetchStart)
-          print("[TIMING] InitialLoad: TOTAL \(String(format: "%.3f", totalTime))s")
 
           await send(.finishLoading(videos))
 
@@ -733,9 +728,6 @@ struct FeedFeature {
             sort = nil
           }
 
-          print("[TIMING] SecondBatch: Starting fetch (11 videos at offset 4)...")
-          let fetchStart = Date()
-
           // Load 11 more videos starting at offset 4
           let peertubeVideos: [TubeSDK.Video]
           if let sort = sort {
@@ -744,16 +736,7 @@ struct FeedFeature {
             peertubeVideos = try await client.getVideos(count: 11, start: 4)
           }
 
-          let apiTime = Date().timeIntervalSince(fetchStart)
-          print(
-            "[TIMING] SecondBatch: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)"
-          )
-
-          // Save to DB for caching and use returned VideoRows
-          let dbStart = Date()
           let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
-          let dbTime = Date().timeIntervalSince(dbStart)
-          print("[TIMING] SecondBatch: DB writes took \(String(format: "%.3f", dbTime))s")
 
           // Update global cache with combined results
           let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []
@@ -763,10 +746,7 @@ struct FeedFeature {
           // Fire-and-forget image preloading
           self.preloadThumbnails(for: videos)
 
-          let totalTime = Date().timeIntervalSince(fetchStart)
-          print("[TIMING] SecondBatch: TOTAL \(String(format: "%.3f", totalTime))s")
-
-          await send(.finishLoadingMore(videos))
+          await send(.finishLoading(videos))
         }
       case .loadVideosBySearch(let searchParameters):
         return .run { [client = state.client, searchParameters = searchParameters] send in
@@ -907,7 +887,7 @@ struct FeedFeature {
         }
       case .finishLoading(let rows):
         let newCards = rows.map {
-          VideoCardFeature.State.init(row: $0, variant: .large)
+          VideoCardFeature.State.init(row: $0, variant: state.feedType.videoCardVariant)
         }
         // First load (offset 0): replace
         if state.currentOffset == 0 {
@@ -944,9 +924,6 @@ struct FeedFeature {
             sort = nil
           }
 
-          print("[TIMING] LoadMore: Starting fetch at offset \(offset) (15 videos)...")
-          let fetchStart = Date()
-
           // Load 15 more videos with current offset
           let peertubeVideos: [TubeSDK.Video]
           if let sort = sort {
@@ -955,16 +932,8 @@ struct FeedFeature {
             peertubeVideos = try await client.getVideos(count: 15, start: offset)
           }
 
-          let apiTime = Date().timeIntervalSince(fetchStart)
-          print(
-            "[TIMING] LoadMore: API call took \(String(format: "%.3f", apiTime))s (\(peertubeVideos.count) videos)"
-          )
-
           // Save to DB for caching and use returned VideoRows
-          let dbStart = Date()
           let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
-          let dbTime = Date().timeIntervalSince(dbStart)
-          print("[TIMING] LoadMore: DB writes took \(String(format: "%.3f", dbTime))s")
 
           // Update global cache with combined results
           let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []
@@ -974,20 +943,17 @@ struct FeedFeature {
           // Fire-and-forget image preloading
           self.preloadThumbnails(for: videos)
 
-          let totalTime = Date().timeIntervalSince(fetchStart)
-          print("[TIMING] LoadMore: TOTAL \(String(format: "%.3f", totalTime))s")
-
-          await send(.finishLoadingMore(videos))
+          await send(.finishLoading(videos))
         }
-      case .finishLoadingMore(let rows):
-        let newCards = rows.map {
-          VideoCardFeature.State.init(row: $0, variant: .large)
-        }
-        state.videoCards.append(contentsOf: newCards)
-        state.currentOffset += rows.count
-        state.isLoadingMore = false
-        state.hasMoreVideos = rows.count > 0
-        return .none
+      //      case .finishLoadingMore(let rows):
+      //        let newCards = rows.map {
+      //          VideoCardFeature.State.init(row: $0, variant: .large)
+      //        }
+      //        state.videoCards.append(contentsOf: newCards)
+      //        state.currentOffset += rows.count
+      //        state.isLoadingMore = false
+      //        state.hasMoreVideos = rows.count > 0
+      //        return .none
       case .setLoadingMore(let isLoading):
         state.isLoadingMore = isLoading
         return .none

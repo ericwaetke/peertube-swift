@@ -104,7 +104,7 @@ extension VideoCardFeature.State {
     self.instanceDisplayHost = row.instance?.host ?? ""
     self.instanceDisplayAvatarUrl = row.instance?.avatarUrl
     self.userBadge = UserBadgeFeature.State(
-      variant: variant == .small ? .small : variant == .medium ? .small : .medium,
+      variant: variant == .small ? .tiny : variant == .medium ? .small : .medium,
       avatarUrl: row.channel?.avatarUrl ?? "",
       channelDisplayName: row.channel?.name ?? "unknown",
       instanceDisplayName: row.instance?.host ?? "",
@@ -121,7 +121,16 @@ struct VideoCardView: View {
   @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
   @Dependency(\.defaultDatabase) var database
 
-  let formatter = RelativeDateTimeFormatter()
+  var formatter: RelativeDateTimeFormatter {
+    let formatter = RelativeDateTimeFormatter()
+    if store.state.variant != .small {
+      formatter.unitsStyle = .full
+    } else {
+      formatter.unitsStyle = .short
+    }
+    return formatter
+  }
+
   let hourStyle = Duration.TimeFormatStyle(pattern: .hourMinuteSecond(padHourToLength: 1))
   let minuteStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 1))
   let secondStyle = Duration.TimeFormatStyle(pattern: .minuteSecond(padMinuteToLength: 2))
@@ -199,10 +208,15 @@ struct VideoCardView: View {
 
   @ViewBuilder
   private var viewsAndDate: some View {
-    HStack(spacing: 6) {
-      if let views = store.videoViews {
-        Text("^[\(views) View](inflect: true)")
+    HStack(spacing: 4) {
+      if let views = store.videoViews?.formatted(
+        .number
+          .locale(.autoupdatingCurrent)
+          .notation(.compactName)
+      ) {
+        Text("Views")
           .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
+          .lineLimit(1)
       }
 
       Text("·")
@@ -211,6 +225,7 @@ struct VideoCardView: View {
       if let publishDate = store.videoPublishDate {
         Text(formatter.localizedString(for: publishDate, relativeTo: Date.now))
           .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
+          .lineLimit(1)
       }
     }
   }
@@ -248,11 +263,14 @@ struct VideoCardView: View {
   var body: some View {
     switch store.state.variant {
     case .small:
-      HStack {
+      HStack(spacing: 6) {
         videoThumbnail
+          .padding(.trailing, 8)
 
         videoDetails
       }
+      .padding(8)
+      .onTapGesture { store.send(.videoTapped) }
     case .medium, .large:
       VStack {
         videoThumbnail
@@ -339,7 +357,7 @@ struct VideoCardView: View {
             videoThumbnailUrl: "https://picsum.photos/400/225",
             videoDuration: 3600,
             videoCurrentTime: nil,
-            videoPublishDate: Date().addingTimeInterval(-86400),
+            videoPublishDate: Date().addingTimeInterval(-2_592_000),
             videoViews: 420,
             channelDisplayName: "Test Channel",
             channelAvatarUrl: "https://picsum.photos/40",
