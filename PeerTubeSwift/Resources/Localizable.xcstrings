@@ -10,7 +10,13 @@
     "%@ Views" : {
 
     },
+    "Account" : {
+
+    },
     "Account & App Settings" : {
+
+    },
+    "Account Settings" : {
 
     },
     "Add a comment …" : {
@@ -233,6 +239,9 @@
     "Password" : {
 
     },
+    "peertube.wtf" : {
+
+    },
     "Playlists" : {
 
     },
@@ -321,6 +330,9 @@
 
     },
     "You have instances added, but they dont seem to have any videos right now" : {
+
+    },
+    "Your Community" : {
 
     },
     "Your Feed is empty" : {
