@@ -134,35 +134,35 @@ struct AppFeature {
       case .searchTab:
         return .none
 
-      case .profileTab(.delegate(.didLogin)):
-        return .run { send in
-          @Dependency(\.defaultDatabase) var database
-          do {
-            try await database.write { db in
-              try db.execute(sql: "DELETE FROM peertubeSubscriptions")
-              try db.execute(sql: "DELETE FROM videoChannels")
-              try db.execute(sql: "DELETE FROM videos")
-            }
-          } catch {
-            reportIssue(error)
-          }
-          await send(.syncSubscriptions)
-          await send(.feedTab(.subscriptionFeed(.loadVideos)))
-        }
-      case .profileTab(.delegate(.didLogout)):
-        return .run { send in
-          @Dependency(\.defaultDatabase) var database
-          do {
-            try await database.write { db in
-              try db.execute(sql: "DELETE FROM peertubeSubscriptions")
-              try db.execute(sql: "DELETE FROM videoChannels")
-              try db.execute(sql: "DELETE FROM videos")
-            }
-          } catch {
-            reportIssue(error)
-          }
-          await send(.feedTab(.subscriptionFeed(.loadVideos)))
-        }
+//      case .profileTab(.delegate(.didLogin)):
+//        return .run { send in
+//          @Dependency(\.defaultDatabase) var database
+//          do {
+//            try await database.write { db in
+//              try db.execute(sql: "DELETE FROM peertubeSubscriptions")
+//              try db.execute(sql: "DELETE FROM videoChannels")
+//              try db.execute(sql: "DELETE FROM videos")
+//            }
+//          } catch {
+//            reportIssue(error)
+//          }
+//          await send(.syncSubscriptions)
+//          await send(.feedTab(.subscriptionFeed(.loadVideos)))
+//        }
+//      case .profileTab(.delegate(.didLogout)):
+//        return .run { send in
+//          @Dependency(\.defaultDatabase) var database
+//          do {
+//            try await database.write { db in
+//              try db.execute(sql: "DELETE FROM peertubeSubscriptions")
+//              try db.execute(sql: "DELETE FROM videoChannels")
+//              try db.execute(sql: "DELETE FROM videos")
+//            }
+//          } catch {
+//            reportIssue(error)
+//          }
+//          await send(.feedTab(.subscriptionFeed(.loadVideos)))
+//        }
       case .profileTab:
         return .none
       }
