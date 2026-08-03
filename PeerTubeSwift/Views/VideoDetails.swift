@@ -206,7 +206,7 @@ struct VideoDetails: View {
         )
       } else if let videoDetails = self.store.videoDetails {
 
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
           if let videoFiles = videoDetails.streamingPlaylists?.first?.files,
             !videoFiles.isEmpty
           {
@@ -258,16 +258,17 @@ struct VideoDetails: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
               }
+              .padding()
               .buttonStyle(.plain)
 
               VideoActionsView(store: self.store.scope(state: \.actions, action: \.actions))
+                    .padding()
 
               Divider()
 
               ChannelPreviewView(
                 store: self.store.scope(state: \.channelPreview, action: \.channelPreview))
-
-              Divider()
+              .padding()
 
               VStack(alignment: .leading) {
                 VideoCommentsView(store: self.store.scope(state: \.comments, action: \.comments))
@@ -275,7 +276,6 @@ struct VideoDetails: View {
 
               Spacer()
             }
-            .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
           }
         }

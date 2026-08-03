@@ -1,17 +1,14 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "... more" : {
-      "comment" : "The text hint for the video description. Clicking it reveals the entire description"
-    },
     "·" : {
 
     },
     "@%@" : {
 
     },
-    "^[%lld View](inflect: true)" : {
-      "comment" : "View Count with automatic inflection (pluralisation). E.g. “1 View” or “2 Views”"
+    "%@ Views" : {
+
     },
     "Account & App Settings" : {
 
@@ -126,6 +123,7 @@
 
     },
     "Hide replies" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -208,6 +206,12 @@
     "Manage Subscriptions" : {
 
     },
+    "Mute account %@" : {
+
+    },
+    "Mute community %@" : {
+
+    },
     "New Comment" : {
 
     },
@@ -253,6 +257,9 @@
     "Replying to @%@" : {
 
     },
+    "Report this comment" : {
+
+    },
     "Retry" : {
 
     },
@@ -263,9 +270,6 @@
 
     },
     "Settings" : {
-
-    },
-    "Show ^[%lld reply](inflect: true)" : {
 
     },
     "Show All" : {
@@ -304,10 +308,13 @@
     "Videos" : {
 
     },
-    "Views" : {
+    "Watch History" : {
 
     },
-    "Watch History" : {
+    "Write a comment …" : {
+
+    },
+    "Write a reply" : {
 
     },
     "You are not subscribed to anyone" : {

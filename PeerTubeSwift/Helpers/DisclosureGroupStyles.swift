@@ -20,9 +20,11 @@ struct InnerSectionDisclosureGroup: DisclosureGroupStyle {
           configuration.label
             .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote))
             .textCase(.uppercase)
+            .foregroundStyle(Color.labelSecondary)
           Image(systemName: "chevron.right")
             .font(.system(size: 13))
             .rotationEffect(configuration.isExpanded ? .degrees(90) : .degrees(0))
+            .foregroundStyle(Color.labelSecondary)
           Spacer()
         }
         .padding(.horizontal, 16)
@@ -33,11 +35,11 @@ struct InnerSectionDisclosureGroup: DisclosureGroupStyle {
       .buttonStyle(.plain)
       if configuration.isExpanded {
         configuration.content
+              .transaction { t in t.animation = nil }
       }
     }
     .padding(.top, 8)
     .padding(.bottom, 16)
-    /*.background(Color(red: 0.8823529412, green: 0.8823529412, blue: 0.8980392157))*/
     .background(Color(uiColor: UIColor.systemFill))
     .overlay(alignment: .top) {
       // Top inset shadow
