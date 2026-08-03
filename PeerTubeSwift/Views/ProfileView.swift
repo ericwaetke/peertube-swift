@@ -35,8 +35,8 @@ struct ProfileTabViewFeature {
   enum Action {
     case onAppear
     case sessionLoaded(UserSession?)
-      
-      case accountButtonTapped
+
+    case accountButtonTapped
 
     case checkInstanceHealth
     case instanceHealthResponse(Result<ServerConfig, NetworkError>)
@@ -139,9 +139,9 @@ struct ProfileTabViewFeature {
 
       case .editInstance:
         return .none
-          
+
       case .accountButtonTapped:
-          return .none
+        return .none
 
       case .loginButtonTapped:
         state.login = LoginFeature.State()
@@ -199,105 +199,123 @@ struct ProfileTabViewFeature {
 }
 
 struct ProfileTabView: View {
-    @Bindable var store: StoreOf<ProfileTabViewFeature>
-    var body: some View {
-        Form {
-            Button {
-                store.send(.accountButtonTapped)
-            } label: {
-                HStack(spacing: 8) {
-                    Circle()
-                        .frame(height: 68)
-                    VStack(alignment: .leading) {
-                        Text("User Name")
-                            .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
-                            .lineLimit(1)
-                            .foregroundStyle(Color(uiColor: .label))
-                        Text("Account & App Settings")
-                            .font(
-                                CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline)
-                            )
-                            .scaledToFit()
-                            .lineLimit(1)
-                            .foregroundStyle(Color(uiColor: .secondaryLabel))
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(Color(uiColor: .tertiaryLabel))
-                }
+  @Bindable var store: StoreOf<ProfileTabViewFeature>
+  var body: some View {
+    Form {
+      Section {
+        Button {
+          store.send(.accountButtonTapped)
+        } label: {
+          HStack(spacing: 8) {
+            if let session = store.state.session {
+              if let avatarUrl = session.avatarUrl {
+                AvatarView(url: avatarUrl, name: "", size: 68)
+              }
             }
-            
-            Section {
-                WatchHistory(
-                    store: store.scope(
-                        state: \.watchHistory,
-                        action: \.watchHistory
-                    )
+            VStack(alignment: .leading) {
+              Text(store.state.session?.username ?? "No Account Signed In")
+                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+                .lineLimit(1)
+                .foregroundStyle(Color(uiColor: .label))
+              Text("\(store.state.session != nil ? "Account & App Settings" : "App Settings")")
+                .font(
+                  CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline)
                 )
-            } header: {
-                HStack {
-                    Text("Watch History")
-                        .font(
-                            CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
-                        )
-                        .textCase(.uppercase)
-                        .foregroundStyle(Color.labelSecondary)
-                    Spacer()
-                    Button("Show All") {}
-                }
+                .scaledToFit()
+                .lineLimit(1)
+                .foregroundStyle(Color(uiColor: .secondaryLabel))
             }
-            
-            Section {
-                
-            } header: {
-                HStack {
-                    Text("Playlists")
-                        .font(
-                            CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
-                        )
-                        .textCase(.uppercase)
-                        .foregroundStyle(Color.labelSecondary)
-                    Spacer()
-                    Button("Show All") {}
-                }
-            }
+            Spacer()
+            Image(systemName: "chevron.right")
+              .foregroundStyle(Color(uiColor: .tertiaryLabel))
+          }
         }
-        .navigationTitle("Your Profile")
-        .task {
-            self.store.send(.onAppear)
+        if store.state.session == nil {
+          Button {
+          } label: {
+            Text("Sign In")
+              .foregroundStyle(Color.labelAction)
+              .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+              .containerRelativeFrame(.horizontal)
+          }
         }
-        .sheet(item: $store.scope(state: \.editInstance, action: \.editInstance)) { store in
-            NavigationStack {
-                InstanceManager(store: store)
-                    .navigationTitle("Edit Instance")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem {
-                            Button("Save") {
-                                guard let url = store.state.instanceUrl else { return }
-                                store.send(.delegate(.saveNewInstance(url: url)))
-                            }
-                            .disabled(!store.state.readyToSaveInstance)
-                        }
-                    }
-            }
+      } footer: {
+        Text(
+          "To sign in, you’ll need an account with a Peertube community. You can find a list of all communities here."
+        )
+      }
+
+      Section {
+        WatchHistory(
+          store: store.scope(
+            state: \.watchHistory,
+            action: \.watchHistory
+          )
+        )
+      } header: {
+        HStack {
+          Text("Watch History")
+            .font(
+              CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+            )
+            .textCase(.uppercase)
+            .foregroundStyle(Color.labelSecondary)
+          Spacer()
+          Button("Show All") {}
         }
-        .sheet(item: $store.scope(state: \.login, action: \.login)) { loginStore in
-            NavigationStack {
-                LoginView(store: loginStore)
-            }
+      }
+
+      Section {
+
+      } header: {
+        HStack {
+          Text("Playlists")
+            .font(
+              CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+            )
+            .textCase(.uppercase)
+            .foregroundStyle(Color.labelSecondary)
+          Spacer()
+          Button("Show All") {}
         }
+      }
     }
+    .navigationTitle("Your Profile")
+    .task {
+      self.store.send(.onAppear)
+    }
+    .sheet(item: $store.scope(state: \.editInstance, action: \.editInstance)) { store in
+      NavigationStack {
+        InstanceManager(store: store)
+          .navigationTitle("Edit Instance")
+          .navigationBarTitleDisplayMode(.inline)
+          .toolbar {
+            ToolbarItem {
+              Button("Save") {
+                guard let url = store.state.instanceUrl else { return }
+                store.send(.delegate(.saveNewInstance(url: url)))
+              }
+              .disabled(!store.state.readyToSaveInstance)
+            }
+          }
+      }
+    }
+    .sheet(item: $store.scope(state: \.login, action: \.login)) { loginStore in
+      NavigationStack {
+        LoginView(store: loginStore)
+      }
+    }
+  }
 }
 
 #Preview {
-    let _ = prepareDependencies {
-        try! $0.bootstrapDatabase()
-        try! $0.defaultDatabase.seed()
-    }
-    
-    ProfileTab(
-        store: Store(initialState: ProfileTabFeature.State()) {
+  let _ = prepareDependencies {
+    try! $0.bootstrapDatabase()
+    try! $0.defaultDatabase.seed()
+  }
+
+  ProfileTab(
+    store: Store(initialState: ProfileTabFeature.State()) {
       ProfileTabFeature()
     }
   )

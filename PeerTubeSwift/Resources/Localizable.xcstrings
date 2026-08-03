@@ -7,13 +7,13 @@
     "@%@" : {
 
     },
+    "%@" : {
+
+    },
     "%@ Views" : {
 
     },
     "Account" : {
-
-    },
-    "Account & App Settings" : {
 
     },
     "Account Settings" : {
@@ -29,6 +29,9 @@
 
     },
     "Cancel" : {
+
+    },
+    "Change" : {
 
     },
     "Comments" : {
@@ -105,7 +108,13 @@
         }
       }
     },
+    "Display Name" : {
+
+    },
     "Edit Instance" : {
+
+    },
+    "Email" : {
 
     },
     "Enable notifications in Settings to receive alerts when this channel posts new videos." : {
@@ -148,6 +157,9 @@
     "Instance URL" : {
 
     },
+    "Languages" : {
+
+    },
     "Load More" : {
 
     },
@@ -177,6 +189,9 @@
           }
         }
       }
+    },
+    "Log out" : {
+
     },
     "Log Out" : {
       "extractionState" : "stale",
@@ -248,6 +263,9 @@
     "Post" : {
 
     },
+    "Prefered Categories" : {
+
+    },
     "Profile" : {
 
     },
@@ -284,6 +302,9 @@
     "Show All" : {
 
     },
+    "Sign In" : {
+
+    },
     "Subscribe" : {
 
     },
@@ -299,13 +320,13 @@
     "This channel doesn't have any videos yet" : {
 
     },
+    "To sign in, you’ll need an account with a Peertube community. You can find a list of all communities here." : {
+
+    },
     "Try Again" : {
 
     },
     "Unsubscribe" : {
-
-    },
-    "User Name" : {
 
     },
     "Username" : {
