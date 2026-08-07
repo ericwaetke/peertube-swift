@@ -26,6 +26,7 @@ struct InstanceManagerFeature {
     var searchText: String = ""
     var selectedInstanceId: Int?
     var instanceHealth: [Int: InstanceHealthStatus] = [:]
+    var selectedCustomInstance: CustomInstanceEntry?
   }
 
   enum Action {
@@ -45,6 +46,7 @@ struct InstanceManagerFeature {
     case searchTextChanged(String)
     case selectInstance(Int)
     case instanceHealthResult(Int, Bool)
+    case selectNewInstance
 
     @CasePathable
     enum Delegate {
@@ -84,7 +86,12 @@ struct InstanceManagerFeature {
         return .none
       case .searchTextChanged(let text):
         state.searchText = text
-        return .none
+        if state.selectedCustomInstance == nil {
+          state.readyToSaveInstance = false
+          state.connectionError = nil
+          state.tryingInstanceConnection = false
+        }
+        return .cancel(id: TestConnectionCancelID.id)
       case .selectInstance(let id):
         state.selectedInstanceId = id
         state.instanceHealth[id] = .checking
@@ -104,10 +111,17 @@ struct InstanceManagerFeature {
       case .instanceHealthResult(let id, let healthy):
         state.instanceHealth[id] = healthy ? .healthy : .unhealthy
         return .none
+      case .selectNewInstance:
+        state.instanceUrlString = state.searchText
+        return .send(.testConnection)
       case .testConnection:
         state.tryingInstanceConnection = true
         return .run { [instanceUrl = state.instanceUrlString] send in
-          guard let url = WebURL(instanceUrl), let host = url.host?.serialized else {
+          let candidate =
+            instanceUrl.contains("://")
+            ? instanceUrl
+            : "https://" + instanceUrl
+          guard let url = WebURL(candidate), let host = url.host?.serialized else {
             await send(.connectionResponse(.failure(.badURL)))
             return
           }
@@ -120,6 +134,7 @@ struct InstanceManagerFeature {
             await send(.connectionResponse(.failure(.connectionFailed(error.localizedDescription))))
           }
         }
+        .cancellable(id: TestConnectionCancelID.id)
       case .connectionResponse(let response):
         state.tryingInstanceConnection = false
 
@@ -128,6 +143,9 @@ struct InstanceManagerFeature {
           state.readyToSaveInstance = true
           state.connectionError =
             "Successfully connected to \(config.instance.name) (v\(config.serverVersion))"
+          if let url = state.instanceUrl {
+            state.selectedCustomInstance = CustomInstanceEntry(url: url)
+          }
         case .failure(let error):
           state.connectionError = error.localizedDescription
         }
@@ -161,28 +179,65 @@ enum InstanceHealthStatus: Equatable {
   case checking, healthy, unhealthy
 }
 
+struct CustomInstanceEntry: Equatable {
+  var url: WebURL
+}
+
 struct HealthCheckCancelID: Hashable {
   static let id = HealthCheckCancelID()
+}
+
+struct TestConnectionCancelID: Hashable {
+  static let id = TestConnectionCancelID()
 }
 
 struct InstanceManager: View {
   @Bindable var store: StoreOf<InstanceManagerFeature>
 
   var body: some View {
-    List(filteredInstances) { instance in
-      Button {
-        store.send(.selectInstance(instance.id))
-      } label: {
-        HStack {
-          Image(systemName: "checkmark")
-            .opacity(store.selectedInstanceId == instance.id ? 1 : 0)
-          Text(instance.host)
-          Spacer()
-          trailingStatus(for: instance.id)
+    List {
+      if let custom = store.selectedCustomInstance {
+        Section {
+          HStack {
+            Image(systemName: "checkmark")
+            Text(custom.url.host?.serialized ?? custom.url.serialized())
+            Spacer()
+            Image(systemName: "network")
+          }
+        }
+      }
+      Section {
+        ForEach(filteredInstances) { instance in
+          Button {
+            store.send(.selectInstance(instance.id))
+          } label: {
+            HStack {
+              Image(systemName: "checkmark")
+                .opacity(store.selectedInstanceId == instance.id ? 1 : 0)
+              Text(instance.host)
+              Spacer()
+              trailingStatus(for: instance.id)
+            }
+          }
+        }
+      }
+      if let candidate = newInstanceCandidate {
+        Section {
+          Button {
+            store.send(.selectNewInstance)
+          } label: {
+            HStack {
+              //                Image(systemName: store.readyToSaveInstance ? "checkmark.circle.fill" : "plus.circle")
+              Text(candidate)
+              Spacer()
+              newInstanceTrailingStatus()
+            }
+          }
         }
       }
     }
     .searchable(text: $store.searchText.sending(\.searchTextChanged))
+    .textInputAutocapitalization(.never)
     .refreshable {
       store.send(.refreshPull)
     }
@@ -194,6 +249,27 @@ struct InstanceManager: View {
   var filteredInstances: [TubeSDK.PeerTubeInstance] {
     guard !store.searchText.isEmpty else { return store.instances }
     return store.instances.filter { $0.host.localizedCaseInsensitiveContains(store.searchText) }
+  }
+
+  var newInstanceCandidate: String? {
+    guard !store.searchText.isEmpty, filteredInstances.isEmpty else { return nil }
+    if let custom = store.selectedCustomInstance,
+      custom.url.host?.serialized.caseInsensitiveCompare(store.searchText) == .orderedSame
+    {
+      return nil
+    }
+    return store.searchText
+  }
+
+  @ViewBuilder
+  func newInstanceTrailingStatus() -> some View {
+    if store.tryingInstanceConnection {
+      ProgressView()
+    } else if store.readyToSaveInstance {
+      Image(systemName: "network")
+    } else if store.connectionError != nil {
+      Image(systemName: "network.slash")
+    }
   }
 
   @ViewBuilder
