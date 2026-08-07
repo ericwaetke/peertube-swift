@@ -18,7 +18,7 @@ struct ProfileTabViewFeature {
   struct State: Equatable {
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
       scheme: "https", host: "peertube.wtf")
-    @Presents var editInstance: InstanceManagerFeature.State?
+    
     @Presents var login: LoginFeature.State?
     @Shared(.inMemory("session")) var session: UserSession?
 
@@ -41,8 +41,6 @@ struct ProfileTabViewFeature {
     case checkInstanceHealth
     case instanceHealthResponse(Result<ServerConfig, NetworkError>)
 
-    case editInstanceButtonTapped
-    case editInstance(PresentationAction<InstanceManagerFeature.Action>)
     case goToCCVideo
     case setClient(TubeSDKClient)
 
@@ -113,32 +111,9 @@ struct ProfileTabViewFeature {
       case .goToCCVideo:
         return .none
 
-      case .editInstanceButtonTapped:
-        guard let url = state.client.instance.urlComponents.url?.absoluteString else {
-          return .none
-        }
-        state.editInstance = InstanceManagerFeature.State(instanceUrlString: url)
-        return .none
-
-      case .editInstance(.presented(.delegate(let delegate))):
-        switch delegate {
-        case .saveNewInstance(let url):
-          state.editInstance = nil
-          return .run { send in
-            guard let host = url.host?.serialized else { return }
-            do {
-              try await send(
-                .setClient(TubeSDKClient(scheme: url.scheme, host: host, session: urlSession)))
-            } catch {}
-          }
-        }
-
       case .setClient(let client):
         state.$client.withLock { $0 = client }
         return .send(.checkInstanceHealth)
-
-      case .editInstance:
-        return .none
 
       case .accountButtonTapped:
         return .none
@@ -157,6 +132,22 @@ struct ProfileTabViewFeature {
           .send(.checkInstanceHealth),
           .send(.delegate(.didLogin))
         )
+          
+      case .login(.presented(.delegate(_))):
+          return .none
+          
+//      case .editInstance(.presented(.delegate(let delegate))):
+//        switch delegate {
+//        case .saveNewInstance(let url):
+//          state.editInstance = nil
+//          return .run { send in
+//            guard let host = url.host?.serialized else { return }
+//            do {
+//              try await send(
+//                .setClient(TubeSDKClient(scheme: url.scheme, host: host, session: urlSession)))
+//            } catch {}
+//          }
+//        }
 
       case .login:
         return .none
@@ -186,9 +177,6 @@ struct ProfileTabViewFeature {
         }
       }
     }
-    .ifLet(\.$editInstance, action: \.editInstance) {
-      InstanceManagerFeature()
-    }
     .ifLet(\.$login, action: \.login) {
       LoginFeature()
     }
@@ -208,9 +196,7 @@ struct ProfileTabView: View {
         } label: {
           HStack(spacing: 8) {
             if let session = store.state.session {
-              if let avatarUrl = session.avatarUrl {
-                AvatarView(url: avatarUrl, name: "", size: 68)
-              }
+                AvatarView(url: session.avatarUrl, name: session.username, size: 68)
             }
             VStack(alignment: .leading) {
               Text(store.state.session?.username ?? "No Account Signed In")
@@ -232,6 +218,7 @@ struct ProfileTabView: View {
         }
         if store.state.session == nil {
           Button {
+              store.send(.loginButtonTapped)
           } label: {
             Text("Sign In")
               .foregroundStyle(Color.labelAction)
@@ -240,9 +227,11 @@ struct ProfileTabView: View {
           }
         }
       } footer: {
-        Text(
-          "To sign in, you’ll need an account with a Peertube community. You can find a list of all communities here."
-        )
+          if store.state.session == nil {
+              Text(
+                "To sign in, you’ll need an account with a Peertube community. You can find a list of all communities here."
+              )
+          }
       }
 
       Section {
@@ -283,22 +272,6 @@ struct ProfileTabView: View {
     .navigationTitle("Your Profile")
     .task {
       self.store.send(.onAppear)
-    }
-    .sheet(item: $store.scope(state: \.editInstance, action: \.editInstance)) { store in
-      NavigationStack {
-        InstanceManager(store: store)
-          .navigationTitle("Edit Instance")
-          .navigationBarTitleDisplayMode(.inline)
-          .toolbar {
-            ToolbarItem {
-              Button("Save") {
-                guard let url = store.state.instanceUrl else { return }
-                store.send(.delegate(.saveNewInstance(url: url)))
-              }
-              .disabled(!store.state.readyToSaveInstance)
-            }
-          }
-      }
     }
     .sheet(item: $store.scope(state: \.login, action: \.login)) { loginStore in
       NavigationStack {

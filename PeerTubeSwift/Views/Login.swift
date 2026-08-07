@@ -1,21 +1,25 @@
 import ComposableArchitecture
 import SwiftUI
 import TubeSDK
+import FontKit
 
 @Reducer
-public struct LoginFeature {
+struct LoginFeature {
   @ObservableState
-  public struct State: Equatable {
-    public var username = ""
-    public var password = ""
-    public var isLoading = false
-    public var errorMessage: String?
-
-    public init() {}
+  struct State: Equatable {
+      @Presents var editInstance: InstanceManagerFeature.State?
+    var username = ""
+    var password = ""
+    var isLoading = false
+    var errorMessage: String?
   }
 
-  public enum Action: BindableAction {
+  enum Action: BindableAction {
     case binding(BindingAction<State>)
+      
+      case communityButtonTapped
+      case editInstance(PresentationAction<InstanceManagerFeature.Action>)
+      
     case loginButtonTapped
     case loginResponse(Result<UserSession, Error>)
     case delegate(Delegate)
@@ -30,9 +34,7 @@ public struct LoginFeature {
   @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
     scheme: "https", host: "peertube.wtf")
 
-  public init() {}
-
-  public var body: some Reducer<State, Action> {
+  var body: some Reducer<State, Action> {
     BindingReducer()
 
     Reduce<State, Action> { state, action in
@@ -90,53 +92,146 @@ public struct LoginFeature {
         print("Failed to login: \\(error)")
         state.errorMessage = error.localizedDescription
         return .none
+          
+      case .communityButtonTapped:
+//        guard let url = state.client.instance.urlComponents.url?.absoluteString else {
+//          return .none
+//        }
+        state.editInstance = InstanceManagerFeature.State(instanceUrlString: "")
+        return .none
+
+      
 
       case .delegate:
         return .none
+      case .editInstance(_):
+          return .none
       }
+    }
+    .ifLet(\.$editInstance, action: \.editInstance) {
+      InstanceManagerFeature()
     }
   }
 }
 
-public struct LoginView: View {
-  @Bindable var store: StoreOf<LoginFeature>
-
-  public init(store: StoreOf<LoginFeature>) {
-    self.store = store
-  }
-
-  public var body: some View {
-    Form {
-      Section(header: Text("Credentials")) {
-        TextField("Username", text: $store.username)
-          .textContentType(.username)
-          .autocapitalization(.none)
-        SecureField("Password", text: $store.password)
-          .textContentType(.password)
-      }
-
-      if let errorMessage = store.errorMessage {
-        Section {
-          Text(errorMessage)
-            .foregroundColor(.red)
-            .font(.caption)
-        }
-      }
-
-      Section {
+struct LoginView: View {
+    @Bindable var store: StoreOf<LoginFeature>
+    
+    @ViewBuilder
+    private var loginButton: some View {
         Button {
-          store.send(.loginButtonTapped)
+            store.send(.loginButtonTapped)
         } label: {
-          if store.isLoading {
-            ProgressView()
-              .progressViewStyle(CircularProgressViewStyle())
-          } else {
-            Text("Log In")
-          }
+            if store.isLoading {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+            } else {
+                Text("Log In")
+            }
         }
         .disabled(store.isLoading || store.username.isEmpty || store.password.isEmpty)
-      }
+        .buttonStyle(RiverTertiary())
     }
-    .navigationTitle("Login")
-  }
+    
+    var body: some View {
+        Form {
+            Section {
+                Button {
+                    store.send(.communityButtonTapped)
+                } label: {
+                    HStack {
+                        Text("Select a Community")
+                        Image(systemName: "chevron.right")
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("Community")
+                        .font(
+                            CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+                        )
+                        .textCase(.uppercase)
+                        .foregroundStyle(Color.labelSecondary)
+                }
+            }
+            
+            Section {
+                TextField("Username", text: $store.username)
+                    .textContentType(.username)
+                    .autocapitalization(.none)
+            } header: {
+                HStack {
+                    Text("Email")
+                        .font(
+                            CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+                        )
+                        .textCase(.uppercase)
+                        .foregroundStyle(Color.labelSecondary)
+                }
+            }
+            
+            Section {
+                SecureField("Password", text: $store.password)
+                    .textContentType(.password)
+            } header: {
+                HStack {
+                    Text("Password")
+                        .font(
+                            CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+                        )
+                        .textCase(.uppercase)
+                        .foregroundStyle(Color.labelSecondary)
+                }
+            }
+            
+            if let errorMessage = store.errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .font(.caption)
+                }
+            }
+        }
+        .navigationTitle("Sign In")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .primaryAction) {
+                    loginButton
+                }
+                .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .primaryAction) {
+                    loginButton
+                }
+            }
+        }
+        .sheet(item: $store.scope(state: \.editInstance, action: \.editInstance)) { store in
+          NavigationStack {
+            InstanceManager(store: store)
+              .navigationTitle("Edit Instance")
+              .navigationBarTitleDisplayMode(.inline)
+              .toolbar {
+                ToolbarItem {
+                  Button("Save") {
+                    guard let url = store.state.instanceUrl else { return }
+                    store.send(.delegate(.saveNewInstance(url: url)))
+                  }
+                  .disabled(!store.state.readyToSaveInstance)
+                }
+              }
+          }
+        }
+    }
+}
+      
+
+#Preview {
+    NavigationStack {
+        LoginView(
+          store: Store(initialState: LoginFeature.State()) {
+            LoginFeature()
+          }
+        )
+    }
 }
