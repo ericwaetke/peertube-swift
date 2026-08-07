@@ -203,23 +203,32 @@ for name in names {
     die("Mismatched semantic tokens between light and dark files: \(name)")
   }
   let components = name.split(separator: ".").map { String($0) }
-  guard components.count >= 2 else {
-    die("Unexpected semantic token path: \(name)")
+
+  if components.count == 1 {
+    // Top-level colorset directly under the catalog, e.g. semantic.AccentColor -> AccentColor.colorset.
+    let colorName = components[0].prefix(1).uppercased() + components[0].dropFirst()
+    let colorSetDir = assetsURL.appendingPathComponent("\(colorName).colorset")
+    try? FileManager.default.createDirectory(at: colorSetDir, withIntermediateDirectories: true)
+    writeJSON(
+      colorSetJSON(light: light, dark: dark),
+      to: colorSetDir.appendingPathComponent("Contents.json").path)
+    print("Generated \(colorName).colorset (light \(light.hex) / dark \(dark.hex))")
+  } else {
+    let groupName = components[0].capitalized
+    let colorName = components.dropFirst().map { $0.prefix(1).uppercased() + $0.dropFirst() }
+      .joined(
+        separator: "")
+    let groupDir = assetsURL.appendingPathComponent(groupName)
+    try? FileManager.default.createDirectory(at: groupDir, withIntermediateDirectories: true)
+    writeJSON(folderJSON(), to: groupDir.appendingPathComponent("Contents.json").path)
+
+    let colorSetDir = groupDir.appendingPathComponent("\(colorName).colorset")
+    try? FileManager.default.createDirectory(at: colorSetDir, withIntermediateDirectories: true)
+    writeJSON(
+      colorSetJSON(light: light, dark: dark),
+      to: colorSetDir.appendingPathComponent("Contents.json").path)
+
+    print("Generated \(groupName)/\(colorName).colorset (light \(light.hex) / dark \(dark.hex))")
   }
-  let groupName = components[0].capitalized
-  let colorName = components.dropFirst().map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(
-    separator: "")
-
-  let groupDir = assetsURL.appendingPathComponent(groupName)
-  try? FileManager.default.createDirectory(at: groupDir, withIntermediateDirectories: true)
-  writeJSON(folderJSON(), to: groupDir.appendingPathComponent("Contents.json").path)
-
-  let colorSetDir = groupDir.appendingPathComponent("\(colorName).colorset")
-  try? FileManager.default.createDirectory(at: colorSetDir, withIntermediateDirectories: true)
-  writeJSON(
-    colorSetJSON(light: light, dark: dark),
-    to: colorSetDir.appendingPathComponent("Contents.json").path)
-
-  print("Generated \(groupName)/\(colorName).colorset (light \(light.hex) / dark \(dark.hex))")
 }
 print("Done. \(names.count) semantic colors generated in \(assetsURL.path)")

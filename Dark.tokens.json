@@ -740,6 +740,16 @@
     }
   },
   "semantic": {
+    "AccentColor": {
+      "$type": "color",
+      "$value": "{COLORS.Blau.700}",
+      "$extensions": {
+        "com.figma.variableId": "VariableID:4152:1245",
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ]
+      }
+    },
     "label": {
       "primary": {
         "$type": "color",
@@ -821,16 +831,6 @@
           ]
         }
       },
-      "desctructive": {
-        "$type": "color",
-        "$value": "{COLORS.Rot.100}",
-        "$extensions": {
-          "com.figma.variableId": "VariableID:4110:1936",
-          "com.figma.scopes": [
-            "ALL_SCOPES"
-          ]
-        }
-      },
       "secondary": {
         "$type": "color",
         "$value": {
@@ -845,6 +845,16 @@
         },
         "$extensions": {
           "com.figma.variableId": "VariableID:2043:7320",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "destructive": {
+        "$type": "color",
+        "$value": "{COLORS.Rot.100}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4110:1936",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ]
