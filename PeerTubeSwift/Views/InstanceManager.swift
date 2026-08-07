@@ -14,12 +14,15 @@ import WebURL
 struct InstanceManagerFeature {
   @ObservableState
   struct State: Equatable {
+      @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+        scheme: "https", host: "peertube.wtf")
     var instanceUrlString: String = ""
     var instanceUrl: WebURL?
     var readyToSaveInstance: Bool = false
     var tryingInstanceConnection: Bool = false
 
     var connectionError: String?
+      var instances: [TubeSDK.PeerTubeInstance] = []
   }
 
   enum Action {
@@ -31,6 +34,11 @@ struct InstanceManagerFeature {
     case testConnection
     case connectionResponse(Result<ServerConfig, NetworkError>)
     case setInstanceUrl(WebURL)
+      
+      case onAppear
+      case refreshPull
+      case loadInstances
+      case addInstancesToList([TubeSDK.PeerTubeInstance])
 
     @CasePathable
     enum Delegate {
@@ -55,6 +63,19 @@ struct InstanceManagerFeature {
         return .send(.testConnection)
       case .delegate:
         return .none
+      case .refreshPull, .onAppear:
+          return .send(.loadInstances)
+      case .loadInstances:
+          return .run { [client = state.client] send in
+              var pager = client.instances(pageSize: 50, query: InstanceQueryParameters(healthy: true))
+              while pager.hasMorePages {
+                  let chunk = try await pager.nextPage()
+                  await send(.addInstancesToList(chunk))
+              }
+          }
+      case let .addInstancesToList(instances):
+          state.instances.insert(contentsOf: instances, at: state.instances.endIndex)
+          return .none
       case .testConnection:
         state.tryingInstanceConnection = true
         return .run { [instanceUrl = state.instanceUrlString] send in
@@ -112,43 +133,52 @@ struct InstanceManager: View {
   @Bindable var store: StoreOf<InstanceManagerFeature>
 
   var body: some View {
-    Form {
-      Section("Instance Details") {
-        TextField("Instance URL", text: $store.instanceUrlString.sending(\.instanceUrlChanged))
-          .keyboardType(.URL)
-          .autocorrectionDisabled()
-          .textInputAutocapitalization(.never)
-          .onSubmit {
-            self.store.send(.textFieldSubmitButtonPressed)
-          }
+      List(store.state.instances) {
+          Text($0.host)
       }
-
-      Section("Connection") {
-        Button {
-          self.store.send(.attemptConnectionButtonPressed)
-        } label: {
-          HStack {
-            Text("Attempt connection")
-            Spacer()
-            if self.store.state.tryingInstanceConnection {
-              ProgressView()
-            }
-          }
-        }
-        .disabled(
-          self.store.state.instanceUrlString == "" || self.store.state.tryingInstanceConnection)
-
-        if let connectionError = self.store.state.connectionError {
-          Text(connectionError)
-            .monospaced()
-            .foregroundStyle(self.store.state.readyToSaveInstance ? .green : .red)
-        }
-
-        if self.store.state.readyToSaveInstance {
-          Label("Instance is working fine, ready to add", systemImage: "checkmark")
-        }
+      .refreshable {
+          store.send(.refreshPull)
       }
-    }
+      .onAppear {
+          store.send(.onAppear)
+      }
+//    Form {
+//      Section("Instance Details") {
+//        TextField("Instance URL", text: $store.instanceUrlString.sending(\.instanceUrlChanged))
+//          .keyboardType(.URL)
+//          .autocorrectionDisabled()
+//          .textInputAutocapitalization(.never)
+//          .onSubmit {
+//            self.store.send(.textFieldSubmitButtonPressed)
+//          }
+//      }
+//
+//      Section("Connection") {
+//        Button {
+//          self.store.send(.attemptConnectionButtonPressed)
+//        } label: {
+//          HStack {
+//            Text("Attempt connection")
+//            Spacer()
+//            if self.store.state.tryingInstanceConnection {
+//              ProgressView()
+//            }
+//          }
+//        }
+//        .disabled(
+//          self.store.state.instanceUrlString == "" || self.store.state.tryingInstanceConnection)
+//
+//        if let connectionError = self.store.state.connectionError {
+//          Text(connectionError)
+//            .monospaced()
+//            .foregroundStyle(self.store.state.readyToSaveInstance ? .green : .red)
+//        }
+//
+//        if self.store.state.readyToSaveInstance {
+//          Label("Instance is working fine, ready to add", systemImage: "checkmark")
+//        }
+//      }
+//    }
   }
 }
 
