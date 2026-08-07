@@ -15,17 +15,49 @@ extension String {
   }
 }
 
-extension Color {
-  static func fromHash(of string: String) -> Color {
-    var hash = 0
-    for char in string.utf8 {
-      hash = char.hashValue &+ (hash << 5) &- hash
+func hashString(_ input: String) -> UInt32 {
+    var hash: Int32 = 0
+
+    for scalar in input.unicodeScalars {
+        hash = hash &* 31 &+ Int32(scalar.value)
     }
 
-    let red = Double((hash & 0xFF0000) >> 16) / 255.0
-    let green = Double((hash & 0x00FF00) >> 8) / 255.0
-    let blue = Double(hash & 0x0000FF) / 255.0
+    return UInt32(bitPattern: hash)
+}
 
-    return Color(red: red, green: green, blue: blue)
+func stringToHsl(string: String) -> Color {
+    let hash = hashString(string)
+    let hue: Double = Double(hash % 360);
+    let saturation: Double = 65;
+    let brightness: Double = 50;
+    
+    return Color(hue: hue, saturation: saturation, brightness: brightness)
+}
+
+func stringToIndex(string: String, arrayLength: Int) -> Int {
+    return Int(floor(Double(hashString(string)))) % arrayLength - 1
+}
+
+extension Color {
+  static func fromHash(of string: String) -> Color {
+      let possibleColors = [
+        Color.Yellow._100,
+        Color.Yellow._300,
+        Color.Blue._100,
+        Color.Blue._300,
+        Color.Orange._100,
+        Color.Orange._300,
+        Color.Violet._100,
+        Color.Violet._300,
+        Color.Cyan._100,
+        Color.Cyan._300,
+      ]
+      
+      let arrayLength = possibleColors.count
+      let stringToIndex = stringToIndex(string: string, arrayLength: arrayLength)
+      print("arrayLength: \(arrayLength), stringToIndex: \(stringToIndex)")
+      
+      
+      return possibleColors[stringToIndex]
   }
 }
