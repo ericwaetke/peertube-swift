@@ -18,7 +18,7 @@ struct ProfileTabViewFeature {
   struct State: Equatable {
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
       scheme: "https", host: "peertube.wtf")
-    
+
     @Presents var login: LoginFeature.State?
     @Shared(.inMemory("session")) var session: UserSession?
 
@@ -132,22 +132,19 @@ struct ProfileTabViewFeature {
           .send(.checkInstanceHealth),
           .send(.delegate(.didLogin))
         )
-          
-      case .login(.presented(.delegate(_))):
-          return .none
-          
-//      case .editInstance(.presented(.delegate(let delegate))):
-//        switch delegate {
-//        case .saveNewInstance(let url):
-//          state.editInstance = nil
-//          return .run { send in
-//            guard let host = url.host?.serialized else { return }
-//            do {
-//              try await send(
-//                .setClient(TubeSDKClient(scheme: url.scheme, host: host, session: urlSession)))
-//            } catch {}
-//          }
-//        }
+
+      //      case .editInstance(.presented(.delegate(let delegate))):
+      //        switch delegate {
+      //        case .saveNewInstance(let url):
+      //          state.editInstance = nil
+      //          return .run { send in
+      //            guard let host = url.host?.serialized else { return }
+      //            do {
+      //              try await send(
+      //                .setClient(TubeSDKClient(scheme: url.scheme, host: host, session: urlSession)))
+      //            } catch {}
+      //          }
+      //        }
 
       case .login:
         return .none
@@ -196,7 +193,7 @@ struct ProfileTabView: View {
         } label: {
           HStack(spacing: 8) {
             if let session = store.state.session {
-                AvatarView(url: session.avatarUrl, name: session.username, size: 68)
+              AvatarView(url: session.avatarUrl, name: session.username, size: 68)
             }
             VStack(alignment: .leading) {
               Text(store.state.session?.username ?? "No Account Signed In")
@@ -218,20 +215,20 @@ struct ProfileTabView: View {
         }
         if store.state.session == nil {
           Button {
-              store.send(.loginButtonTapped)
+            store.send(.loginButtonTapped)
           } label: {
             Text("Sign In")
-              .foregroundStyle(Color.labelAction)
+              .foregroundStyle(Color("Label/Action"))
               .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
               .containerRelativeFrame(.horizontal)
           }
         }
       } footer: {
-          if store.state.session == nil {
-              Text(
-                "To sign in, you’ll need an account with a Peertube community. You can find a list of all communities here."
-              )
-          }
+        if store.state.session == nil {
+          Text(
+            "To sign in, you’ll need an account with a Peertube community. You can find a list of all communities here."
+          )
+        }
       }
 
       Section {
@@ -248,7 +245,7 @@ struct ProfileTabView: View {
               CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
             )
             .textCase(.uppercase)
-            .foregroundStyle(Color.labelSecondary)
+            .foregroundStyle(Color("Label/Secondary"))
           Spacer()
           Button("Show All") {}
         }
@@ -263,7 +260,7 @@ struct ProfileTabView: View {
               CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
             )
             .textCase(.uppercase)
-            .foregroundStyle(Color.labelSecondary)
+            .foregroundStyle(Color("Label/Secondary"))
           Spacer()
           Button("Show All") {}
         }

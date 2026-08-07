@@ -20,29 +20,29 @@ struct RiverTinted: ButtonStyle {
 struct RiverTertiary: ButtonStyle {
   func makeBody(configuration: ButtonStyleConfiguration) -> some View {
     configuration.label
-          .padding(.horizontal, 10)
-          .padding(.vertical, 4)
-          .frame(height: 28)
+      .padding(.horizontal, 10)
+      .padding(.vertical, 4)
+      .frame(height: 28)
       .background(Color(uiColor: .secondarySystemFill))
-      .foregroundStyle(Color.labelSecondary)
+      .foregroundStyle(Color("Label/Secondary"))
       .clipShape(Capsule())
   }
 }
 
 #Preview {
   ScrollView {
-      VStack(alignment: .leading, spacing: 24) {
-        Text("RiverTertiary").font(.headline)
-        Button("Press Me") {}
-          .buttonStyle(RiverTertiary())
-          Button {
+    VStack(alignment: .leading, spacing: 24) {
+      Text("RiverTertiary").font(.headline)
+      Button("Press Me") {}
+        .buttonStyle(RiverTertiary())
+      Button {
 
-          } label: {
-            Image(systemName: "ellipsis")
-          }
-            .buttonStyle(RiverTertiary())
+      } label: {
+        Image(systemName: "ellipsis")
       }
-      .padding()
+      .buttonStyle(RiverTertiary())
+    }
+    .padding()
     VStack(alignment: .leading, spacing: 24) {
       Text("RiverTinted").font(.headline)
       Button("Press Me") {}

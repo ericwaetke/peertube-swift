@@ -69,7 +69,7 @@ struct AvatarView: View {
       Color.fromHash(of: name)
       Text(name.initials)
         .font(.system(size: size * 0.4, weight: .bold))
-        .foregroundColor(.white)
+        .foregroundColor(.black)
     }
     .frame(width: size, height: size)
     .clipShape(Circle())

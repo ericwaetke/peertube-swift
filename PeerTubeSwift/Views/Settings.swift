@@ -50,7 +50,7 @@ public struct SettingsView: View {
               CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
             )
             .textCase(.uppercase)
-            .foregroundStyle(Color.labelSecondary)
+            .foregroundStyle(Color("Label/Secondary"))
           Spacer()
         }
       }
@@ -75,7 +75,7 @@ public struct SettingsView: View {
               .foregroundStyle(Color(uiColor: .label))
             Spacer()
             Text("Change")
-              .foregroundStyle(Color.labelAction)
+              .foregroundStyle(Color("Label/Action"))
               .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
           }
         }
@@ -86,7 +86,7 @@ public struct SettingsView: View {
               CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
             )
             .textCase(.uppercase)
-            .foregroundStyle(Color.labelSecondary)
+            .foregroundStyle(Color("Label/Secondary"))
           Spacer()
         }
       }
@@ -110,14 +110,14 @@ public struct SettingsView: View {
               CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
             )
             .textCase(.uppercase)
-            .foregroundStyle(Color.labelSecondary)
+            .foregroundStyle(Color("Label/Secondary"))
           Spacer()
         }
       }
       Button {
       } label: {
         Text("Log out")
-          .foregroundStyle(Color.labelAction)
+          .foregroundStyle(Color("Label/Action"))
           .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
           .containerRelativeFrame(.horizontal)
       }

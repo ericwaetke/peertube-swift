@@ -242,7 +242,7 @@ struct VideoDetails: View {
                   Text(videoDetails.name ?? "Unknown Video Title")
                     .font(CustomFont.fjallaOne.swiftUIFont(size: 22, relativeTo: .title2))
                     .fontWeight(.bold)
-                    .foregroundStyle(Color.labelPrimary)
+                    .foregroundStyle(Color("Label/Primary"))
                     .multilineTextAlignment(.leading)
 
                   ViewsAndDate(
@@ -262,12 +262,13 @@ struct VideoDetails: View {
               .buttonStyle(.plain)
 
               VideoActionsView(store: self.store.scope(state: \.actions, action: \.actions))
-                    .padding()
+                .padding()
 
               Divider()
 
               ChannelPreviewView(
-                store: self.store.scope(state: \.channelPreview, action: \.channelPreview))
+                store: self.store.scope(state: \.channelPreview, action: \.channelPreview)
+              )
               .padding()
 
               VStack(alignment: .leading) {

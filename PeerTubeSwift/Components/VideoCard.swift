@@ -176,7 +176,7 @@ struct VideoCardView: View {
             Spacer()
             GeometryReader { geometry in
               Rectangle()
-                .fill(Color.red)
+                .fill(Color.accentColor)
                 .frame(
                   width: geometry.size.width
                     * CGFloat(min(Double(currentTime) / Double(duration), 1.0))
