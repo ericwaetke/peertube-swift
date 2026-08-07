@@ -14,15 +14,18 @@ import WebURL
 struct InstanceManagerFeature {
   @ObservableState
   struct State: Equatable {
-      @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
-        scheme: "https", host: "peertube.wtf")
+    @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
+      scheme: "https", host: "peertube.wtf")
     var instanceUrlString: String = ""
     var instanceUrl: WebURL?
     var readyToSaveInstance: Bool = false
     var tryingInstanceConnection: Bool = false
 
     var connectionError: String?
-      var instances: [TubeSDK.PeerTubeInstance] = []
+    var instances: [TubeSDK.PeerTubeInstance] = []
+    var searchText: String = ""
+    var selectedInstanceId: Int?
+    var instanceHealth: [Int: InstanceHealthStatus] = [:]
   }
 
   enum Action {
@@ -34,11 +37,14 @@ struct InstanceManagerFeature {
     case testConnection
     case connectionResponse(Result<ServerConfig, NetworkError>)
     case setInstanceUrl(WebURL)
-      
-      case onAppear
-      case refreshPull
-      case loadInstances
-      case addInstancesToList([TubeSDK.PeerTubeInstance])
+
+    case onAppear
+    case refreshPull
+    case loadInstances
+    case addInstancesToList([TubeSDK.PeerTubeInstance])
+    case searchTextChanged(String)
+    case selectInstance(Int)
+    case instanceHealthResult(Int, Bool)
 
     @CasePathable
     enum Delegate {
@@ -64,18 +70,40 @@ struct InstanceManagerFeature {
       case .delegate:
         return .none
       case .refreshPull, .onAppear:
-          return .send(.loadInstances)
+        return .send(.loadInstances)
       case .loadInstances:
-          return .run { [client = state.client] send in
-              var pager = client.instances(pageSize: 50, query: InstanceQueryParameters(healthy: true))
-              while pager.hasMorePages {
-                  let chunk = try await pager.nextPage()
-                  await send(.addInstancesToList(chunk))
-              }
+        return .run { [client = state.client] send in
+          var pager = client.instances(pageSize: 50, query: InstanceQueryParameters(healthy: true))
+          while pager.hasMorePages {
+            let chunk = try await pager.nextPage()
+            await send(.addInstancesToList(chunk))
           }
-      case let .addInstancesToList(instances):
-          state.instances.insert(contentsOf: instances, at: state.instances.endIndex)
+        }
+      case .addInstancesToList(let instances):
+        state.instances.insert(contentsOf: instances, at: state.instances.endIndex)
+        return .none
+      case .searchTextChanged(let text):
+        state.searchText = text
+        return .none
+      case .selectInstance(let id):
+        state.selectedInstanceId = id
+        state.instanceHealth[id] = .checking
+        guard let instance = state.instances.first(where: { $0.id == id }) else {
           return .none
+        }
+        return .run { send in
+          do {
+            let client = try TubeSDKClient(scheme: "https", host: instance.host)
+            _ = try await client.instance.getConfig()
+            await send(.instanceHealthResult(id, true))
+          } catch {
+            await send(.instanceHealthResult(id, false))
+          }
+        }
+        .cancellable(id: HealthCheckCancelID.id)
+      case .instanceHealthResult(let id, let healthy):
+        state.instanceHealth[id] = healthy ? .healthy : .unhealthy
+        return .none
       case .testConnection:
         state.tryingInstanceConnection = true
         return .run { [instanceUrl = state.instanceUrlString] send in
@@ -129,56 +157,57 @@ extension NetworkError: LocalizedError {
   }
 }
 
+enum InstanceHealthStatus: Equatable {
+  case checking, healthy, unhealthy
+}
+
+struct HealthCheckCancelID: Hashable {
+  static let id = HealthCheckCancelID()
+}
+
 struct InstanceManager: View {
   @Bindable var store: StoreOf<InstanceManagerFeature>
 
   var body: some View {
-      List(store.state.instances) {
-          Text($0.host)
+    List(filteredInstances) { instance in
+      Button {
+        store.send(.selectInstance(instance.id))
+      } label: {
+        HStack {
+          Image(systemName: "checkmark")
+            .opacity(store.selectedInstanceId == instance.id ? 1 : 0)
+          Text(instance.host)
+          Spacer()
+          trailingStatus(for: instance.id)
+        }
       }
-      .refreshable {
-          store.send(.refreshPull)
-      }
-      .onAppear {
-          store.send(.onAppear)
-      }
-//    Form {
-//      Section("Instance Details") {
-//        TextField("Instance URL", text: $store.instanceUrlString.sending(\.instanceUrlChanged))
-//          .keyboardType(.URL)
-//          .autocorrectionDisabled()
-//          .textInputAutocapitalization(.never)
-//          .onSubmit {
-//            self.store.send(.textFieldSubmitButtonPressed)
-//          }
-//      }
-//
-//      Section("Connection") {
-//        Button {
-//          self.store.send(.attemptConnectionButtonPressed)
-//        } label: {
-//          HStack {
-//            Text("Attempt connection")
-//            Spacer()
-//            if self.store.state.tryingInstanceConnection {
-//              ProgressView()
-//            }
-//          }
-//        }
-//        .disabled(
-//          self.store.state.instanceUrlString == "" || self.store.state.tryingInstanceConnection)
-//
-//        if let connectionError = self.store.state.connectionError {
-//          Text(connectionError)
-//            .monospaced()
-//            .foregroundStyle(self.store.state.readyToSaveInstance ? .green : .red)
-//        }
-//
-//        if self.store.state.readyToSaveInstance {
-//          Label("Instance is working fine, ready to add", systemImage: "checkmark")
-//        }
-//      }
-//    }
+    }
+    .searchable(text: $store.searchText.sending(\.searchTextChanged))
+    .refreshable {
+      store.send(.refreshPull)
+    }
+    .onAppear {
+      store.send(.onAppear)
+    }
+  }
+
+  var filteredInstances: [TubeSDK.PeerTubeInstance] {
+    guard !store.searchText.isEmpty else { return store.instances }
+    return store.instances.filter { $0.host.localizedCaseInsensitiveContains(store.searchText) }
+  }
+
+  @ViewBuilder
+  func trailingStatus(for id: Int) -> some View {
+    switch store.instanceHealth[id] {
+    case .checking:
+      ProgressView()
+    case .healthy:
+      Image(systemName: "network")
+    case .unhealthy:
+      Image(systemName: "network.slash")
+    case nil:
+      EmptyView()
+    }
   }
 }
 
