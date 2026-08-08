@@ -11,6 +11,7 @@ struct VideoDescriptionFeature {
   }
 
   enum Action {
+    case showLessButtonTapped
     case descriptionVisibleChanged(Bool)
     case delegate(Delegate)
 
@@ -23,8 +24,12 @@ struct VideoDescriptionFeature {
     Reduce { state, action in
       switch action {
       case .descriptionVisibleChanged(let visible):
-        state.descriptionVisible = visible
+        withAnimation {
+          state.descriptionVisible = visible
+        }
         return .none
+      case .showLessButtonTapped:
+        return .send(.descriptionVisibleChanged(false))
       case .delegate:
         return .none
       }
@@ -71,24 +76,61 @@ struct VideoDescriptionView: View {
     if let description = store.state.videoDetails?.description {
       if store.descriptionVisible {
         HStack {
-          Text(parseDescription(description))
-            .environment(
-              \.openURL,
-              OpenURLAction { url in
-                if url.scheme == "peertube", url.host == "seek",
-                  let seconds = Int(url.pathComponents.last ?? "")
-                {
-                  store.send(.delegate(.seekTo(seconds)))
-                  return .handled
+          VStack(alignment: .leading) {
+            Text(parseDescription(description))
+              .environment(
+                \.openURL,
+                OpenURLAction { url in
+                  if url.scheme == "peertube", url.host == "seek",
+                    let seconds = Int(url.pathComponents.last ?? "")
+                  {
+                    store.send(.delegate(.seekTo(seconds)))
+                    return .handled
+                  }
+                  return .systemAction
                 }
-                return .systemAction
-              }
-            )
-            .font(.subheadline)
-            .multilineTextAlignment(.leading)
+              )
+              .font(.subheadline)
+              .multilineTextAlignment(.leading)
+
+            Button("show less") {
+              //                    withAnimation{
+              store.send(.showLessButtonTapped)
+              //                    }
+            }
+            .buttonStyle(RiverButtonSmall(type: .tertiary))
+          }
           Spacer()
         }
-        .padding(.top, 8)
+        //          .animation(.default, value: store.state.descriptionVisible)
+        .padding(16)
+        .background(Color(uiColor: UIColor.systemFill))
+        .overlay(alignment: .top) {
+          // Top inset shadow
+          LinearGradient(
+            gradient: Gradient(stops: [
+              .init(color: .black.opacity(0.10), location: 0),
+              .init(color: .clear, location: 1),
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+          )
+          .frame(height: 10)
+          .allowsHitTesting(false)
+        }
+        .overlay(alignment: .bottom) {
+          // Bottom inset shadow
+          LinearGradient(
+            gradient: Gradient(stops: [
+              .init(color: .clear, location: 0),
+              .init(color: .black.opacity(0.10), location: 1),
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+          )
+          .frame(height: 10)
+          .allowsHitTesting(false)
+        }
       }
     }
   }
@@ -98,12 +140,13 @@ struct VideoDescriptionView: View {
   VideoDescriptionView(
     store: Store(
       initialState: VideoDescriptionFeature.State(
+        descriptionVisible: true,
         videoDetails: TubeSDK.VideoDetails(
           description: """
             Here is a mocked description for the preview!
 
             You can jump to 1:23 or 2:45 to see cool parts of the video.
-            """
+            """,
         )
       )
     ) {

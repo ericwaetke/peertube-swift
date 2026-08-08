@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import FontKit
 import SwiftUI
 import TubeSDK
 import WebURL
@@ -14,6 +15,7 @@ import WebURL
 struct InstanceManagerFeature {
   @ObservableState
   struct State: Equatable {
+
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
       scheme: "https", host: "peertube.wtf")
     var instanceUrlString: String = ""
@@ -192,6 +194,7 @@ struct TestConnectionCancelID: Hashable {
 }
 
 struct InstanceManager: View {
+  @Environment(\.dismissSearch) var dismissSearch
   @Bindable var store: StoreOf<InstanceManagerFeature>
 
   var body: some View {
@@ -199,10 +202,13 @@ struct InstanceManager: View {
       if let custom = store.selectedCustomInstance {
         Section {
           HStack {
-            Image(systemName: "checkmark")
             Text(custom.url.host?.serialized ?? custom.url.serialized())
+              .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+              .foregroundStyle(Color(uiColor: .label))
             Spacer()
-            Image(systemName: "network")
+            Image(systemName: "checkmark")
+              .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+              .foregroundStyle(Color(uiColor: .label))
           }
         }
       }
@@ -210,13 +216,22 @@ struct InstanceManager: View {
         ForEach(filteredInstances) { instance in
           Button {
             store.send(.selectInstance(instance.id))
+            dismissSearch()
           } label: {
             HStack {
+              VStack(alignment: .leading) {
+                Text(instance.host)
+                  .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+                  .foregroundStyle(Color(uiColor: .label))
+                if let health = store.instanceHealth[instance.id] {
+                  Text("\(health) connection")
+                }
+              }
+              Spacer()
               Image(systemName: "checkmark")
                 .opacity(store.selectedInstanceId == instance.id ? 1 : 0)
-              Text(instance.host)
-              Spacer()
-              trailingStatus(for: instance.id)
+                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+                .foregroundStyle(Color(uiColor: .label))
             }
           }
         }
@@ -225,12 +240,13 @@ struct InstanceManager: View {
         Section {
           Button {
             store.send(.selectNewInstance)
+            dismissSearch()
           } label: {
             HStack {
-              //                Image(systemName: store.readyToSaveInstance ? "checkmark.circle.fill" : "plus.circle")
               Text(candidate)
+                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+                .foregroundStyle(Color(uiColor: .label))
               Spacer()
-              newInstanceTrailingStatus()
             }
           }
         }
@@ -259,31 +275,6 @@ struct InstanceManager: View {
       return nil
     }
     return store.searchText
-  }
-
-  @ViewBuilder
-  func newInstanceTrailingStatus() -> some View {
-    if store.tryingInstanceConnection {
-      ProgressView()
-    } else if store.readyToSaveInstance {
-      Image(systemName: "network")
-    } else if store.connectionError != nil {
-      Image(systemName: "network.slash")
-    }
-  }
-
-  @ViewBuilder
-  func trailingStatus(for id: Int) -> some View {
-    switch store.instanceHealth[id] {
-    case .checking:
-      ProgressView()
-    case .healthy:
-      Image(systemName: "network")
-    case .unhealthy:
-      Image(systemName: "network.slash")
-    case nil:
-      EmptyView()
-    }
   }
 }
 

@@ -134,8 +134,7 @@ struct NotificationBell: View {
           old == true && new == false && store.hadInteraction
         }
     }
-    .buttonStyle(.bordered)
-    .foregroundStyle(.primary)
+    .buttonStyle(RiverButtonSmall(type: .tertiary))
     .alert($store.scope(state: \.alert, action: \.alert))
   }
 }

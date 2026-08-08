@@ -46,7 +46,6 @@ struct ProfileTabViewFeature {
 
     case loginButtonTapped
     case login(PresentationAction<LoginFeature.Action>)
-    case logoutButtonTapped
 
     case testNotification
 
@@ -133,29 +132,8 @@ struct ProfileTabViewFeature {
           .send(.delegate(.didLogin))
         )
 
-      //      case .editInstance(.presented(.delegate(let delegate))):
-      //        switch delegate {
-      //        case .saveNewInstance(let url):
-      //          state.editInstance = nil
-      //          return .run { send in
-      //            guard let host = url.host?.serialized else { return }
-      //            do {
-      //              try await send(
-      //                .setClient(TubeSDKClient(scheme: url.scheme, host: host, session: urlSession)))
-      //            } catch {}
-      //          }
-      //        }
-
       case .login:
         return .none
-
-      case .logoutButtonTapped:
-        state.$session.withLock { $0 = nil }
-        state.$client.withLock { $0.currentToken = nil }
-        return .run { send in
-          try? await authClient.deleteSession()
-          await send(.delegate(.didLogout))
-        }
 
       case .dismiss:
         return .run { [dismiss] _ in

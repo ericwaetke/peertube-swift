@@ -11,83 +11,101 @@ import SwiftUI
 import TubeSDK
 
 @Reducer
-public struct SettingsFeature {
+struct SettingsFeature {
   @ObservableState
-  public struct State: Equatable {
+  struct State: Equatable {
     let text: String
+    @Shared(.inMemory("session")) var session: UserSession?
+
+    @Shared(.inMemory("client")) var client: TubeSDKClient?
   }
 
-  public enum Action {
+  enum Action {
     case buttonTapped
+    case logoutButtonTapped
   }
 
-  public var body: some Reducer<State, Action> {
-    Reduce<State, Action> { state, action in
+  @Dependency(\.authClient) var authClient
+
+  var body: some ReducerOf<Self> {
+    Reduce { state, action in
       switch action {
       case .buttonTapped:
         return .none
+
+      case .logoutButtonTapped:
+        state.$session.withLock { $0 = nil }
+        //      state.$client.withLock { $0.currentToken = nil }
+        return .run { send in
+          try? await authClient.deleteSession()
+        }
       }
     }
   }
 }
 
-public struct SettingsView: View {
+struct SettingsView: View {
   @Bindable var store: StoreOf<SettingsFeature>
 
-  public var body: some View {
+  var body: some View {
     Form {
-      Section {
-        Button {
-        } label: {
-          Text("peertube.wtf")
-            .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
-            .foregroundStyle(Color(uiColor: .label))
-        }
-      } header: {
-        HStack {
-          Text("Your Community")
-            .font(
-              CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
-            )
-            .textCase(.uppercase)
-            .foregroundStyle(Color("Label/Secondary"))
-          Spacer()
-        }
-      }
-      Section {
-        Button {
-        } label: {
-          Text("Display Name")
-            .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
-            .foregroundStyle(Color(uiColor: .label))
-        }
-        Button {
-        } label: {
-          Text("Email")
-            .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
-            .foregroundStyle(Color(uiColor: .label))
-        }
-        Button {
-        } label: {
-          HStack {
-            Text("Password")
+      if let client = store.client {
+        Section {
+          Button {
+          } label: {
+            Text(client.instance.host)
               .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
               .foregroundStyle(Color(uiColor: .label))
+          }
+        } header: {
+          HStack {
+            Text("Your Community")
+              .font(
+                CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+              )
+              .textCase(.uppercase)
+              .foregroundStyle(Color("Label/Secondary"))
             Spacer()
-            Text("Change")
-              .foregroundStyle(Color("Label/Action"))
-              .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
           }
         }
-      } header: {
-        HStack {
-          Text("Account")
-            .font(
-              CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
-            )
-            .textCase(.uppercase)
-            .foregroundStyle(Color("Label/Secondary"))
-          Spacer()
+      }
+
+      if store.session != nil {
+        Section {
+          Button {
+          } label: {
+            Text("Display Name")
+              .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+              .foregroundStyle(Color(uiColor: .label))
+          }
+          Button {
+          } label: {
+            Text("Email")
+              .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+              .foregroundStyle(Color(uiColor: .label))
+          }
+          Button {
+          } label: {
+            HStack {
+              Text("Password")
+                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+                .foregroundStyle(Color(uiColor: .label))
+              Spacer()
+              Text("Change")
+                .foregroundStyle(Color("Label/Action"))
+                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+            }
+          }
+        } header: {
+          HStack {
+            Text("Account")
+              .font(
+                CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+              )
+              .textCase(.uppercase)
+              .foregroundStyle(Color("Label/Secondary"))
+            Spacer()
+          }
         }
       }
       Section {
@@ -115,6 +133,7 @@ public struct SettingsView: View {
         }
       }
       Button {
+        store.send(.logoutButtonTapped)
       } label: {
         Text("Log out")
           .foregroundStyle(Color("Label/Action"))
@@ -126,11 +145,33 @@ public struct SettingsView: View {
   }
 }
 
-#Preview {
+#Preview("Logged Out") {
   NavigationStack {
     SettingsView(
       store: Store(
         initialState: SettingsFeature.State(text: "some")
+      ) {
+        SettingsFeature()
+      })
+  }
+}
+
+#Preview("Logged In") {
+  NavigationStack {
+    SettingsView(
+      store: Store(
+        initialState: SettingsFeature.State(
+          text: "some",
+          session: Shared(
+            wrappedValue: UserSession(
+              username: "somepeertubeuser",
+              host: "river.video",
+              token: OAuthToken(accessToken: "", refreshToken: "", tokenType: "", expiresIn: 1)
+            ), .inMemory("session")),
+          client: Shared(
+            wrappedValue: try! TubeSDKClient(scheme: "https", host: "peertube.wtf"),
+            .inMemory("session"))
+        )
       ) {
         SettingsFeature()
       })

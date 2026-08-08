@@ -52,7 +52,7 @@ struct AvatarView: View {
         .clipShape(Circle())
         .overlay {
           Circle()
-            .stroke(.separator)
+            .stroke(.separator, lineWidth: 0.3)
         }
         .task {
           try? await peertubeOrchestrator.cacheImageIfNeeded(avatarUrl, database)

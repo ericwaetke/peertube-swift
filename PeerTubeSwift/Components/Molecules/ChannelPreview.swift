@@ -64,7 +64,7 @@ struct ChannelPreviewFeature {
       case .loadChannelPreview(let videoDetails):
         state.videoDetails = videoDetails
         state.userBadge = UserBadgeFeature.State(
-            variant: .medium,
+          variant: .medium,
           avatarUrl: videoDetails.channel?.avatars?.first?.fileUrl,
           channelDisplayName: videoDetails.channel?.displayName ?? "Unknown Channel",
           instanceDisplayName: videoDetails.channel?.host ?? "Unknown Community",
@@ -117,7 +117,7 @@ struct ChannelPreviewFeature {
       case .instanceLoaded(let instance):
         state.instance = instance
         state.userBadge = UserBadgeFeature.State(
-            variant: .medium,
+          variant: .medium,
           avatarUrl: state.videoDetails?.channel?.avatars?.first?.fileUrl,
           channelDisplayName: state.videoDetails?.channel?.displayName ?? "Unknown Channel",
           instanceDisplayName: state.videoDetails?.channel?.host ?? "Unknown Community",
@@ -209,13 +209,7 @@ struct ChannelPreviewView: View {
   }
 
   private var subscribeButton: some View {
-    HStack {
-      Button(store.state.isSubscribedToChannel ? "Unsubscribe" : "Subscribe") {
-        store.send(.subscribeButtonTapped)
-      }
-      .buttonStyle(.bordered)
-      .foregroundStyle(.primary)
-
+    HStack(spacing: 4) {
       if store.state.isSubscribedToChannel {
         NotificationBell(
           store: store.scope(
@@ -224,6 +218,10 @@ struct ChannelPreviewView: View {
           )
         )
       }
+      Button(store.state.isSubscribedToChannel ? "Unsubscribe" : "Subscribe") {
+        store.send(.subscribeButtonTapped)
+      }
+      .buttonStyle(RiverButtonSmall(type: store.state.isSubscribedToChannel ? .tinted : .tertiary))
     }
   }
 }

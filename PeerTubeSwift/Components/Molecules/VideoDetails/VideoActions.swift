@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Dependencies
+import FontKit
 import SwiftUI
 import TubeSDK
 
@@ -107,28 +108,39 @@ struct VideoActionsView: View {
       if let likes = store.state.videoDetails?.likes,
         let dislikes = store.state.videoDetails?.dislikes
       {
-        Button {
-          self.store.send(.likeButtonTapped)
-        } label: {
-          HStack {
+
+        HStack {
+          Button {
+            self.store.send(.likeButtonTapped)
+          } label: {
+
             Image(systemName: "hand.thumbsup")
-            Text(likes.formatted())
-              .contentTransition(.numericText())
+
           }
+          .buttonStyle(
+            RiverButtonSmall(type: self.store.state.hasLiked ? .tertiaryActive : .tertiary))
+
+          Text(likes.formatted())
+            .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
+            .contentTransition(.numericText())
+            .foregroundStyle(Color(uiColor: .secondaryLabel))
         }
-        .buttonStyle(.bordered)
-        .foregroundStyle(self.store.state.hasLiked ? .blue : .primary)
-        Button {
-          self.store.send(.dislikeButtonTapped)
-        } label: {
-          HStack {
+        HStack {
+          Button {
+            self.store.send(.dislikeButtonTapped)
+          } label: {
+
             Image(systemName: "hand.thumbsdown")
-            Text(dislikes.formatted())
-              .contentTransition(.numericText())
+
           }
+          .buttonStyle(
+            RiverButtonSmall(type: self.store.state.hasDisliked ? .tertiaryActive : .tertiary))
+
+          Text(dislikes.formatted())
+            .contentTransition(.numericText())
+            .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 13, relativeTo: .footnote))
+            .foregroundStyle(Color(uiColor: .secondaryLabel))
         }
-        .buttonStyle(.bordered)
-        .foregroundStyle(self.store.state.hasDisliked ? .blue : .primary)
       }
 
       Spacer()
@@ -156,16 +168,14 @@ struct VideoActionsView: View {
             systemImage: "gear"
           )
         }
-        .buttonStyle(.bordered)
-        .foregroundStyle(.primary)
+        .buttonStyle(RiverButtonSmall(type: .tertiary))
       }
 
       if let url = URL(string: "https://\(self.store.state.host)/w/\(self.store.state.videoId)") {
         ShareLink(item: url) {
           Image(systemName: "square.and.arrow.up")
         }
-        .buttonStyle(.bordered)
-        .foregroundStyle(.primary)
+        .buttonStyle(RiverButtonSmall(type: .tertiary))
       }
     }
   }

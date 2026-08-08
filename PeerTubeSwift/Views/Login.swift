@@ -39,10 +39,11 @@ struct LoginFeature {
   @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
     scheme: "https", host: "peertube.wtf")
 
-  var body: some Reducer<State, Action> {
+  var body: some ReducerOf<Self> {
+
     BindingReducer()
 
-    Reduce<State, Action> { state, action in
+    Reduce { state, action in
       switch action {
       case .binding:
         state.errorMessage = nil
@@ -150,7 +151,7 @@ struct LoginView: View {
       }
     }
     .disabled(store.isLoading || store.username.isEmpty || store.password.isEmpty)
-    .buttonStyle(RiverTertiary())
+    .buttonStyle(RiverButtonToolbar(type: .fill))
   }
 
   var body: some View {

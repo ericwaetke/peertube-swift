@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "… more" : {
+
+    },
     "·" : {
 
     },
@@ -8,6 +11,9 @@
 
     },
     "%@" : {
+
+    },
+    "%@ connection" : {
 
     },
     "%@ Views" : {
@@ -150,9 +156,6 @@
         }
       }
     },
-    "Instance Manager" : {
-
-    },
     "Languages" : {
 
     },
@@ -247,9 +250,6 @@
     "Password" : {
 
     },
-    "peertube.wtf" : {
-
-    },
     "Playlists" : {
 
     },
@@ -296,6 +296,9 @@
 
     },
     "Show All" : {
+
+    },
+    "show less" : {
 
     },
     "Sign In" : {

@@ -289,7 +289,7 @@ struct CommentTreeView: View {
                       Image(systemName: "text.bubble")
                     }
                     .accessibilityLabel("Write a reply")
-                    .buttonStyle(RiverTertiary())
+                    .buttonStyle(RiverButtonSmall(type: .tertiary))
                   }
 
                   // TODO: Open Comment Menu
@@ -320,7 +320,7 @@ struct CommentTreeView: View {
                     Image(systemName: "ellipsis")
                   }
                   .accessibilityLabel("Write a reply")
-                  .buttonStyle(RiverTertiary())
+                  .buttonStyle(RiverButtonSmall(type: .tertiary))
 
                 }
 

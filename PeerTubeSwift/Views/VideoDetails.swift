@@ -232,39 +232,55 @@ struct VideoDetails: View {
           }
           ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-              Button {
-                let newValue = !self.store.state.description.descriptionVisible
-                withAnimation {
+              VStack(spacing: 8) {
+                Button {
+                  let newValue = !self.store.state.description.descriptionVisible
+
                   self.store.send(.description(.descriptionVisibleChanged(newValue)))
-                }
-              } label: {
-                VStack(alignment: .leading, spacing: 8) {
-                  Text(videoDetails.name ?? "Unknown Video Title")
-                    .font(CustomFont.fjallaOne.swiftUIFont(size: 22, relativeTo: .title2))
-                    .fontWeight(.bold)
-                    .foregroundStyle(Color("Label/Primary"))
-                    .multilineTextAlignment(.leading)
 
-                  ViewsAndDate(
-                    views: videoDetails.views, videoPublishDate: videoDetails.publishedAt,
-                    unitStyle: .full
-                  )
-                  .font(.callout)
-                  .opacity(0.5)
-                  .foregroundStyle(.primary)
+                } label: {
+                  VStack(alignment: .leading, spacing: 8) {
+                    Text(videoDetails.name ?? "Unknown Video Title")
+                      .font(CustomFont.fjallaOne.swiftUIFont(size: 22, relativeTo: .title2))
+                      .fontWeight(.bold)
+                      .foregroundStyle(Color("Label/Primary"))
+                      .multilineTextAlignment(.leading)
+                      .padding(.horizontal, 16)
 
-                  VideoDescriptionView(
-                    store: self.store.scope(state: \.description, action: \.description))
+                    HStack(spacing: 6) {
+                      ViewsAndDate(
+                        views: videoDetails.views, videoPublishDate: videoDetails.publishedAt,
+                        unitStyle: .full
+                      )
+                      .foregroundStyle(Color(uiColor: .secondaryLabel))
+
+                      if !self.store.state.description.descriptionVisible {
+                        Text("… more")
+                          .font(
+                            CustomFont.inclusiveSansSemiBold.swiftUIFont(
+                              size: 13, relativeTo: .footnote)
+                          )
+                          .foregroundStyle(Color("Label/Highlight"))
+                      }
+                    }
+                    .padding(.horizontal, 16)
+
+                    VideoDescriptionView(
+                      store: self.store.scope(state: \.description, action: \.description))
+                  }
+                  .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(.plain)
+
+                VideoActionsView(store: self.store.scope(state: \.actions, action: \.actions))
+                  .padding(.horizontal, 16)
               }
-              .padding()
-              .buttonStyle(.plain)
 
-              VideoActionsView(store: self.store.scope(state: \.actions, action: \.actions))
-                .padding()
-
-              Divider()
+              .padding(.top, 16)
+              .padding(.bottom, 24)
+              .overlay(
+                Rectangle().frame(width: nil, height: 0.33, alignment: .top).foregroundColor(
+                  Color(uiColor: .separator)), alignment: .bottom)
 
               ChannelPreviewView(
                 store: self.store.scope(state: \.channelPreview, action: \.channelPreview)
@@ -274,8 +290,6 @@ struct VideoDetails: View {
               VStack(alignment: .leading) {
                 VideoCommentsView(store: self.store.scope(state: \.comments, action: \.comments))
               }
-
-              Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
           }
