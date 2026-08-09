@@ -49,7 +49,8 @@ struct SubscriptionFeature {
       PeertubeSubscription
         .group(by: \.id)
         .leftJoin(VideoChannel.all) { $0.channelID.eq($1.id) }
-        .order(by: \.createdAt)
+        //TODO: Fix Order Error
+        //        .order(by: \.createdAt)\
         .select {
           SubRecord.Columns(
             subscription: $0,

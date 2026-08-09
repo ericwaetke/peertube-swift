@@ -46,7 +46,7 @@ func saveNotificationPreference(channelId: String, notify: Bool) async throws {
   @Dependency(\.defaultDatabase) var database
   try await database.write { db in
     try PeertubeSubscription
-      .where { $0.channelID == channelId }
+      .where { $0.channelID.eq(channelId) }
       .update { $0.notifyOnNewVideo = notify }
       .execute(db)
   }

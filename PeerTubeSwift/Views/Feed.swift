@@ -342,8 +342,7 @@ struct FeedFeature {
   struct State: Equatable {
     let feedType: FeedFilter
 
-    @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
-      scheme: "https", host: "peertube.wtf")
+    @Shared(.inMemory("client")) var client: TubeSDKClient?
     var isLoadingVideos: Bool = false
     var hasLoadedAtLeastOnce: Bool = false
     var order: FeedOrder = .descending
@@ -379,7 +378,6 @@ struct FeedFeature {
 
     // Pagination actions
     case loadInitialVideos
-    case loadSecondBatch
     case loadMoreVideos
     case setLoadingMore(Bool)
 
@@ -670,98 +668,67 @@ struct FeedFeature {
           switch feedType {
           case .recommended:
             // Use -best for logged in users, -hot for not logged in
-            if client.currentToken != nil {
-              sort = TubeSDK.VideoSort(
-                key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+            if let client = client {
+              if client.currentToken != nil {
+                sort = TubeSDK.VideoSort(
+                  key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+              } else {
+                sort = TubeSDK.VideoSort(
+                  key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+              }
             } else {
-              sort = TubeSDK.VideoSort(
-                key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+              // TODO: Implement Peerseek
             }
+
           default:
             sort = nil
           }
 
-          let fetchStart = Date()
+          if let client = client {
+            // Load first 4 videos with pagination
+            let peertubeVideos: [TubeSDK.Video]
+            // TODO: “Constant 'sort' used before being initialized”
+            //              if let sort = sort {
+            //                peertubeVideos = try await client.getVideos(sort: sort, count: 15, start: 0)
+            //              } else {
+            peertubeVideos = try await client.getVideos(count: 15, start: 0)
+            //              }
 
-          // Load first 4 videos with pagination
-          let peertubeVideos: [TubeSDK.Video]
-          if let sort = sort {
-            peertubeVideos = try await client.getVideos(sort: sort, count: 4, start: 0)
+            let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+
+            // Update global cache
+            await FeedCacheActor.shared.set(feedType, videos: videos)
+
+            // Fire-and-forget image preloading
+            self.preloadThumbnails(for: videos)
+
+            await send(.finishLoading(videos))
           } else {
-            peertubeVideos = try await client.getVideos(count: 4, start: 0)
+            // TODO: Use PeerSeek
           }
-
-          // Save to DB for caching and use returned VideoRows
-          let dbStart = Date()
-          let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
-
-          // Update global cache
-          await FeedCacheActor.shared.set(feedType, videos: videos)
-
-          // Fire-and-forget image preloading
-          self.preloadThumbnails(for: videos)
-
-          await send(.finishLoading(videos))
-
-          // Automatically load second batch (11 more videos)
-          await send(.loadSecondBatch)
-        }
-      case .loadSecondBatch:
-        return .run { [client = state.client, feedType = state.feedType] send in
-          // Show loading spinner for second batch
-          await send(.setLoadingMore(true))
-
-          // Determine sort based on feed type
-          let sort: TubeSDK.VideoSort?
-
-          switch feedType {
-          case .recommended:
-            // Use -best for logged in users, -hot for not logged in
-            if client.currentToken != nil {
-              sort = TubeSDK.VideoSort(
-                key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
-            } else {
-              sort = TubeSDK.VideoSort(
-                key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
-            }
-          default:
-            sort = nil
-          }
-
-          // Load 11 more videos starting at offset 4
-          let peertubeVideos: [TubeSDK.Video]
-          if let sort = sort {
-            peertubeVideos = try await client.getVideos(sort: sort, count: 11, start: 4)
-          } else {
-            peertubeVideos = try await client.getVideos(count: 11, start: 4)
-          }
-
-          let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
-
-          // Update global cache with combined results
-          let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []
-          let combinedVideos = currentFeed + videos
-          await FeedCacheActor.shared.set(feedType, videos: combinedVideos)
-
-          // Fire-and-forget image preloading
-          self.preloadThumbnails(for: videos)
-
-          await send(.finishLoading(videos))
         }
       case .loadVideosBySearch(let searchParameters):
         return .run { [client = state.client, searchParameters = searchParameters] send in
           await send(.setLoading(true))
 
-          let searchResult = try await client.searchVideos(search: searchParameters)
+          // TODO: ALWAYS use PeerSeek for this
 
-          let videos = try await self.saveVideos(videos: searchResult, client: client)
-          await send(.finishLoading(videos))
+          //          let searchResult = try await client.searchVideos(search: searchParameters)
+          //
+          //          let videos = try await self.saveVideos(videos: searchResult, client: client)
+          //          await send(.finishLoading(videos))
         }
       case .loadChannelVideos:
         return .none
       case .loadContinueWatching:
         return .run { [client = state.client, authClient = self.authClient] send in
           await send(.setLoading(true))
+
+          guard let client = client else {
+            print("No peertube client initialized, cannot fetch watch history")
+            await send(.finishLoading([]))
+            return
+          }
 
           // Only fetch if user is authenticated
           guard client.currentToken != nil else {
@@ -818,45 +785,47 @@ struct FeedFeature {
 
           print("Getting new videos from subscriptions")
 
-          if client.currentToken != nil {
-            print("User is authenticated, fetching native subscription feed")
-            do {
-              let peertubeVideos = try await client.getMySubscriptionVideos()
-              let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
-              await send(.finishLoading(videos))
-            } catch TubeError.unauthorized {
-              print("Token expired, attempting to refresh")
-              if let session = try? await authClient.getSession() {
-                let refreshToken = session.token.refreshToken
-                do {
-                  let credentials = try await client.getClientOAuthCredentials()
-                  let newToken = try await client.refresh(
-                    refreshToken: refreshToken, client: credentials)
-                  var newSession = session
-                  newSession.token = newToken
-                  try await authClient.saveSession(newSession)
+          if let client = client {
+            if client.currentToken != nil {
+              print("User is authenticated, fetching native subscription feed")
+              do {
+                let peertubeVideos = try await client.getMySubscriptionVideos()
+                let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                await send(.finishLoading(videos))
+              } catch TubeError.unauthorized {
+                print("Token expired, attempting to refresh")
+                if let session = try? await authClient.getSession() {
+                  let refreshToken = session.token.refreshToken
+                  do {
+                    let credentials = try await client.getClientOAuthCredentials()
+                    let newToken = try await client.refresh(
+                      refreshToken: refreshToken, client: credentials)
+                    var newSession = session
+                    newSession.token = newToken
+                    try await authClient.saveSession(newSession)
 
-                  // Retry
-                  let peertubeVideos = try await client.getMySubscriptionVideos()
-                  let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
-                  await send(.finishLoading(videos))
-                  return
-                } catch {
-                  print("Failed to refresh token: \(error)")
+                    // Retry
+                    let peertubeVideos = try await client.getMySubscriptionVideos()
+                    let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                    await send(.finishLoading(videos))
+                    return
+                  } catch {
+                    print("Failed to refresh token: \(error)")
+                    try? await authClient.deleteSession()
+                    client.currentToken = nil
+                    await send(.loadingFailed("Your session has expired. Please log in again."))
+                  }
+                } else {
                   try? await authClient.deleteSession()
                   client.currentToken = nil
                   await send(.loadingFailed("Your session has expired. Please log in again."))
                 }
-              } else {
-                try? await authClient.deleteSession()
-                client.currentToken = nil
-                await send(.loadingFailed("Your session has expired. Please log in again."))
+              } catch {
+                print("Error fetching native subscription feed: \(error)")
+                await send(.loadingFailed("Failed to load feed: \(error.localizedDescription)"))
               }
-            } catch {
-              print("Error fetching native subscription feed: \(error)")
-              await send(.loadingFailed("Failed to load feed: \(error.localizedDescription)"))
+              return
             }
-            return
           }
 
           // Fallback for unauthenticated users
@@ -877,8 +846,12 @@ struct FeedFeature {
               continue
             }
 
-            let videos = try await client.getVideos(channelIdentifier: channel.id)
-            let _ = try await self.saveVideos(videos: videos, client: client)
+            if let client = client {
+              let videos = try await client.getVideos(channelIdentifier: channel.id)
+              let _ = try await self.saveVideos(videos: videos, client: client)
+            } else {
+              // TODO: Fallback for no client
+            }
           }
 
           // Query the database
@@ -906,54 +879,52 @@ struct FeedFeature {
       case .loadMoreVideos:
         return .run {
           [client = state.client, feedType = state.feedType, offset = state.currentOffset] send in
-          await send(.setLoadingMore(true))
+          if let client = client {
+            await send(.setLoadingMore(true))
 
-          // Determine sort based on feed type
-          let sort: TubeSDK.VideoSort?
+            // Determine sort based on feed type
+            let sort: TubeSDK.VideoSort?
 
-          switch feedType {
-          case .recommended:
-            if client.currentToken != nil {
-              sort = TubeSDK.VideoSort(
-                key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
-            } else {
-              sort = TubeSDK.VideoSort(
-                key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+            switch feedType {
+            case .recommended:
+
+              if client.currentToken != nil {
+                sort = TubeSDK.VideoSort(
+                  key: TubeSDK.VideoSortKey.best, direction: TubeSDK.SortDirection.descending)
+              } else {
+                sort = TubeSDK.VideoSort(
+                  key: TubeSDK.VideoSortKey.hot, direction: TubeSDK.SortDirection.descending)
+              }
+
+            default:
+              sort = nil
             }
-          default:
-            sort = nil
-          }
 
-          // Load 15 more videos with current offset
-          let peertubeVideos: [TubeSDK.Video]
-          if let sort = sort {
-            peertubeVideos = try await client.getVideos(sort: sort, count: 15, start: offset)
+            // Load 15 more videos with current offset
+            let peertubeVideos: [TubeSDK.Video]
+            if let sort = sort {
+              peertubeVideos = try await client.getVideos(sort: sort, count: 15, start: offset)
+            } else {
+              peertubeVideos = try await client.getVideos(count: 15, start: offset)
+            }
+
+            // Save to DB for caching and use returned VideoRows
+            let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+
+            // Update global cache with combined results
+            let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []
+            let combinedVideos = currentFeed + videos
+            await FeedCacheActor.shared.set(feedType, videos: combinedVideos)
+
+            // Fire-and-forget image preloading
+            self.preloadThumbnails(for: videos)
+
+            await send(.finishLoading(videos))
           } else {
-            peertubeVideos = try await client.getVideos(count: 15, start: offset)
+            // TODO: PeerSeek
           }
-
-          // Save to DB for caching and use returned VideoRows
-          let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
-
-          // Update global cache with combined results
-          let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []
-          let combinedVideos = currentFeed + videos
-          await FeedCacheActor.shared.set(feedType, videos: combinedVideos)
-
-          // Fire-and-forget image preloading
-          self.preloadThumbnails(for: videos)
-
-          await send(.finishLoading(videos))
         }
-      //      case .finishLoadingMore(let rows):
-      //        let newCards = rows.map {
-      //          VideoCardFeature.State.init(row: $0, variant: .large)
-      //        }
-      //        state.videoCards.append(contentsOf: newCards)
-      //        state.currentOffset += rows.count
-      //        state.isLoadingMore = false
-      //        state.hasMoreVideos = rows.count > 0
-      //        return .none
+
       case .setLoadingMore(let isLoading):
         state.isLoadingMore = isLoading
         return .none

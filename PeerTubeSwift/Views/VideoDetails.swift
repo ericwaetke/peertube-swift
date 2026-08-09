@@ -94,8 +94,8 @@ struct VideoDetailsFeature {
             @Dependency(\.defaultDatabase) var database
             try? await database.write { db in
               try Video
-                .where { $0.id == uuid }
-                .update { $0.currentTime = time }
+                .where { $0.id.eq(uuid) }
+                .update { $0.currentTime = #bind(time) }
                 .execute(db)
             }
           }

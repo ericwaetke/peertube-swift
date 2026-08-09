@@ -63,6 +63,7 @@ struct PeerTubeSwiftApp: App {
 
     prepareDependencies {
       try! $0.bootstrapDatabase()
+
     }
 
     BGTaskScheduler.shared.register(
@@ -145,7 +146,7 @@ struct PeerTubeSwiftApp: App {
     do {
       let subscriptionsToNotify = try await database.read { db in
         try PeertubeSubscription
-          .where { $0.notifyOnNewVideo == true }
+          .where { $0.notifyOnNewVideo.eq(true) }
           .fetchAll(db)
       }
 

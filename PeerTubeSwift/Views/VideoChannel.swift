@@ -114,7 +114,7 @@ struct VideoChannelFeature {
           // Load subscription state
           var localNotificationState = false
           if let subscription = try? await database.read({ db in
-            try PeertubeSubscription.where { $0.channelID == channelId }.fetchOne(db)
+            try PeertubeSubscription.where { $0.channelID.eq(channelId) }.fetchOne(db)
           }) {
             localNotificationState = subscription.notifyOnNewVideo
           }
@@ -243,7 +243,7 @@ struct VideoChannelFeature {
               }
             } else {
               try await database.write { db in
-                try PeertubeSubscription.where { $0.channelID == channelId }.delete().execute(db)
+                try PeertubeSubscription.where { $0.channelID.eq(channelId) }.delete().execute(db)
               }
               if client.currentToken != nil {
                 try? await client.removeSubscription(channelUri: channelId)
