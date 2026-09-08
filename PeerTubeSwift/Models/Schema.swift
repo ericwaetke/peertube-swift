@@ -161,7 +161,7 @@ extension Instance {
         
         self.id = uuid
         self.channelID = "\(channelName)@\(channelHost)"
-        self.instanceID = client.instance.host
+        self.instanceID = channelHost
         self.name = name
         self.publishDate = publishDate
         self.duration = tubeVideo.duration
