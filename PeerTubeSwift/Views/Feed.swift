@@ -31,6 +31,7 @@ enum FeedFilter: Equatable, Hashable {
   case subscriptions
   case search
   case continueWatching
+    case category
 
   var videoCardVariant: VideoCardVariant {
     switch self {
@@ -290,8 +291,9 @@ enum CachedFeedType: String, Equatable, Hashable {
       self = .subscriptions
     case .continueWatching:
       self = .continueWatching
-    case .search:
+    case .search, .category:
       self = .exploreNewest  // Don't cache search results
+    
     }
   }
 }
@@ -385,6 +387,7 @@ struct FeedFeature {
     case loadChannelVideos
     case loadSubscriptionVideos
       case loadVideosBySearch(String)
+      case loadVideosByCategory(PeerSeekSDK.Category)
     case loadContinueWatching
 
     case loadingFailed(String)
@@ -435,7 +438,7 @@ struct FeedFeature {
               )
             }
             .fetchAll(db)
-        case .search:
+        case .search, .category:
           return []
         case .continueWatching:
           // Query local DB for videos with watch progress
@@ -600,6 +603,8 @@ struct FeedFeature {
           return .send(.setLoading(false))
         case .continueWatching:
           return .send(.loadContinueWatching)
+        case .category:
+            return .send(.setLoading(false))
         }
       case .setLoading(let isLoading):
         state.isLoadingVideos = isLoading
@@ -686,15 +691,33 @@ struct FeedFeature {
             } catch {
                 print("Search failed with error: \(error)")
                 await send(.setLoading(false))
-////                await send(.)
             }
-          // TODO: ALWAYS use PeerSeek for this
-
-          //          let searchResult = try await client.searchVideos(search: searchParameters)
-          //
-          //          let videos = try await self.saveVideos(videos: searchResult, client: client)
-          //          await send(.finishLoading(videos))
         }
+      case .loadVideosByCategory(let category):
+          return .run { [peerSeekClient = peerSeekClient, category = category] send in
+              await send(.setLoading(true))
+
+              do {
+                  let searchResult = try await peerSeekClient.search(q: "", category: category)
+                  // TODO: Get playback time from db
+
+                  print("found \(searchResult.count) videos")
+                  var assembledVideos: [AssembledVideo] = []
+                  
+                  for video in searchResult {
+                      assembledVideos.append(try await AssembledVideo(seekVideo: video, currentTime: 0))
+                  }
+                  
+                  print("assembled \(assembledVideos.count) videos")
+                  
+                  let videos = try await self.saveVideos(videos: assembledVideos)
+                  print("saved \(videos.count) videos")
+                await send(.finishLoading(videos))
+              } catch {
+                  print("Search failed with error: \(error)")
+                  await send(.setLoading(false))
+              }
+          }
       case .loadChannelVideos:
         return .none
       case .loadContinueWatching:
@@ -1065,6 +1088,7 @@ struct Feed: View {
     case .subscriptions: return "Subscriptions"
     case .search: return "Search Results"
     case .continueWatching: return "Continue Watching"
+    case .category: return "Category"
     }
   }
 }

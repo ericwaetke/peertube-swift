@@ -833,6 +833,188 @@
           ]
         }
       }
+    },
+    "category": {
+      "activism": {
+        "$type": "color",
+        "$value": "{COLORS.Green.300}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1117",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "animals": {
+        "$type": "color",
+        "$value": "{COLORS.Blau.100}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1118",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "art": {
+        "$type": "color",
+        "$value": "{COLORS.Rot.300}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1119",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "comedy": {
+        "$type": "color",
+        "$value": "{COLORS.Yellow.300}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1120",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "education": {
+        "$type": "color",
+        "$value": "{COLORS.Violett.300}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1121",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "entertainment": {
+        "$type": "color",
+        "$value": "{COLORS.Orange.300}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1122",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "films": {
+        "$type": "color",
+        "$value": "{COLORS.Cyan.300}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1123",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "food": {
+        "$type": "color",
+        "$value": "{COLORS.Green.500}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1124",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "gaming": {
+        "$type": "color",
+        "$value": "{COLORS.Blau.300}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1125",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "howTo": {
+        "$type": "color",
+        "$value": "{COLORS.Rot.500}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1126",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "kids": {
+        "$type": "color",
+        "$value": "{COLORS.Yellow.500}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1127",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "music": {
+        "$type": "color",
+        "$value": "{COLORS.Violett.500}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1128",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "newsPolitics": {
+        "$type": "color",
+        "$value": "{COLORS.Cyan.500}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1129",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "people": {
+        "$type": "color",
+        "$value": "{COLORS.Green.300}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1130",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "scienceTechnology": {
+        "$type": "color",
+        "$value": "{COLORS.Orange.500}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1131",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "sports": {
+        "$type": "color",
+        "$value": "{COLORS.Violett.100}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1132",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "travels": {
+        "$type": "color",
+        "$value": "{COLORS.Cyan.100}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1133",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      },
+      "vehicles": {
+        "$type": "color",
+        "$value": "{COLORS.Orange.100}",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:4175:1134",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ]
+        }
+      }
     }
   },
   "$extensions": {

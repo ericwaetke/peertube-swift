@@ -11,6 +11,7 @@ import SQLiteData
 import SwiftUI
 import TubeSDK
 import WebURL
+import PeerSeekSDK
 
 @Reducer
 struct SearchTabFeature {
@@ -32,7 +33,7 @@ struct SearchTabFeature {
     case activateSearch
     case setSearchActive(Bool)
 
-    case categoryTapped(String)
+      case categoryTapped(PeerSeekSDK.Category)
 
     case delegate(Delegate)
 
@@ -92,7 +93,15 @@ struct SearchTabFeature {
       case .navigation(.videoDetail(_)):
         return .none
       case .categoryTapped(let category):
-        return .none
+          state.navigation.path.append(.feed(FeedFeature.State(feedType: .category)))
+          return .send(
+            .navigation(
+              .path(
+                .element(
+                  id: state.navigation.path.ids.last!,
+                  action: .feed(
+                    .loadVideosByCategory(category))
+                ))))
       }
     }
   }
@@ -117,6 +126,10 @@ struct MockData {
   }
 }
 
+let categories: [PeerSeekSDK.Category] = [
+    .newsPolitics
+]
+
 struct SearchTab: View {
   @Bindable var store: StoreOf<SearchTabFeature>
 
@@ -140,10 +153,10 @@ struct SearchTab: View {
   private var contentView: some View {
     ScrollView {
       LazyVGrid(columns: [GridItem(.adaptive(minimum: 170))]) {
-        ForEach(MockData.colors, id: \.self) {
-          CategoryCard(color: $0)
+          ForEach(Array(shownCategories.keys), id: \.self) { category in
+            CategoryCard(category: category)
             .onTapGesture {
-              self.store.send(.categoryTapped($0.debugDescription))
+              self.store.send(.categoryTapped(category))
             }
         }
       }
