@@ -205,7 +205,11 @@ struct PeerTubeSwiftApp: App {
                     channelID: channelId,
                     instanceID: channel.instanceID,
                     name: videoName,
-                    publishDate: video.publishedAt ?? Date()
+                    publishDate: video.publishedAt ?? Date(),
+                    views: video.views ?? 0,
+                    comments: video.comments ?? 0,
+                    likes: video.likes ?? 0,
+                    dislikes: video.dislikes ?? 0
                   )
                 }
                 .execute(db)

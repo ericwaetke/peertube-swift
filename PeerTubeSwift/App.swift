@@ -15,7 +15,7 @@ import TubeSDK
 
 extension DependencyValues {
   @DependencyEntry(liveValue: PeerSeekClient())
-  var peerseekClient = PeerSeekClient()
+  var peerSeekClient = PeerSeekClient()
 
 }
 

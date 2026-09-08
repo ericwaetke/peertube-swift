@@ -121,6 +121,9 @@ struct ContinueWatching: View {
           duration: 600,
           currentTime: 120,
           views: 142,
+          comments: 0,
+          likes: 0,
+          dislikes: 0,
           thumbnailUrl: "https://i.ytimg.com/vi/DM52HxaLK-Y/hqdefault.jpg"
         )
         Video(
@@ -132,6 +135,9 @@ struct ContinueWatching: View {
           duration: 600,
           currentTime: 120,
           views: 142,
+          comments: 0,
+          likes: 0,
+          dislikes: 0,
           thumbnailUrl: "https://i.ytimg.com/vi/DM52HxaLK-Y/hqdefault.jpg"
         )
         Video(
@@ -143,6 +149,9 @@ struct ContinueWatching: View {
           duration: 600,
           currentTime: 120,
           views: 142,
+          comments: 0,
+          likes: 0,
+          dislikes: 0,
           thumbnailUrl: "https://i.ytimg.com/vi/DM52HxaLK-Y/hqdefault.jpg"
         )
       }

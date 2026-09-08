@@ -9,6 +9,7 @@ import ComposableArchitecture
 import SQLiteData
 import SwiftUI
 import TubeSDK
+import PeerSeekSDK
 
 @Selection struct VideoRow: Hashable, Equatable {
   static func == (lhs: VideoRow, rhs: VideoRow) -> Bool {
@@ -383,7 +384,7 @@ struct FeedFeature {
 
     case loadChannelVideos
     case loadSubscriptionVideos
-    case loadVideosBySearch(TubeSDK.SearchVideoQueryParameters)
+      case loadVideosBySearch(String)
     case loadContinueWatching
 
     case loadingFailed(String)
@@ -393,6 +394,7 @@ struct FeedFeature {
   @Dependency(\.defaultDatabase) var database
   @Dependency(\.authClient) var authClient
   @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
+    @Dependency(\.peerSeekClient) var peerSeekClient
 
   func fetchLocalVideos(for feedType: FeedFilter) async -> [VideoRow]? {
     return await withErrorReporting {
@@ -475,84 +477,33 @@ struct FeedFeature {
       return currentTime > 60 && remaining > 180
     }
   }
+    
+    func saveVideos(videos: [AssembledVideo]) async throws -> [VideoRow] {
+        let videoRows: [VideoRow] = try await database.write { db -> [VideoRow] in
+          var rows: [VideoRow] = []
+            
+          for video in videos {
+            let channel =
+              try VideoChannel
+                  .upsert {video.channel}
+              .returning(\.self)
+              .fetchOne(db)
 
-  /// Save videos to database with parallel network calls but serialized DB writes
-  /// This avoids SQLite "database is locked" errors from concurrent writes
-  func saveVideos(videos: [TubeSDK.Video], client: TubeSDKClient) async throws -> [VideoRow] {
-    // Phase 1: Process all videos concurrently for network calls (syncInstanceInfo)
-    let processedVideos = await withTaskGroup(of: (Int, TubeSDK.Video, ProcessedVideoData?).self) {
-      group in
-      for (index, peertubeVideo) in videos.enumerated() {
-        group.addTask {
-          let data = await self.processVideoNetwork(peertubeVideo: peertubeVideo, client: client)
-          return (index, peertubeVideo, data)
-        }
-      }
+            let insertedVideo =
+              try Video
+              .upsert { Video(assembledVideo: video) }
+              .returning(\.self)
+              .fetchOne(db)
 
-      var results: [(Int, TubeSDK.Video, ProcessedVideoData?)] = []
-      for await result in group {
-        results.append(result)
-      }
-      return results.sorted { $0.0 < $1.0 }
-    }
-
-    // Phase 2: Batch DB writes in a single transaction to avoid SQLite lock contention
-    let videoRows: [VideoRow] = try await database.write { db -> [VideoRow] in
-      var rows: [VideoRow] = []
-      for (_, peertubeVideo, data) in processedVideos {
-        guard let data = data,
-          let videoId = peertubeVideo.uuid,
-          let videoName = peertubeVideo.name,
-          let publishedAt = peertubeVideo.publishedAt
-        else { continue }
-
-        let channel =
-          try VideoChannel
-          .upsert {
-            VideoChannel(
-              id: "\(data.channelUsername)@\(data.instanceHost)",
-              name: data.channelDisplayName,
-              avatarUrl: data.avatarUrl,
-              description: data.channelDescription,
-              instanceID: data.instance.id
-            )
+            if let insertedVideo = insertedVideo {
+              rows.append(VideoRow(video: insertedVideo, channel: channel, instance: video.instance))
+            }
           }
-          .returning(\.self)
-          .fetchOne(db)
-
-        var thumbnailUrl: String? = nil
-        // Use bestThumbnailUrl for highest resolution available
-        thumbnailUrl = peertubeVideo.bestThumbnailUrl(client: client, size: .medium)
-
-        let existingTime = try Video.find(videoId).fetchOne(db)?.currentTime
-
-        let video =
-          try Video
-          .upsert {
-            Video(
-              id: videoId,
-              channelID: "\(data.channelUsername)@\(data.instanceHost)",
-              instanceID: data.instance.id,
-              name: videoName,
-              publishDate: publishedAt,
-              duration: peertubeVideo.duration,
-              currentTime: peertubeVideo.userHistory?.currentTime ?? existingTime,
-              views: peertubeVideo.views ?? 0,
-              thumbnailUrl: thumbnailUrl
-            )
-          }
-          .returning(\.self)
-          .fetchOne(db)
-
-        if let inserted = video {
-          rows.append(VideoRow(video: inserted, channel: channel, instance: data.instance))
+          return rows
         }
-      }
-      return rows
-    }
 
-    return videoRows
-  }
+        return videoRows
+    }
 
   /// Intermediate data structure for processed video info
   private struct ProcessedVideoData {
@@ -692,9 +643,12 @@ struct FeedFeature {
             //                peertubeVideos = try await client.getVideos(sort: sort, count: 15, start: 0)
             //              } else {
             peertubeVideos = try await client.getVideos(count: 15, start: 0)
+              let assembledVideos = try peertubeVideos.map { video in
+                  try AssembledVideo(tubeVideo: video, client: client)
+              }
             //              }
 
-            let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+              let videos = try await self.saveVideos(videos: assembledVideos)
 
             // Update global cache
             await FeedCacheActor.shared.set(feedType, videos: videos)
@@ -707,10 +661,33 @@ struct FeedFeature {
             // TODO: Use PeerSeek
           }
         }
-      case .loadVideosBySearch(let searchParameters):
-        return .run { [client = state.client, searchParameters = searchParameters] send in
-          await send(.setLoading(true))
+      case .loadVideosBySearch(let q):
+        return .run { [peerSeekClient = peerSeekClient, q = q] send in
+            await send(.setLoading(true))
 
+            do {
+                let searchResult = try await peerSeekClient.search(q: q)
+    //            let assembledVideos = searchResult.map { video in
+    //                // TODO: Get playback time from db
+    //                try await AssembledVideo(seekVideo: video, currentTime: 0)
+    //            }
+                print("found \(searchResult.count) videos")
+                var assembledVideos: [AssembledVideo] = []
+                
+                for video in searchResult {
+                    assembledVideos.append(try await AssembledVideo(seekVideo: video, currentTime: 0))
+                }
+                
+                print("assembled \(assembledVideos.count) videos")
+                
+                let videos = try await self.saveVideos(videos: assembledVideos)
+                print("saved \(videos.count) videos")
+              await send(.finishLoading(videos))
+            } catch {
+                print("Search failed with error: \(error)")
+                await send(.setLoading(false))
+////                await send(.)
+            }
           // TODO: ALWAYS use PeerSeek for this
 
           //          let searchResult = try await client.searchVideos(search: searchParameters)
@@ -744,7 +721,9 @@ struct FeedFeature {
             let historyVideos = try await client.getMyHistory(count: 20)
 
             // Save to DB and get VideoRows
-            let videos = try await self.saveVideos(videos: historyVideos, client: client)
+              let videos = try await self.saveVideos(videos: historyVideos.map({ video in
+                  try AssembledVideo(tubeVideo: video, client: client)
+              }))
 
             // Filter: watched > 1 minute AND remaining > 3 minutes
             let continueWatchingVideos = videos.filter { row in
@@ -790,7 +769,9 @@ struct FeedFeature {
               print("User is authenticated, fetching native subscription feed")
               do {
                 let peertubeVideos = try await client.getMySubscriptionVideos()
-                let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                  let videos = try await self.saveVideos(videos: peertubeVideos.map({ video in
+                      try AssembledVideo(tubeVideo: video, client: client)
+                  }))
                 await send(.finishLoading(videos))
               } catch TubeError.unauthorized {
                 print("Token expired, attempting to refresh")
@@ -806,7 +787,9 @@ struct FeedFeature {
 
                     // Retry
                     let peertubeVideos = try await client.getMySubscriptionVideos()
-                    let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+                      let videos = try await self.saveVideos(videos: peertubeVideos.map({ video in
+                          try AssembledVideo(tubeVideo: video, client: client)
+                      }))
                     await send(.finishLoading(videos))
                     return
                   } catch {
@@ -848,7 +831,9 @@ struct FeedFeature {
 
             if let client = client {
               let videos = try await client.getVideos(channelIdentifier: channel.id)
-              let _ = try await self.saveVideos(videos: videos, client: client)
+                let _ = try await self.saveVideos(videos: videos.map({ video in
+                    try AssembledVideo(tubeVideo: video, client: client)
+                }))
             } else {
               // TODO: Fallback for no client
             }
@@ -909,7 +894,9 @@ struct FeedFeature {
             }
 
             // Save to DB for caching and use returned VideoRows
-            let videos = try await self.saveVideos(videos: peertubeVideos, client: client)
+              let videos = try await self.saveVideos(videos: peertubeVideos.map({ video in
+                  try AssembledVideo(tubeVideo: video, client: client)
+              }))
 
             // Update global cache with combined results
             let currentFeed = await FeedCacheActor.shared.get(feedType) ?? []

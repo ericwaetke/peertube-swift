@@ -88,8 +88,12 @@ struct ExploreTabFeature {
               .element(
                 id: state.navigation.path.ids.last!,
                 action: .feed(
-                  .loadVideosBySearch(TubeSDK.SearchVideoQueryParameters(search: state.searchText)))
-              ))))
+                  .loadVideosBySearch(state.searchText)
+                )
+              )
+            )
+          )
+        )
 
       case .activateSearch:
         state.isSearchActive = true
