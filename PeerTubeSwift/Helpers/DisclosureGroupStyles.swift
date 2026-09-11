@@ -40,7 +40,7 @@ struct InnerSectionDisclosureGroup: DisclosureGroupStyle {
     }
     .padding(.top, 8)
     .padding(.bottom, 16)
-    .background(Color(uiColor: UIColor.systemFill))
+    .background(Color(uiColor: UIColor.systemFill).opacity(0.5))
     .overlay(alignment: .top) {
       // Top inset shadow
       LinearGradient(

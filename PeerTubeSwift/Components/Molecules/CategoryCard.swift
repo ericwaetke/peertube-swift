@@ -74,6 +74,7 @@ struct CategoryCard: View {
       RoundedRectangle(cornerRadius: 20)
         .fill(
           data.color.gradient
+            .blendMode(.normal)
             .shadow(
               .inner(color: Color.black.opacity(0.25), radius: 2, y: -2)
             )
