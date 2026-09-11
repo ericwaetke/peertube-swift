@@ -27,7 +27,7 @@ let shownCategories: [PeerSeekSDK.Category: CategoryMap] = [
     .gaming: CategoryMap(color: Color.Category.gaming, symbol: "gamecontroller.fill"),
     .howTo: CategoryMap(color: Color.Category.howTo, symbol: "list.bullet.clipboard.fill"),
     .kids: CategoryMap(color: Color.Category.kids, symbol: "teddybear.fill"),
-    .music: CategoryMap(color: Color.Category.music, symbol: "microphone.dynamic.on.stand"),
+    .music: CategoryMap(color: Color.Category.music, symbol: "music.note"),
     
     .newsPolitics: CategoryMap(color: Color.Category.newsPolitics, symbol: "newspaper.fill"),
     
