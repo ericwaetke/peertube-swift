@@ -238,8 +238,6 @@ struct AssembledVideo: Identifiable, Hashable {
             throw TubeError.invalidUUID
         }
         
-        var channel: VideoChannel? = nil
-        
         @Dependency(\.defaultDatabase) var database
 
 
@@ -256,31 +254,9 @@ struct AssembledVideo: Identifiable, Hashable {
         }
         
         print("instance: \(instance)")
-        
-        if (seekVideo.name == nil || seekVideo.host == nil) {
-            let client = try TubeSDKClient(scheme: "https", host: seekVideo.instance)
-    
-            let video = try await client.getVideo(host: seekVideo.instance, id: seekVideo.id)
-    
-            let tubeVideo = TubeSDK.Video(from: video)
-            
-            channel = VideoChannel(id: "\(tubeVideo.channel?.name)@\(tubeVideo.channel?.host)", name: tubeVideo.channel?.displayName ?? "Unkniwn Channel", instanceID: instance.id)
 
-//            try self.init(tubeVideo: tubeVideo, client: client)
-        } else {
-            channel = VideoChannel(id: "\(seekVideo.name)@\(seekVideo.host)", name: seekVideo.displayName ?? "Unknown Channel", instanceID: instance.id)
-        }
-        
-        guard let channel = channel else {
-            print("couldnt construct channel")
-            throw TubeError.invalidChannelData
-        }
-        
-//        
-//        // TODO: Get the correct channel
-//
         self.id = uuid
-        self.channel = channel
+        self.channel = VideoChannel(id: "\(seekVideo.channelHandle)@\(seekVideo.instance)", name: seekVideo.channel ?? "Unknown Channel", instanceID: instance.id)
         self.instance = instance
         self.name = seekVideo.title
         self.publishDate = seekVideo.publishedAt
