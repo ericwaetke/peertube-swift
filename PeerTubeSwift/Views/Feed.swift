@@ -6,10 +6,10 @@
 //
 
 import ComposableArchitecture
+import PeerSeekSDK
 import SQLiteData
 import SwiftUI
 import TubeSDK
-import PeerSeekSDK
 
 @Selection struct VideoRow: Hashable, Equatable {
   static func == (lhs: VideoRow, rhs: VideoRow) -> Bool {
@@ -31,7 +31,7 @@ enum FeedFilter: Equatable, Hashable {
   case subscriptions
   case search(String)
   case continueWatching
-    case category(String)
+  case category(String)
 
   var videoCardVariant: VideoCardVariant {
     switch self {
@@ -41,23 +41,23 @@ enum FeedFilter: Equatable, Hashable {
       .large
     }
   }
-    
-    var navigationTitle: String {
-        switch self {
-        case .exploreNewest:
-            "Newest Videos"
-        case .recommended:
-            "Recommendations"
-        case .subscriptions:
-            "Subscriptions"
-        case .search(let string):
-            "“\(string)”"
-        case .continueWatching:
-            "Continue Watching"
-        case .category(let string):
-            string
-        }
+
+  var navigationTitle: String {
+    switch self {
+    case .exploreNewest:
+      "Newest Videos"
+    case .recommended:
+      "Recommendations"
+    case .subscriptions:
+      "Subscriptions"
+    case .search(let string):
+      "“\(string)”"
+    case .continueWatching:
+      "Continue Watching"
+    case .category(let string):
+      string
     }
+  }
 }
 
 enum FeedOrder: Equatable, Hashable {
@@ -309,7 +309,7 @@ enum CachedFeedType: String, Equatable, Hashable {
       self = .continueWatching
     case .search, .category:
       self = .exploreNewest  // Don't cache search results
-    
+
     }
   }
 }
@@ -402,8 +402,8 @@ struct FeedFeature {
 
     case loadChannelVideos
     case loadSubscriptionVideos
-      case loadVideosBySearch(String)
-      case loadVideosByCategory(PeerSeekSDK.Category)
+    case loadVideosBySearch(String)
+    case loadVideosByCategory(PeerSeekSDK.Category)
     case loadContinueWatching
 
     case loadingFailed(String)
@@ -413,7 +413,7 @@ struct FeedFeature {
   @Dependency(\.defaultDatabase) var database
   @Dependency(\.authClient) var authClient
   @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
-    @Dependency(\.peerSeekClient) var peerSeekClient
+  @Dependency(\.peerSeekClient) var peerSeekClient
 
   func fetchLocalVideos(for feedType: FeedFilter) async -> [VideoRow]? {
     return await withErrorReporting {
@@ -496,33 +496,33 @@ struct FeedFeature {
       return currentTime > 60 && remaining > 180
     }
   }
-    
-    func saveVideos(videos: [AssembledVideo]) async throws -> [VideoRow] {
-        let videoRows: [VideoRow] = try await database.write { db -> [VideoRow] in
-          var rows: [VideoRow] = []
-            
-          for video in videos {
-            let channel =
-              try VideoChannel
-                  .upsert {video.channel}
-              .returning(\.self)
-              .fetchOne(db)
 
-            let insertedVideo =
-              try Video
-              .upsert { Video(assembledVideo: video) }
-              .returning(\.self)
-              .fetchOne(db)
+  func saveVideos(videos: [AssembledVideo]) async throws -> [VideoRow] {
+    let videoRows: [VideoRow] = try await database.write { db -> [VideoRow] in
+      var rows: [VideoRow] = []
 
-            if let insertedVideo = insertedVideo {
-              rows.append(VideoRow(video: insertedVideo, channel: channel, instance: video.instance))
-            }
-          }
-          return rows
+      for video in videos {
+        let channel =
+          try VideoChannel
+          .upsert { video.channel }
+          .returning(\.self)
+          .fetchOne(db)
+
+        let insertedVideo =
+          try Video
+          .upsert { Video(assembledVideo: video) }
+          .returning(\.self)
+          .fetchOne(db)
+
+        if let insertedVideo = insertedVideo {
+          rows.append(VideoRow(video: insertedVideo, channel: channel, instance: video.instance))
         }
-
-        return videoRows
+      }
+      return rows
     }
+
+    return videoRows
+  }
 
   /// Intermediate data structure for processed video info
   private struct ProcessedVideoData {
@@ -620,7 +620,7 @@ struct FeedFeature {
         case .continueWatching:
           return .send(.loadContinueWatching)
         case .category:
-            return .send(.setLoading(false))
+          return .send(.setLoading(false))
         }
       case .setLoading(let isLoading):
         state.isLoadingVideos = isLoading
@@ -664,12 +664,12 @@ struct FeedFeature {
             //                peertubeVideos = try await client.getVideos(sort: sort, count: 15, start: 0)
             //              } else {
             peertubeVideos = try await client.getVideos(count: 15, start: 0)
-              let assembledVideos = try peertubeVideos.map { video in
-                  try AssembledVideo(tubeVideo: video, client: client)
-              }
+            let assembledVideos = try peertubeVideos.map { video in
+              try AssembledVideo(tubeVideo: video, client: client)
+            }
             //              }
 
-              let videos = try await self.saveVideos(videos: assembledVideos)
+            let videos = try await self.saveVideos(videos: assembledVideos)
 
             // Update global cache
             await FeedCacheActor.shared.set(feedType, videos: videos)
@@ -684,56 +684,56 @@ struct FeedFeature {
         }
       case .loadVideosBySearch(let q):
         return .run { [peerSeekClient = peerSeekClient, q = q] send in
-            await send(.setLoading(true))
+          await send(.setLoading(true))
 
-            do {
-                let searchResult = try await peerSeekClient.search(q: q)
-    //            let assembledVideos = searchResult.map { video in
-    //                // TODO: Get playback time from db
-    //                try await AssembledVideo(seekVideo: video, currentTime: 0)
-    //            }
-                print("found \(searchResult.count) videos")
-                var assembledVideos: [AssembledVideo] = []
-                
-                for video in searchResult {
-                    assembledVideos.append(try await AssembledVideo(seekVideo: video, currentTime: 0))
-                }
-                
-                print("assembled \(assembledVideos.count) videos")
-                
-                let videos = try await self.saveVideos(videos: assembledVideos)
-                print("saved \(videos.count) videos")
-              await send(.finishLoading(videos))
-            } catch {
-                print("Search failed with error: \(error)")
-                await send(.setLoading(false))
+          do {
+            let searchResult = try await peerSeekClient.search(q: q)
+            //            let assembledVideos = searchResult.map { video in
+            //                // TODO: Get playback time from db
+            //                try await AssembledVideo(seekVideo: video, currentTime: 0)
+            //            }
+            print("found \(searchResult.count) videos")
+            var assembledVideos: [AssembledVideo] = []
+
+            for video in searchResult {
+              assembledVideos.append(try await AssembledVideo(seekVideo: video, currentTime: 0))
             }
+
+            print("assembled \(assembledVideos.count) videos")
+
+            let videos = try await self.saveVideos(videos: assembledVideos)
+            print("saved \(videos.count) videos")
+            await send(.finishLoading(videos))
+          } catch {
+            print("Search failed with error: \(error)")
+            await send(.setLoading(false))
+          }
         }
       case .loadVideosByCategory(let category):
-          return .run { [peerSeekClient = peerSeekClient, category = category] send in
-              await send(.setLoading(true))
+        return .run { [peerSeekClient = peerSeekClient, category = category] send in
+          await send(.setLoading(true))
 
-              do {
-                  let searchResult = try await peerSeekClient.search(q: "", category: category)
-                  // TODO: Get playback time from db
+          do {
+            let searchResult = try await peerSeekClient.search(q: "", category: category)
+            // TODO: Get playback time from db
 
-                  print("found \(searchResult.count) videos")
-                  var assembledVideos: [AssembledVideo] = []
-                  
-                  for video in searchResult {
-                      assembledVideos.append(try await AssembledVideo(seekVideo: video, currentTime: 0))
-                  }
-                  
-                  print("assembled \(assembledVideos.count) videos")
-                  
-                  let videos = try await self.saveVideos(videos: assembledVideos)
-                  print("saved \(videos.count) videos")
-                await send(.finishLoading(videos))
-              } catch {
-                  print("Search failed with error: \(error)")
-                  await send(.setLoading(false))
-              }
+            print("found \(searchResult.count) videos")
+            var assembledVideos: [AssembledVideo] = []
+
+            for video in searchResult {
+              assembledVideos.append(try await AssembledVideo(seekVideo: video, currentTime: 0))
+            }
+
+            print("assembled \(assembledVideos.count) videos")
+
+            let videos = try await self.saveVideos(videos: assembledVideos)
+            print("saved \(videos.count) videos")
+            await send(.finishLoading(videos))
+          } catch {
+            print("Search failed with error: \(error)")
+            await send(.setLoading(false))
           }
+        }
       case .loadChannelVideos:
         return .none
       case .loadContinueWatching:
@@ -760,8 +760,9 @@ struct FeedFeature {
             let historyVideos = try await client.getMyHistory(count: 20)
 
             // Save to DB and get VideoRows
-              let videos = try await self.saveVideos(videos: historyVideos.map({ video in
-                  try AssembledVideo(tubeVideo: video, client: client)
+            let videos = try await self.saveVideos(
+              videos: historyVideos.map({ video in
+                try AssembledVideo(tubeVideo: video, client: client)
               }))
 
             // Filter: watched > 1 minute AND remaining > 3 minutes
@@ -808,8 +809,9 @@ struct FeedFeature {
               print("User is authenticated, fetching native subscription feed")
               do {
                 let peertubeVideos = try await client.getMySubscriptionVideos()
-                  let videos = try await self.saveVideos(videos: peertubeVideos.map({ video in
-                      try AssembledVideo(tubeVideo: video, client: client)
+                let videos = try await self.saveVideos(
+                  videos: peertubeVideos.map({ video in
+                    try AssembledVideo(tubeVideo: video, client: client)
                   }))
                 await send(.finishLoading(videos))
               } catch TubeError.unauthorized {
@@ -826,8 +828,9 @@ struct FeedFeature {
 
                     // Retry
                     let peertubeVideos = try await client.getMySubscriptionVideos()
-                      let videos = try await self.saveVideos(videos: peertubeVideos.map({ video in
-                          try AssembledVideo(tubeVideo: video, client: client)
+                    let videos = try await self.saveVideos(
+                      videos: peertubeVideos.map({ video in
+                        try AssembledVideo(tubeVideo: video, client: client)
                       }))
                     await send(.finishLoading(videos))
                     return
@@ -870,8 +873,9 @@ struct FeedFeature {
 
             if let client = client {
               let videos = try await client.getVideos(channelIdentifier: channel.id)
-                let _ = try await self.saveVideos(videos: videos.map({ video in
-                    try AssembledVideo(tubeVideo: video, client: client)
+              let _ = try await self.saveVideos(
+                videos: videos.map({ video in
+                  try AssembledVideo(tubeVideo: video, client: client)
                 }))
             } else {
               // TODO: Fallback for no client
@@ -933,8 +937,9 @@ struct FeedFeature {
             }
 
             // Save to DB for caching and use returned VideoRows
-              let videos = try await self.saveVideos(videos: peertubeVideos.map({ video in
-                  try AssembledVideo(tubeVideo: video, client: client)
+            let videos = try await self.saveVideos(
+              videos: peertubeVideos.map({ video in
+                try AssembledVideo(tubeVideo: video, client: client)
               }))
 
             // Update global cache with combined results

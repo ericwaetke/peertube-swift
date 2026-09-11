@@ -116,45 +116,45 @@ struct VideoDetailsFeature {
         }
 
       case .instanceLoaded(let instance):
-          state.channelPreview.instance = instance
-          return .run { [client = state.client, videoId = state.videoId, host = state.host] send in
-              print("running side-effect screen loaded")
-              
-              var videoDetails: TubeSDK.VideoDetails?
-              
-              do {
-                  videoDetails = try await client.getVideo(
-                    host: client.instance.host, id: videoId
-                  )
-              } catch {
-                  // fallback to videos origin instance
-                  // only needed when video isnt found on users home instance
-                  print("falling back to host \(host)")
-                  if host != client.instance.host {
-                      let originClient = try TubeSDKClient(scheme: "https", host: host)
-                      videoDetails = try await originClient.getVideo(host: host, id: videoId)
-                  } else {
-                      throw error
-                  }
+        state.channelPreview.instance = instance
+        return .run { [client = state.client, videoId = state.videoId, host = state.host] send in
+          print("running side-effect screen loaded")
+
+          var videoDetails: TubeSDK.VideoDetails?
+
+          do {
+            videoDetails = try await client.getVideo(
+              host: client.instance.host, id: videoId
+            )
+          } catch {
+            // fallback to videos origin instance
+            // only needed when video isnt found on users home instance
+            print("falling back to host \(host)")
+            if host != client.instance.host {
+              let originClient = try TubeSDKClient(scheme: "https", host: host)
+              videoDetails = try await originClient.getVideo(host: host, id: videoId)
+            } else {
+              throw error
+            }
+          }
+          guard var videoDetails else {
+            await send(.videoLoadFailed)
+            return
+          }
+
+          if videoDetails.userHistory == nil {
+            if let uuid = videoDetails.uuid {
+              @Dependency(\.defaultDatabase) var database
+              let localTime = try? await database.read { db in
+                try Video.find(uuid).fetchOne(db)?.currentTime
               }
-              guard var videoDetails else {
-                  await send(.videoLoadFailed)
-                  return
+              if let time = localTime {
+                videoDetails.userHistory = TubeSDK.VideoUserHistory(currentTime: time)
               }
-              
-              if videoDetails.userHistory == nil {
-                  if let uuid = videoDetails.uuid {
-                      @Dependency(\.defaultDatabase) var database
-                      let localTime = try? await database.read { db in
-                          try Video.find(uuid).fetchOne(db)?.currentTime
-                      }
-                      if let time = localTime {
-                          videoDetails.userHistory = TubeSDK.VideoUserHistory(currentTime: time)
-                      }
-                  }
-              }
-              
-              await send(.loadVideo(videoDetails))
+            }
+          }
+
+          await send(.loadVideo(videoDetails))
         } catch: { error, send in
           print("Error loading video: \(error)")
           if let tubeError = error as? TubeError, case .notFound = tubeError {

@@ -7,11 +7,11 @@
 
 import ComposableArchitecture
 import Dependencies
+import PeerSeekSDK
 import SQLiteData
 import SwiftUI
 import TubeSDK
 import WebURL
-import PeerSeekSDK
 
 @Reducer
 struct SearchTabFeature {
@@ -21,14 +21,14 @@ struct SearchTabFeature {
 
     var searchText = String()
     var isSearchActive = false
-      var suggestions: [PeerSeekSDK.Suggestion] = []
+    var suggestions: [PeerSeekSDK.Suggestion] = []
 
     @Shared(.inMemory("session")) var session: UserSession?
   }
-    
-    @Dependency(\.peerSeekClient) var peerSeekClient
-    @Dependency(\.suspendingClock) var clock
-    enum CancelID { case searchSuggestions }
+
+  @Dependency(\.peerSeekClient) var peerSeekClient
+  @Dependency(\.suspendingClock) var clock
+  enum CancelID { case searchSuggestions }
 
   enum Action {
     case navigation(FeedNavigationFeature.Action)
@@ -38,12 +38,12 @@ struct SearchTabFeature {
     case activateSearch
     case setSearchActive(Bool)
 
-      case categoryTapped(PeerSeekSDK.Category)
+    case categoryTapped(PeerSeekSDK.Category)
 
     case delegate(Delegate)
-      
-      case triggerUpdateSuggestions(String)
-      case updateSuggestions([PeerSeekSDK.Suggestion])
+
+    case triggerUpdateSuggestions(String)
+    case updateSuggestions([PeerSeekSDK.Suggestion])
 
     enum Delegate {
       case openSettings
@@ -77,11 +77,11 @@ struct SearchTabFeature {
 
       case .setSearch(let text):
         state.searchText = text
-          return .send(.triggerUpdateSuggestions(text))
+        return .send(.triggerUpdateSuggestions(text))
 
       case .startSearch:
         guard !state.searchText.isEmpty else { return .none }
-          state.navigation.path.append(.feed(FeedFeature.State(feedType: .search(state.searchText))))
+        state.navigation.path.append(.feed(FeedFeature.State(feedType: .search(state.searchText))))
         return .send(
           .navigation(
             .path(
@@ -101,31 +101,32 @@ struct SearchTabFeature {
       case .navigation(.videoDetail(_)):
         return .none
       case .categoryTapped(let category):
-          state.navigation.path.append(.feed(FeedFeature.State(feedType: .category(category.rawValue))))
-          return .send(
-            .navigation(
-              .path(
-                .element(
-                  id: state.navigation.path.ids.last!,
-                  action: .feed(
-                    .loadVideosByCategory(category))
-                ))))
+        state.navigation.path.append(
+          .feed(FeedFeature.State(feedType: .category(category.rawValue))))
+        return .send(
+          .navigation(
+            .path(
+              .element(
+                id: state.navigation.path.ids.last!,
+                action: .feed(
+                  .loadVideosByCategory(category))
+              ))))
       case .triggerUpdateSuggestions(let q):
-          return .run { send in
-              try await withTaskCancellation(id: CancelID.searchSuggestions, cancelInFlight: true) {
-                  try await clock.sleep(for: .milliseconds(300))
-                  guard !Task.isCancelled else { return }
-                  
-                  let res = try await self.peerSeekClient.getSearchSuggestions(q: q)
-                  if res.count > 0 {
-                      await send(.updateSuggestions(res))
-                  }
-              }
+        return .run { send in
+          try await withTaskCancellation(id: CancelID.searchSuggestions, cancelInFlight: true) {
+            try await clock.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+
+            let res = try await self.peerSeekClient.getSearchSuggestions(q: q)
+            if res.count > 0 {
+              await send(.updateSuggestions(res))
+            }
           }
+        }
       case .updateSuggestions(let suggestions):
-          print("updating suggestions to: \(suggestions)")
-          state.suggestions = suggestions
-          return .none
+        print("updating suggestions to: \(suggestions)")
+        state.suggestions = suggestions
+        return .none
       }
     }
   }
@@ -151,7 +152,7 @@ struct MockData {
 }
 
 let categories: [PeerSeekSDK.Category] = [
-    .newsPolitics
+  .newsPolitics
 ]
 
 struct SearchTab: View {
@@ -177,8 +178,8 @@ struct SearchTab: View {
   private var contentView: some View {
     ScrollView {
       LazyVGrid(columns: [GridItem(.adaptive(minimum: 170))]) {
-          ForEach(Array(shownCategories.keys), id: \.self) { category in
-            CategoryCard(category: category)
+        ForEach(Array(shownCategories.keys), id: \.self) { category in
+          CategoryCard(category: category)
             .onTapGesture {
               self.store.send(.categoryTapped(category))
             }
@@ -191,10 +192,10 @@ struct SearchTab: View {
       text: $store.searchText.sending(\.setSearch),
     )
     .searchSuggestions({
-        ForEach(store.suggestions, id: \.self) { suggestion in
-            Label (suggestion.term, systemImage: "magnifyingglass")
-                .searchCompletion (suggestion.term)
-        }
+      ForEach(store.suggestions, id: \.self) { suggestion in
+        Label(suggestion.term, systemImage: "magnifyingglass")
+          .searchCompletion(suggestion.term)
+      }
     })
     .onSubmit(of: .search) {
       self.store.send(.startSearch)

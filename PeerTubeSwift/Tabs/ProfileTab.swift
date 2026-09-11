@@ -14,38 +14,38 @@ import WebURL
 
 @Reducer
 enum ProfileTabPath {
-    case settings(SettingsFeature)
+  case settings(SettingsFeature)
 }
 extension ProfileTabPath.State: Equatable {}
 
 @Reducer
 struct ProfileTabFeature {
   @ObservableState
-    struct State: Equatable {
-        var path = StackState<ProfileTabPath.State>()
-      var profileTabView = ProfileTabViewFeature.State()
+  struct State: Equatable {
+    var path = StackState<ProfileTabPath.State>()
+    var profileTabView = ProfileTabViewFeature.State()
   }
 
   enum Action {
-      case path(StackAction<ProfileTabPath.State, ProfileTabPath.Action>)
-      case profileTabView(ProfileTabViewFeature.Action)
+    case path(StackAction<ProfileTabPath.State, ProfileTabPath.Action>)
+    case profileTabView(ProfileTabViewFeature.Action)
 
   }
 
   var body: some ReducerOf<Self> {
-      Scope(state: \.profileTabView, action: \.profileTabView) {
-          ProfileTabViewFeature()
-      }
-      
+    Scope(state: \.profileTabView, action: \.profileTabView) {
+      ProfileTabViewFeature()
+    }
+
     Reduce { state, action in
       switch action {
       case .profileTabView(.accountButtonTapped):
-          state.path.append(.settings(SettingsFeature.State(text: "accountButtonTapped")))
-          return .none
+        state.path.append(.settings(SettingsFeature.State(text: "accountButtonTapped")))
+        return .none
       case .profileTabView:
-          return .none
+        return .none
       case .path(_):
-          return .none
+        return .none
       }
     }
     .forEach(\.path, action: \.path)
@@ -53,27 +53,27 @@ struct ProfileTabFeature {
 }
 
 struct ProfileTab: View {
-    @Bindable var store: StoreOf<ProfileTabFeature>
-    var body: some View {
-        NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-            ProfileTabView(store: store.scope(state: \.profileTabView, action: \.profileTabView))
-        } destination: { store in
-            switch store.case {
-            case let .settings(store):
-                SettingsView(store: store)
-            }
-        }
+  @Bindable var store: StoreOf<ProfileTabFeature>
+  var body: some View {
+    NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
+      ProfileTabView(store: store.scope(state: \.profileTabView, action: \.profileTabView))
+    } destination: { store in
+      switch store.case {
+      case .settings(let store):
+        SettingsView(store: store)
+      }
     }
+  }
 }
 
 #Preview {
-    let _ = prepareDependencies {
-        try! $0.bootstrapDatabase()
-        try! $0.defaultDatabase.seed()
-    }
-    
-    ProfileTab(
-        store: Store(initialState: ProfileTabFeature.State()) {
+  let _ = prepareDependencies {
+    try! $0.bootstrapDatabase()
+    try! $0.defaultDatabase.seed()
+  }
+
+  ProfileTab(
+    store: Store(initialState: ProfileTabFeature.State()) {
       ProfileTabFeature()
     }
   )
