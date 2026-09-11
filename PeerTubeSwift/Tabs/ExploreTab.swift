@@ -81,7 +81,7 @@ struct ExploreTabFeature {
 
       case .startSearch:
         guard !state.searchText.isEmpty else { return .none }
-        state.navigation.path.append(.feed(FeedFeature.State(feedType: .search)))
+          state.navigation.path.append(.feed(FeedFeature.State(feedType: .search(state.searchText))))
         return .send(
           .navigation(
             .path(

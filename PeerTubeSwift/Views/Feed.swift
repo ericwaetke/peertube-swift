@@ -29,18 +29,35 @@ enum FeedFilter: Equatable, Hashable {
   case exploreNewest
   case recommended
   case subscriptions
-  case search
+  case search(String)
   case continueWatching
-    case category
+    case category(String)
 
   var videoCardVariant: VideoCardVariant {
     switch self {
-    case .search:
+    case .search, .category:
       .small
     default:
       .large
     }
   }
+    
+    var navigationTitle: String {
+        switch self {
+        case .exploreNewest:
+            "Newest Videos"
+        case .recommended:
+            "Recommendations"
+        case .subscriptions:
+            "Subscriptions"
+        case .search(let string):
+            "“\(string)”"
+        case .continueWatching:
+            "Continue Watching"
+        case .category(let string):
+            string
+        }
+    }
 }
 
 enum FeedOrder: Equatable, Hashable {
@@ -219,7 +236,6 @@ struct FeedNavigationFeature {
 extension FeedNavigationFeature.Path.State: Equatable {}
 
 // MARK: - Shared Settings Menu
-
 /// Shared settings menu component for feed tabs
 struct FeedSettingsMenu: View {
   @Binding var searchText: String
@@ -1078,18 +1094,7 @@ struct Feed: View {
       await self.store.send(.pulledToRefresh).finish()
     }
     .background(Color(uiColor: UIColor.systemGroupedBackground))
-    .navigationTitle(navigationTitle)
-  }
-
-  private var navigationTitle: String {
-    switch store.feedType {
-    case .exploreNewest: return "Newest Videos"
-    case .recommended: return "Recommendations"
-    case .subscriptions: return "Subscriptions"
-    case .search: return "Search Results"
-    case .continueWatching: return "Continue Watching"
-    case .category: return "Category"
-    }
+    .navigationTitle(store.feedType.navigationTitle)
   }
 }
 
