@@ -21,9 +21,14 @@ struct SearchTabFeature {
 
     var searchText = String()
     var isSearchActive = false
+      var suggestions: [PeerSeekSDK.Suggestion] = []
 
     @Shared(.inMemory("session")) var session: UserSession?
   }
+    
+    @Dependency(\.peerSeekClient) var peerSeekClient
+    @Dependency(\.suspendingClock) var clock
+    enum CancelID { case searchSuggestions }
 
   enum Action {
     case navigation(FeedNavigationFeature.Action)
@@ -36,6 +41,9 @@ struct SearchTabFeature {
       case categoryTapped(PeerSeekSDK.Category)
 
     case delegate(Delegate)
+      
+      case triggerUpdateSuggestions(String)
+      case updateSuggestions([PeerSeekSDK.Suggestion])
 
     enum Delegate {
       case openSettings
@@ -69,11 +77,11 @@ struct SearchTabFeature {
 
       case .setSearch(let text):
         state.searchText = text
-        return .none
+          return .send(.triggerUpdateSuggestions(text))
 
       case .startSearch:
         guard !state.searchText.isEmpty else { return .none }
-        state.navigation.path.append(.feed(FeedFeature.State(feedType: .search)))
+          state.navigation.path.append(.feed(FeedFeature.State(feedType: .search(state.searchText))))
         return .send(
           .navigation(
             .path(
@@ -93,7 +101,7 @@ struct SearchTabFeature {
       case .navigation(.videoDetail(_)):
         return .none
       case .categoryTapped(let category):
-          state.navigation.path.append(.feed(FeedFeature.State(feedType: .category)))
+          state.navigation.path.append(.feed(FeedFeature.State(feedType: .category(category.rawValue))))
           return .send(
             .navigation(
               .path(
@@ -102,6 +110,22 @@ struct SearchTabFeature {
                   action: .feed(
                     .loadVideosByCategory(category))
                 ))))
+      case .triggerUpdateSuggestions(let q):
+          return .run { send in
+              try await withTaskCancellation(id: CancelID.searchSuggestions, cancelInFlight: true) {
+                  try await clock.sleep(for: .milliseconds(300))
+                  guard !Task.isCancelled else { return }
+                  
+                  let res = try await self.peerSeekClient.getSearchSuggestions(q: q)
+                  if res.count > 0 {
+                      await send(.updateSuggestions(res))
+                  }
+              }
+          }
+      case .updateSuggestions(let suggestions):
+          print("updating suggestions to: \(suggestions)")
+          state.suggestions = suggestions
+          return .none
       }
     }
   }
@@ -165,8 +189,13 @@ struct SearchTab: View {
     .navigationTitle("Search")
     .searchable(
       text: $store.searchText.sending(\.setSearch),
-      //      isPresented: $store.isSearchActive.sending(\.setSearchActive)
     )
+    .searchSuggestions({
+        ForEach(store.suggestions, id: \.self) { suggestion in
+            Label (suggestion.term, systemImage: "magnifyingglass")
+                .searchCompletion (suggestion.term)
+        }
+    })
     .onSubmit(of: .search) {
       self.store.send(.startSearch)
     }
