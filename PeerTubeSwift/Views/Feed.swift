@@ -626,9 +626,10 @@ struct FeedFeature {
         state.isLoadingVideos = isLoading
         return .none
       case .loadInitialVideos:
-        return .run { [client = state.client, feedType = state.feedType] send in
+        return .run { [sharedClient = state.$client, feedType = state.feedType] send in
           print("loadInitialVideo")
           await send(.setLoading(true))
+          let client = sharedClient.wrappedValue
 
           // Check global cache first
           if let cachedVideos = await FeedCacheActor.shared.get(feedType) {
@@ -733,8 +734,9 @@ struct FeedFeature {
       case .loadChannelVideos:
         return .none
       case .loadContinueWatching:
-        return .run { [client = state.client, authClient = self.authClient] send in
+        return .run { [sharedClient = state.$client, authClient = self.authClient] send in
           await send(.setLoading(true))
+          let client = sharedClient.wrappedValue
 
           guard let client = client else {
             print("No peertube client initialized, cannot fetch watch history")
@@ -787,10 +789,11 @@ struct FeedFeature {
       case .loadSubscriptionVideos:
         return .run {
           [
-            client = state.client, authClient = self.authClient, feedType = state.feedType,
+            sharedClient = state.$client, authClient = self.authClient, feedType = state.feedType,
             stateFeedEmpty = state.videoCards.isEmpty
           ] send in
           let localVideos = await self.fetchLocalVideos(for: feedType)
+          let client = sharedClient.wrappedValue
 
           if let localVideos, !localVideos.isEmpty {
             await send(.finishLoading(localVideos))
@@ -906,8 +909,9 @@ struct FeedFeature {
         return .none
       case .loadMoreVideos:
         return .run {
-          [client = state.client, feedType = state.feedType, offset = state.currentOffset] send in
-          if let client = client {
+          [sharedClient = state.$client, feedType = state.feedType, offset = state.currentOffset]
+          send in
+          if let client = sharedClient.wrappedValue {
             await send(.setLoadingMore(true))
 
             // Determine sort based on feed type

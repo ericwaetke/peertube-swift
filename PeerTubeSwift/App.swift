@@ -68,6 +68,7 @@ struct AppFeature {
               scheme: "https", host: session.host, token: session.token, session: urlSession)
           }
           return .run { send in
+            await send(.feedTab(.subscriptionFeed(.loadVideos)))
             await send(.syncSubscriptions)
           }
         }

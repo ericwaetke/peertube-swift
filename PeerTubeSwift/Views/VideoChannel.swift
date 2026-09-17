@@ -443,11 +443,13 @@ struct VideoChannelView: View {
       }
       .padding()
     }
-    .navigationTitle(channelDisplayName)
+    //    .navigationTitle(channelDisplayName)
+    //    .navigationBarTitleDisplayMode(.)
   }
 
   private var channelHeader: some View {
     VStack(alignment: .leading, spacing: 12) {
+      Text("Banner")
       HStack(alignment: .top) {
         AvatarView(
           url: store.state.videoDetails?.channel?.avatars?.first?.fileUrl
