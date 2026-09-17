@@ -8,7 +8,16 @@
 import FontKit
 import SwiftUI
 
+struct ContentHeightKey: PreferenceKey {
+  static let defaultValue: CGFloat = 0
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = nextValue()
+  }
+}
+
 struct InnerSectionDisclosureGroup: DisclosureGroupStyle {
+  @State private var contentHeight: CGFloat = 0
+
   func makeBody(configuration: DisclosureGroupStyleConfiguration) -> some View {
     VStack {
       Button {
@@ -35,7 +44,7 @@ struct InnerSectionDisclosureGroup: DisclosureGroupStyle {
       .buttonStyle(.plain)
       if configuration.isExpanded {
         configuration.content
-          .transaction { t in t.animation = nil }
+          .transition(.blurReplace)
       }
     }
     .padding(.top, 8)
@@ -52,6 +61,7 @@ struct InnerSectionDisclosureGroup: DisclosureGroupStyle {
         endPoint: .bottom
       )
       .opacity(configuration.isExpanded ? 1 : 0)
+      //      .animation(.smooth, value: configuration.isExpanded)
       .frame(height: 10)
       .allowsHitTesting(false)
     }
@@ -66,6 +76,7 @@ struct InnerSectionDisclosureGroup: DisclosureGroupStyle {
         endPoint: .bottom
       )
       .opacity(configuration.isExpanded ? 1 : 0)
+      //      .animation(.smooth, value: configuration.isExpanded)
       .frame(height: 10)
       .allowsHitTesting(false)
     }
@@ -76,7 +87,13 @@ struct InnerSectionDisclosureGroup: DisclosureGroupStyle {
   ScrollView {
     VStack(alignment: .leading, spacing: 24) {
       DisclosureGroup("Continue Watching") {
-        Text("Videoooo")
+        VStack {
+          Text("Videoooo")
+          Text("Hier ist dann ein weiteres Video mit ganz langem Titel")
+          Text("Hier ist dann ein weiteres Video mit ganz langem Titel")
+          Text("Hier ist dann ein weiteres Video mit ganz langem Titel")
+          Text("Hier ist dann ein weiteres Video mit ganz langem Titel")
+        }
       }
       .disclosureGroupStyle(InnerSectionDisclosureGroup())
     }

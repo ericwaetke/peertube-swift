@@ -92,19 +92,19 @@ struct VideoDescriptionView: View {
               )
               .font(.subheadline)
               .multilineTextAlignment(.leading)
-
+              .transition(.blurReplace)
             Button("show less") {
-              //                    withAnimation{
               store.send(.showLessButtonTapped)
-              //                    }
             }
             .buttonStyle(RiverButtonSmall(type: .tertiary))
           }
           Spacer()
         }
-        //          .animation(.default, value: store.state.descriptionVisible)
         .padding(16)
-        .background(Color(uiColor: UIColor.systemFill))
+        .background(
+          Color(uiColor: UIColor.systemFill)
+            .transition(.move(edge: .top))
+        )
         .overlay(alignment: .top) {
           // Top inset shadow
           LinearGradient(
