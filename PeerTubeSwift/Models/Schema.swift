@@ -28,11 +28,13 @@ import TubeSDK
   var bannerUrl: String?
   var description: String?
   var instanceID: Instance.ID
+  var followerCount: Int?
 
   init(
     id: String, name: String, avatarUrl: String? = nil, bannerUrl: String? = nil,
     description: String? = nil,
-    instanceID: Instance.ID
+    instanceID: Instance.ID,
+    followerCount: Int? = nil
   ) {
     self.id = id
     self.name = name
@@ -40,6 +42,7 @@ import TubeSDK
     self.bannerUrl = bannerUrl
     self.description = description
     self.instanceID = instanceID
+    self.followerCount = followerCount
   }
 
   init(videoChannelSummary: VideoChannelSummary, client: TubeSDKClient, instanceID: String) throws {
@@ -438,6 +441,14 @@ func appDatabase() throws -> any DatabaseWriter {
       literal: """
             ALTER TABLE "videoChannels"
             ADD COLUMN "bannerUrl" TEXT
+        """)
+  }
+
+  migrator.registerMigration("Add followerCount to videoChannels") { db in
+    try db.execute(
+      literal: """
+            ALTER TABLE "videoChannels"
+            ADD COLUMN "followerCount" INTEGER
         """)
   }
 

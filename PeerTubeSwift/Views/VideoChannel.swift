@@ -5,41 +5,6 @@ import SQLiteData
 import SwiftUI
 import TubeSDK
 
-func loadChannelFromRow(
-  client: TubeSDKClient,
-  channelId: String,
-  channelName: String,
-  avatarUrl: String?,
-  bannerUrl: String?,
-  description: String?,
-  host: String,
-  send: Send<VideoChannelFeature.Action>
-) async {
-  do {
-    let fullChannel = try await client.getChannel(channelIdentifier: channelId)
-    let banner: String? = fullChannel.banners?.first?.fileUrl
-    await send(
-      .channelDetailsLoaded(
-        channelId: channelId,
-        channelName: fullChannel.displayName ?? channelName,
-        avatarUrl: fullChannel.avatars?.first?.fileUrl ?? avatarUrl,
-        bannerUrl: banner,
-        description: fullChannel.description,
-        host: host
-      ))
-  } catch {
-    await send(
-      .channelDetailsLoaded(
-        channelId: channelId,
-        channelName: channelName,
-        avatarUrl: avatarUrl,
-        bannerUrl: bannerUrl,
-        description: description,
-        host: host
-      ))
-  }
-}
-
 @Reducer
 struct VideoChannelFeature {
   @ObservableState
@@ -54,6 +19,8 @@ struct VideoChannelFeature {
     var videoChannel: VideoChannel?
     var videoDetails: TubeSDK.VideoDetails?
     var channelName: String?
+    var followerCount: Int?
+    var videoCount: Int?
 
     // Video list state
     var videos: [TubeSDK.Video] = []
@@ -87,14 +54,14 @@ struct VideoChannelFeature {
     )
     case channelDetailsLoaded(
       channelId: String, channelName: String, avatarUrl: String?, bannerUrl: String?,
-      description: String?, host: String
+      description: String?, host: String, followerCount: Int?
     )
     case channelPreview(ChannelPreviewFeature.Action)
 
     // Video list actions
     case loadVideos
     case loadMoreVideosIfNeeded(currentItemId: String?)
-    case finishLoadingVideos([TubeSDK.Video])
+    case finishLoadingVideos([TubeSDK.Video], total: Int?)
     case videoTapped(TubeSDK.Video)
     case videoCards(IdentifiedActionOf<VideoCardFeature>)
 
@@ -121,24 +88,41 @@ struct VideoChannelFeature {
             client = state.client, channelId = channelId, channelName = channelName,
             avatarUrl = avatarUrl, bannerUrl = bannerUrl, description = description, host = host
           ] send in
-          await loadChannelFromRow(
-            client: client,
-            channelId: channelId,
-            channelName: channelName,
-            avatarUrl: avatarUrl,
-            bannerUrl: bannerUrl,
-            description: description,
-            host: host,
-            send: send
-          )
+            do {
+              let fullChannel = try await client.getChannel(channelIdentifier: channelId)
+              let banner: String? = fullChannel.banners?.first?.fileUrl
+              await send(
+                .channelDetailsLoaded(
+                  channelId: channelId,
+                  channelName: fullChannel.displayName ?? channelName,
+                  avatarUrl: fullChannel.avatars?.first?.fileUrl ?? avatarUrl,
+                  bannerUrl: banner,
+                  description: fullChannel.description,
+                  host: host,
+                  followerCount: fullChannel.followersCount
+                ))
+            } catch {
+              await send(
+                .channelDetailsLoaded(
+                  channelId: channelId,
+                  channelName: channelName,
+                  avatarUrl: avatarUrl,
+                  bannerUrl: bannerUrl,
+                  description: description,
+                  host: host,
+                  followerCount: nil
+                ))
+            }
         }
 
       case .channelDetailsLoaded(
-        let channelId, let channelName, let avatarUrl, let bannerUrl, let description, let host):
+        let channelId, let channelName, let avatarUrl, let bannerUrl, let description, let host,
+        let followerCount):
         // Update channel name if we got a better one from API
         if channelName != state.channelName {
           state.channelName = channelName
         }
+        state.followerCount = followerCount
         // Create a local VideoChannel from the data
         state.videoChannel = VideoChannel(
           id: channelId,
@@ -146,7 +130,8 @@ struct VideoChannelFeature {
           avatarUrl: avatarUrl,
           bannerUrl: bannerUrl,
           description: description,
-          instanceID: host
+          instanceID: host,
+          followerCount: followerCount
         )
         // Also create a minimal VideoDetails so the view has channel info
         state.videoDetails = TubeSDK.VideoDetails(
@@ -190,14 +175,14 @@ struct VideoChannelFeature {
         return .run {
           [client = state.client, channelId = channelId, pageSize = state.pageSize] send in
           do {
-            let videos = try await client.getVideosPaginated(
+            let response = try await client.getVideosPaginated(
               channelIdentifier: channelId,
               start: 0,
               count: pageSize
             )
-            await send(.finishLoadingVideos(videos))
+              await send(.finishLoadingVideos(response.data, total: response.total))
           } catch {
-            await send(.finishLoadingVideos([]))
+              await send(.finishLoadingVideos([], total: nil))
           }
         }
 
@@ -237,18 +222,21 @@ struct VideoChannelFeature {
           [client = state.client, channelId = channelId, pageSize = state.pageSize, nextPage] send
           in
           do {
-            let videos = try await client.getVideosPaginated(
+            let response = try await client.getVideosPaginated(
               channelIdentifier: channelId,
               start: nextPage * pageSize,
               count: pageSize
             )
-            await send(.finishLoadingVideos(videos))
+              await send(.finishLoadingVideos(response.data, total: response.total))
           } catch {
-            await send(.finishLoadingVideos([]))
+              await send(.finishLoadingVideos([], total: nil))
           }
         }
 
-      case .finishLoadingVideos(let newVideos):
+      case .finishLoadingVideos(let newVideos, let total):
+        if state.currentPage == 0, let total {
+          state.videoCount = total
+        }
         if state.currentPage == 0 {
           state.videos = newVideos
         } else {
@@ -327,10 +315,11 @@ struct VideoChannelFeature {
 
 struct VideoChannelView: View {
   let store: StoreOf<VideoChannelFeature>
+    @State private var favoriteColor = 0
 
   var body: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 16) {
+      VStack(alignment: .leading, spacing: 0) {
         VStack(alignment: .leading, spacing: 12) {
           if let bannerUrlString = store.videoChannel?.bannerUrl,
             let bannerUrl = URL(string: bannerUrlString)
@@ -362,7 +351,7 @@ struct VideoChannelView: View {
           HStack {
             Spacer()
             VStack(spacing: 4) {
-              Text("4,214")
+              Text(store.followerCount?.formatted(.number.notation(.compactName)) ?? "0")
                 .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 17, relativeTo: .headline))
                 .foregroundStyle(Color.Label.primary)
               Text("Subscribers")
@@ -373,21 +362,10 @@ struct VideoChannelView: View {
             Divider()
             Spacer()
             VStack(spacing: 4) {
-              Text("454")
+              Text(store.videoCount?.formatted(.number.notation(.compactName)) ?? "0")
                 .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 17, relativeTo: .headline))
                 .foregroundStyle(Color.Label.primary)
               Text("Videos")
-                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 11, relativeTo: .caption2))
-                .foregroundStyle(Color.Label.secondary)
-            }
-            Spacer()
-            Divider()
-            Spacer()
-            VStack(spacing: 4) {
-              Text("41,773")
-                .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 17, relativeTo: .headline))
-                .foregroundStyle(Color.Label.primary)
-              Text("Views")
                 .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 11, relativeTo: .caption2))
                 .foregroundStyle(Color.Label.secondary)
             }
@@ -398,8 +376,9 @@ struct VideoChannelView: View {
           .background(Color(uiColor: UIColor.secondarySystemBackground))
           .clipShape(.rect(cornerRadius: 26))
         }
-
-        Divider()
+        .padding()
+        .background(Color(uiColor: .systemBackground))
+        .overlay(Divider(), alignment: .bottom)
 
         VStack(alignment: .leading, spacing: 12) {
           Text("Videos")
@@ -431,9 +410,36 @@ struct VideoChannelView: View {
               }
             }
           }
+        Spacer()
         }
+        .padding()
+        .background(Color(uiColor: .secondarySystemBackground))
       }
-      .padding()
+      .toolbar {
+          ToolbarItem(placement: .title) {
+              UserBadge(
+                store: UserBadgeFeature.State(
+                    variant: .small,
+                    avatarUrl: ,
+                    channelDisplayName: <#String#>,
+                    instanceDisplayName: <#String#>,
+                    instanceIconUrl: <#String?#>)
+              )
+          }
+          if #available(iOS 26.0, *) {
+              ToolbarItem(placement: .primaryAction) {
+                  ShareLink(item: URL(string: "https://woven.design")!)
+                      .buttonStyle(RiverButtonToolbar(type: .gray))
+              }
+              .sharedBackgroundVisibility(.hidden)
+          } else {
+              ToolbarItem(placement: .primaryAction) {
+                  ShareLink(item: URL(string: "https://woven.design")!)
+                      .buttonStyle(RiverButtonToolbar(type: .gray))
+              }
+          }
+          
+      }
     }
   }
 }
