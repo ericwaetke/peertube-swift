@@ -38,6 +38,29 @@ struct ChannelPreviewFeature {
         instanceIconUrl: instance?.avatarUrl
       )
     }
+
+    init(
+      host: String,
+      notificationBell: NotificationBellFeature.State,
+      userBadgeVariant: UserBadgeVariant,
+      avatarUrl: String?,
+      channelDisplayName: String?,
+      instance: Instance? = nil,
+      isSubscribedToChannel: Bool = false
+    ) {
+      self.host = host
+      self.notificationBell = notificationBell
+      self.videoDetails = nil
+      self.instance = instance
+      self.isSubscribedToChannel = isSubscribedToChannel
+      self.userBadge = UserBadgeFeature.State(
+        variant: userBadgeVariant,
+        avatarUrl: avatarUrl,
+        channelDisplayName: channelDisplayName ?? "Unknown Channel",
+        instanceDisplayName: instance?.name ?? "Unknown Instance",
+        instanceIconUrl: instance?.avatarUrl
+      )
+    }
   }
 
   enum Action {

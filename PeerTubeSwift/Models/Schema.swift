@@ -25,16 +25,19 @@ import TubeSDK
   var name: String
 
   var avatarUrl: String?
+  var bannerUrl: String?
   var description: String?
   var instanceID: Instance.ID
 
   init(
-    id: String, name: String, avatarUrl: String? = nil, description: String? = nil,
+    id: String, name: String, avatarUrl: String? = nil, bannerUrl: String? = nil,
+    description: String? = nil,
     instanceID: Instance.ID
   ) {
     self.id = id
     self.name = name
     self.avatarUrl = avatarUrl
+    self.bannerUrl = bannerUrl
     self.description = description
     self.instanceID = instanceID
   }
@@ -48,6 +51,7 @@ import TubeSDK
     self.id = "\(channelName)@\(channelHost)"
     self.name = videoChannelSummary.displayName ?? channelName
     self.avatarUrl = videoChannelSummary.avatars?.first?.fileUrl
+    self.bannerUrl = nil
     self.instanceID = instanceID
   }
 }
@@ -427,6 +431,14 @@ func appDatabase() throws -> any DatabaseWriter {
       """
     )
     .execute(db)
+  }
+
+  migrator.registerMigration("Add bannerUrl to videoChannels") { db in
+    try db.execute(
+      literal: """
+            ALTER TABLE "videoChannels"
+            ADD COLUMN "bannerUrl" TEXT
+        """)
   }
 
   try migrator.migrate(database)

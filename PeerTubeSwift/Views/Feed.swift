@@ -120,7 +120,9 @@ struct FeedNavigationFeature {
           channelIdentifier: channelIdentifier,
           channelName: channel.name,
           avatarUrl: channel.avatars?.first?.fileUrl,
-          channelDescription: channel.description
+          bannerUrl: channel.banners?.first?.fileUrl,
+          channelDescription: channel.description,
+          instance: Instance(host: host, scheme: "https")  // TODO: this is yucky, lets remove this
         )
 
       case .videoDetail:
@@ -140,13 +142,16 @@ struct FeedNavigationFeature {
     channelIdentifier: String,  // Can be Int? from VideoChannelSummary or String?
     channelName: String?,
     avatarUrl: String?,
-    channelDescription: String?
+    bannerUrl: String?,
+    channelDescription: String?,
+    instance: Instance?
   ) -> Effect<Action> {
     guard let channelName = channelName else { return .none }
 
     var channelState = VideoChannelFeature.State(
       host: host,
-      notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false)
+      notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false),
+      instance: instance
     )
     channelState.channelName = channelName
     path.append(.channelDetail(channelState))
@@ -164,6 +169,7 @@ struct FeedNavigationFeature {
                 channelId: channelIdentifier,
                 channelName: channelName,
                 avatarUrl: avatarUrl,
+                bannerUrl: bannerUrl,
                 description: channelDescription,
                 host: host
               ))
@@ -193,7 +199,8 @@ struct FeedNavigationFeature {
 
     var channelState = VideoChannelFeature.State(
       host: instance.host,
-      notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false)
+      notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false),
+      instance: instance
     )
     channelState.channelName = channel.name
     path.append(.channelDetail(channelState))
@@ -210,6 +217,7 @@ struct FeedNavigationFeature {
                 channelId: channel.id,
                 channelName: channel.name,
                 avatarUrl: channel.avatarUrl,
+                bannerUrl: channel.bannerUrl,
                 description: channel.description,
                 host: instance.host
               ))

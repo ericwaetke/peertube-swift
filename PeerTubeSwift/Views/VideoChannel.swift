@@ -4,6 +4,72 @@ import SQLiteData
 import SwiftUI
 import TubeSDK
 
+func loadChannelFromRow(
+  client: TubeSDKClient,
+  channelId: String,
+  channelName: String,
+  avatarUrl: String?,
+  bannerUrl: String?,
+  description: String?,
+  host: String,
+  send: Send<VideoChannelFeature.Action>
+) async {
+  @Dependency(\.defaultDatabase) var database
+
+  do {
+    // Fetch full channel details from API
+    print("🔍 loadChannelFromRow: Calling getChannel with '\(channelId)'")
+    let fullChannel = try await client.getChannel(channelIdentifier: channelId)
+    print(
+      "🔍 loadChannelFromRow: getChannel success - displayName='\(fullChannel.displayName ?? "nil")'"
+    )
+
+    let banner: String? = fullChannel.banners?.first?.fileUrl
+
+    // Update state with full channel info including description
+    await send(
+      .channelDetailsLoaded(
+        channelId: channelId,
+        channelName: fullChannel.displayName ?? channelName,
+        avatarUrl: fullChannel.avatars?.first?.fileUrl ?? avatarUrl,
+        bannerUrl: banner,
+        description: fullChannel.description,
+        host: host
+      ))
+  } catch {
+    // If API call fails, fall back to basic info from row
+    print("🔍 loadChannelFromRow: getChannel FAILED - \(error), using fallback")
+    await send(
+      .channelDetailsLoaded(
+        channelId: channelId,
+        channelName: channelName,
+        avatarUrl: avatarUrl,
+        bannerUrl: bannerUrl,
+        description: description,
+        host: host
+      ))
+  }
+
+  // Load subscription state
+  var localNotificationState = false
+  if let subscription = try? await database.read({ db in
+    try PeertubeSubscription.where { $0.channelID.eq(channelId) }.fetchOne(db)
+  }) {
+    localNotificationState = subscription.notifyOnNewVideo
+  }
+
+  if client.currentToken != nil {
+    if let isSubscribed = try? await client.checkSubscription(channelUri: channelId) {
+      await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
+    }
+  } else {
+    let hasLocalSub = try? await database.read { db in
+      try PeertubeSubscription.find(channelId).fetchOne(db) != nil
+    }
+    await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
+  }
+}
+
 @Reducer
 struct VideoChannelFeature {
   @ObservableState
@@ -13,6 +79,7 @@ struct VideoChannelFeature {
       scheme: "https", host: "peertube.wtf")
 
     var notificationBell: NotificationBellFeature.State
+    var channelPreview: ChannelPreviewFeature.State
 
     var instance: Instance?
     var videoChannel: VideoChannel?
@@ -29,20 +96,38 @@ struct VideoChannelFeature {
     var currentPage = 0
     let pageSize = 15
     var hasMoreVideos = true
+
+    init(
+      host: String,
+      notificationBell: NotificationBellFeature.State,
+      instance: Instance? = nil,
+      videoDetails: TubeSDK.VideoDetails? = nil
+    ) {
+      self.host = host
+      self.notificationBell = notificationBell
+      self.instance = instance
+      self.videoDetails = videoDetails
+      self.channelPreview = ChannelPreviewFeature.State(
+        host: host,
+        notificationBell: notificationBell,
+        instance: instance
+      )
+    }
   }
 
   enum Action {
     case loadChannelFromRow(
-      channelId: String, channelName: String, avatarUrl: String?, description: String?, host: String
+      channelId: String, channelName: String, avatarUrl: String?, bannerUrl: String?,
+      description: String?, host: String
     )
     case channelDetailsLoaded(
-      channelId: String, channelName: String, avatarUrl: String?, description: String?, host: String
+      channelId: String, channelName: String, avatarUrl: String?, bannerUrl: String?,
+      description: String?, host: String
     )
     case saveChannel(VideoChannel)
     case instanceLoaded(Instance)
     case notificationBell(NotificationBellFeature.Action)
-    case subscribeButtonTapped
-    case changeSubscriptionState(Bool)
+    case channelPreview(ChannelPreviewFeature.Action)
     case subscriptionStateLoaded(Bool, Bool)
 
     // Video list actions
@@ -63,10 +148,13 @@ struct VideoChannelFeature {
     Scope(state: \.notificationBell, action: \.notificationBell) {
       NotificationBellFeature()
     }
+    Scope(state: \.channelPreview, action: \.channelPreview) {
+      ChannelPreviewFeature()
+    }
     Reduce { state, action in
       switch action {
       case .loadChannelFromRow(
-        let channelId, let channelName, let avatarUrl, let description, let host):
+        let channelId, let channelName, let avatarUrl, let bannerUrl, let description, let host):
         print(
           "🔍 loadChannelFromRow: channelId='\(channelId)', channelName='\(channelName)', host='\(host)'"
         )
@@ -77,62 +165,22 @@ struct VideoChannelFeature {
         return .run {
           [
             client = state.client, channelId = channelId, channelName = channelName,
-            avatarUrl = avatarUrl, description = description, host = host
+            avatarUrl = avatarUrl, bannerUrl = bannerUrl, description = description, host = host
           ] send in
-          @Dependency(\.defaultDatabase) var database
-
-          do {
-            // Fetch full channel details from API
-            print("🔍 loadChannelFromRow: Calling getChannel with '\(channelId)'")
-            let fullChannel = try await client.getChannel(channelIdentifier: channelId)
-            print(
-              "🔍 loadChannelFromRow: getChannel success - displayName='\(fullChannel.displayName ?? "nil")'"
-            )
-
-            // Update state with full channel info including description
-            await send(
-              .channelDetailsLoaded(
-                channelId: channelId,
-                channelName: fullChannel.displayName ?? channelName,
-                avatarUrl: fullChannel.avatars?.first?.fileUrl ?? avatarUrl,
-                description: fullChannel.description,
-                host: host
-              ))
-          } catch {
-            // If API call fails, fall back to basic info from row
-            print("🔍 loadChannelFromRow: getChannel FAILED - \(error), using fallback")
-            await send(
-              .channelDetailsLoaded(
-                channelId: channelId,
-                channelName: channelName,
-                avatarUrl: avatarUrl,
-                description: description,
-                host: host
-              ))
-          }
-
-          // Load subscription state
-          var localNotificationState = false
-          if let subscription = try? await database.read({ db in
-            try PeertubeSubscription.where { $0.channelID.eq(channelId) }.fetchOne(db)
-          }) {
-            localNotificationState = subscription.notifyOnNewVideo
-          }
-
-          if client.currentToken != nil {
-            if let isSubscribed = try? await client.checkSubscription(channelUri: channelId) {
-              await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
-            }
-          } else {
-            let hasLocalSub = try? await database.read { db in
-              try PeertubeSubscription.find(channelId).fetchOne(db) != nil
-            }
-            await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
-          }
+          await loadChannelFromRow(
+            client: client,
+            channelId: channelId,
+            channelName: channelName,
+            avatarUrl: avatarUrl,
+            bannerUrl: bannerUrl,
+            description: description,
+            host: host,
+            send: send
+          )
         }
 
       case .channelDetailsLoaded(
-        let channelId, let channelName, let avatarUrl, let description, let host):
+        let channelId, let channelName, let avatarUrl, let bannerUrl, let description, let host):
         // Update channel name if we got a better one from API
         if channelName != state.channelName {
           state.channelName = channelName
@@ -142,6 +190,7 @@ struct VideoChannelFeature {
           id: channelId,
           name: channelName,
           avatarUrl: avatarUrl,
+          bannerUrl: bannerUrl,
           description: description,
           instanceID: host
         )
@@ -161,8 +210,12 @@ struct VideoChannelFeature {
           "🔍 channelDetailsLoaded: videoChannel.id='\(state.videoChannel?.id ?? "nil")', videoDetails.channel.name='\(state.videoDetails?.channel?.name ?? "nil")'"
         )
         // Now load videos (channel details are set)
+        let videoDetails = state.videoDetails
         return .run { send in
           await send(.notificationBell(.setChannelId(channelId)))
+          if let videoDetails {
+            await send(.channelPreview(.loadChannelPreview(videoDetails)))
+          }
           await send(.loadVideos)
         }
 
@@ -196,61 +249,11 @@ struct VideoChannelFeature {
 
       case .instanceLoaded(let instance):
         state.instance = instance
+        state.channelPreview.instance = instance
         return .none
 
       case .notificationBell:
         return .none
-
-      case .subscribeButtonTapped:
-        let isSubscribed = state.isSubscribedToChannel
-        return .send(.changeSubscriptionState(!isSubscribed))
-
-      case .changeSubscriptionState(let newSubscriptionState):
-        state.isSubscribedToChannel = newSubscriptionState
-        // Capture videoChannel before async block to avoid mutable capture error
-        let videoChannel = state.videoChannel
-        return .run {
-          [
-            client = state.client,
-            videoDetails = state.videoDetails,
-            newSubscriptionState = newSubscriptionState,
-            videoChannel = videoChannel
-          ] _ in
-          @Dependency(\.defaultDatabase) var database
-
-          let channelId: String
-          if let videoDetails = videoDetails,
-            let channel = videoDetails.channel,
-            let channelUsername = channel.name,
-            let channelHost = channel.host
-          {
-            channelId = "\(channelUsername)@\(channelHost)"
-          } else if let channel = videoChannel {
-            channelId = channel.id
-          } else {
-            return
-          }
-
-          await withErrorReporting {
-            if newSubscriptionState {
-              try await database.write { db in
-                try PeertubeSubscription.insert {
-                  PeertubeSubscription.Draft(channelID: channelId, createdAt: .now)
-                }.execute(db)
-              }
-              if client.currentToken != nil {
-                try? await client.addSubscription(channelUri: channelId)
-              }
-            } else {
-              try await database.write { db in
-                try PeertubeSubscription.where { $0.channelID.eq(channelId) }.delete().execute(db)
-              }
-              if client.currentToken != nil {
-                try? await client.removeSubscription(channelUri: channelId)
-              }
-            }
-          }
-        }
 
       case .subscriptionStateLoaded(let isSubscribed, let notifyOnNewVideo):
         state.isSubscribedToChannel = isSubscribed
@@ -410,6 +413,9 @@ struct VideoChannelFeature {
       case .videoCards:
         return .none
 
+      case .channelPreview:
+        return .none
+
       case .delegate:
         return .none
       }
@@ -449,35 +455,50 @@ struct VideoChannelView: View {
 
   private var channelHeader: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("Banner")
-      HStack(alignment: .top) {
-        AvatarView(
-          url: store.state.videoDetails?.channel?.avatars?.first?.fileUrl
-            ?? store.state.videoChannel?.avatarUrl,
-          name: store.state.videoDetails?.channel?.displayName ?? store.state.videoChannel?.name
-            ?? "Unknown Channel",
-          size: 60
-        )
-
-        VStack(alignment: .leading, spacing: 4) {
-          Text(
-            store.state.videoDetails?.channel?.displayName ?? store.state.videoChannel?.name
-              ?? "Unknown Channel"
-          )
-          .font(.headline)
-
-          if let instanceName = store.state.videoDetails?.channel?.host
-            ?? store.state.videoChannel?.instanceID
-          {
-            InstanceIndicator(
-              instanceName: instanceName, instanceImage: store.state.instance?.avatarUrl)
-          }
+      if let bannerUrlString = store.state.videoChannel?.bannerUrl,
+        let bannerUrl = URL(string: bannerUrlString)
+      {
+        AsyncImage(url: bannerUrl) { image in
+          image.resizable().aspectRatio(contentMode: .fill)
+        } placeholder: {
+          Color.gray
         }
-
-        Spacer()
-
-        subscribeButton
+        .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 96)
+        .clipped()
+        .clipShape(.rect(cornerRadius: 12))
       }
+
+      //      HStack(alignment: .top) {
+      //        AvatarView(
+      //          url: store.state.videoDetails?.channel?.avatars?.first?.fileUrl
+      //            ?? store.state.videoChannel?.avatarUrl,
+      //          name: store.state.videoDetails?.channel?.displayName ?? store.state.videoChannel?.name
+      //            ?? "Unknown Channel",
+      //          size: 60
+      //        )
+      //
+      //        VStack(alignment: .leading, spacing: 4) {
+      //          Text(
+      //            store.state.videoDetails?.channel?.displayName ?? store.state.videoChannel?.name
+      //              ?? "Unknown Channel"
+      //          )
+      //          .font(.headline)
+      //
+      //          if let instanceName = store.state.videoDetails?.channel?.host
+      //            ?? store.state.videoChannel?.instanceID
+      //          {
+      //            InstanceIndicator(
+      //              instanceName: instanceName, instanceImage: store.state.instance?.avatarUrl)
+      //          }
+      //        }
+      //
+      //        Spacer()
+      //
+      //        subscribeButton
+      //      }
+      ChannelPreviewView(
+        store: store.scope(state: \.channelPreview, action: \.channelPreview)
+      )
 
       // Channel description
       if let description = store.state.videoDetails?.channel?.description
@@ -488,25 +509,6 @@ struct VideoChannelView: View {
           .font(.subheadline)
           .foregroundStyle(.secondary)
           .lineLimit(3)
-      }
-    }
-  }
-
-  private var subscribeButton: some View {
-    HStack {
-      Button(store.state.isSubscribedToChannel ? "Unsubscribe" : "Subscribe") {
-        store.send(.subscribeButtonTapped)
-      }
-      .buttonStyle(.bordered)
-      .foregroundStyle(.primary)
-
-      if store.state.isSubscribedToChannel {
-        NotificationBell(
-          store: store.scope(
-            state: \.notificationBell,
-            action: \.notificationBell
-          )
-        )
       }
     }
   }
