@@ -201,7 +201,6 @@ struct AssembledVideo: Identifiable, Hashable {
   init(tubeVideo: TubeSDK.Video, client: TubeSDKClient) throws {
     guard
       let uuid = tubeVideo.uuid,
-      //            let channelID = tubeVideo.channel?.id,
       let name = tubeVideo.name,
       let views = tubeVideo.views,
       let publishDate = tubeVideo.publishedAt,
@@ -224,10 +223,14 @@ struct AssembledVideo: Identifiable, Hashable {
       throw TubeError.invalidChannelData
     }
 
+    print(videoChannelSummary)
+
     let instance = try Instance(videoChannelSummary: videoChannelSummary, client: client)
 
     let channel = try VideoChannel(
       videoChannelSummary: videoChannelSummary, client: client, instanceID: instance.id)
+
+    print(channel)
 
     self.id = uuid
     self.channel = channel

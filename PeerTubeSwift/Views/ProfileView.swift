@@ -16,8 +16,7 @@ import WebURL
 struct ProfileTabViewFeature {
   @ObservableState
   struct State: Equatable {
-    @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
-      scheme: "https", host: "peertube.wtf")
+    @Shared(.inMemory("client")) var client: TubeSDKClient?
 
     @Presents var login: LoginFeature.State?
     @Shared(.inMemory("session")) var session: UserSession?
@@ -82,20 +81,26 @@ struct ProfileTabViewFeature {
             $0 = try! TubeSDKClient(
               scheme: "https", host: session.host, token: session.token, session: urlSession)
           }
-        } else {
-          state.$client.withLock { $0.currentToken = nil }
+        } else if var client = state.client {
+          client.currentToken = nil
+          state.$client.withLock { $0 = client }
         }
         return .none
 
       case .checkInstanceHealth:
         state.healthStatus = .loading
         return .run { [client = state.client] send in
-          do {
-            let config = try await client.instance.getConfig()
-            await send(.instanceHealthResponse(.success(config)))
-          } catch {
+          if let client = client {
+            do {
+              let config = try await client.instance.getConfig()
+              await send(.instanceHealthResponse(.success(config)))
+            } catch {
+              await send(
+                .instanceHealthResponse(.failure(.connectionFailed(error.localizedDescription))))
+            }
+          } else {
             await send(
-              .instanceHealthResponse(.failure(.connectionFailed(error.localizedDescription))))
+              .instanceHealthResponse(.failure(.connectionFailed("no client"))))
           }
         }
 

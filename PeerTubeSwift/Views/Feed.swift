@@ -627,6 +627,7 @@ struct FeedFeature {
         return .none
       case .loadInitialVideos:
         return .run { [client = state.client, feedType = state.feedType] send in
+          print("loadInitialVideo")
           await send(.setLoading(true))
 
           // Check global cache first
@@ -659,15 +660,10 @@ struct FeedFeature {
           if let client = client {
             // Load first 4 videos with pagination
             let peertubeVideos: [TubeSDK.Video]
-            // TODO: “Constant 'sort' used before being initialized”
-            //              if let sort = sort {
-            //                peertubeVideos = try await client.getVideos(sort: sort, count: 15, start: 0)
-            //              } else {
             peertubeVideos = try await client.getVideos(count: 15, start: 0)
             let assembledVideos = try peertubeVideos.map { video in
               try AssembledVideo(tubeVideo: video, client: client)
             }
-            //              }
 
             let videos = try await self.saveVideos(videos: assembledVideos)
 
@@ -850,7 +846,11 @@ struct FeedFeature {
                 await send(.loadingFailed("Failed to load feed: \(error.localizedDescription)"))
               }
               return
+            } else {
+              print("User is unauthenticated (no currentToken), cant refresh subscriptions")
             }
+          } else {
+            print("no client")
           }
 
           // Fallback for unauthenticated users
