@@ -38,29 +38,6 @@ struct ChannelPreviewFeature {
         instanceIconUrl: instance?.avatarUrl
       )
     }
-
-    init(
-      host: String,
-      notificationBell: NotificationBellFeature.State,
-      userBadgeVariant: UserBadgeVariant,
-      avatarUrl: String?,
-      channelDisplayName: String?,
-      instance: Instance? = nil,
-      isSubscribedToChannel: Bool = false
-    ) {
-      self.host = host
-      self.notificationBell = notificationBell
-      self.videoDetails = nil
-      self.instance = instance
-      self.isSubscribedToChannel = isSubscribedToChannel
-      self.userBadge = UserBadgeFeature.State(
-        variant: userBadgeVariant,
-        avatarUrl: avatarUrl,
-        channelDisplayName: channelDisplayName ?? "Unknown Channel",
-        instanceDisplayName: instance?.name ?? "Unknown Instance",
-        instanceIconUrl: instance?.avatarUrl
-      )
-    }
   }
 
   enum Action {
@@ -110,6 +87,8 @@ struct ChannelPreviewFeature {
           @Dependency(\.defaultDatabase) var database
           @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
 
+          await send(.notificationBell(.setChannelId(channelId)))
+
           // Fetch instance avatar
           if let instanceObj = try? await peertubeOrchestrator.syncInstanceInfo(
             channelHost, database)
@@ -139,13 +118,15 @@ struct ChannelPreviewFeature {
 
       case .instanceLoaded(let instance):
         state.instance = instance
-        state.userBadge = UserBadgeFeature.State(
-          variant: .medium,
-          avatarUrl: state.videoDetails?.channel?.avatars?.first?.fileUrl,
-          channelDisplayName: state.videoDetails?.channel?.displayName ?? "Unknown Channel",
-          instanceDisplayName: state.videoDetails?.channel?.host ?? "Unknown Community",
-          instanceIconUrl: instance.avatarUrl
-        )
+        if state.userBadge.instanceIconUrl != instance.avatarUrl {
+          state.userBadge = UserBadgeFeature.State(
+            variant: .medium,
+            avatarUrl: state.videoDetails?.channel?.avatars?.first?.fileUrl,
+            channelDisplayName: state.videoDetails?.channel?.displayName ?? "Unknown Channel",
+            instanceDisplayName: state.videoDetails?.channel?.host ?? "Unknown Community",
+            instanceIconUrl: instance.avatarUrl
+          )
+        }
 
         return .none
 
@@ -212,10 +193,6 @@ struct ChannelPreviewFeature {
 
 struct ChannelPreviewView: View {
   @Bindable var store: StoreOf<ChannelPreviewFeature>
-
-  private var channelDisplayName: String {
-    store.state.videoDetails?.channel?.displayName ?? "Channel"
-  }
 
   var body: some View {
     HStack(alignment: .center, spacing: 12) {

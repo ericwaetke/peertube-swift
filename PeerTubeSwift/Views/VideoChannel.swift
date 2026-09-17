@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Dependencies
+import FontKit
 import SQLiteData
 import SwiftUI
 import TubeSDK
@@ -14,19 +15,9 @@ func loadChannelFromRow(
   host: String,
   send: Send<VideoChannelFeature.Action>
 ) async {
-  @Dependency(\.defaultDatabase) var database
-
   do {
-    // Fetch full channel details from API
-    print("🔍 loadChannelFromRow: Calling getChannel with '\(channelId)'")
     let fullChannel = try await client.getChannel(channelIdentifier: channelId)
-    print(
-      "🔍 loadChannelFromRow: getChannel success - displayName='\(fullChannel.displayName ?? "nil")'"
-    )
-
     let banner: String? = fullChannel.banners?.first?.fileUrl
-
-    // Update state with full channel info including description
     await send(
       .channelDetailsLoaded(
         channelId: channelId,
@@ -37,8 +28,6 @@ func loadChannelFromRow(
         host: host
       ))
   } catch {
-    // If API call fails, fall back to basic info from row
-    print("🔍 loadChannelFromRow: getChannel FAILED - \(error), using fallback")
     await send(
       .channelDetailsLoaded(
         channelId: channelId,
@@ -48,25 +37,6 @@ func loadChannelFromRow(
         description: description,
         host: host
       ))
-  }
-
-  // Load subscription state
-  var localNotificationState = false
-  if let subscription = try? await database.read({ db in
-    try PeertubeSubscription.where { $0.channelID.eq(channelId) }.fetchOne(db)
-  }) {
-    localNotificationState = subscription.notifyOnNewVideo
-  }
-
-  if client.currentToken != nil {
-    if let isSubscribed = try? await client.checkSubscription(channelUri: channelId) {
-      await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
-    }
-  } else {
-    let hasLocalSub = try? await database.read { db in
-      try PeertubeSubscription.find(channelId).fetchOne(db) != nil
-    }
-    await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
   }
 }
 
@@ -78,15 +48,12 @@ struct VideoChannelFeature {
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
       scheme: "https", host: "peertube.wtf")
 
-    var notificationBell: NotificationBellFeature.State
     var channelPreview: ChannelPreviewFeature.State
 
     var instance: Instance?
     var videoChannel: VideoChannel?
     var videoDetails: TubeSDK.VideoDetails?
     var channelName: String?
-
-    var isSubscribedToChannel = false
 
     // Video list state
     var videos: [TubeSDK.Video] = []
@@ -99,17 +66,15 @@ struct VideoChannelFeature {
 
     init(
       host: String,
-      notificationBell: NotificationBellFeature.State,
       instance: Instance? = nil,
       videoDetails: TubeSDK.VideoDetails? = nil
     ) {
       self.host = host
-      self.notificationBell = notificationBell
       self.instance = instance
       self.videoDetails = videoDetails
       self.channelPreview = ChannelPreviewFeature.State(
         host: host,
-        notificationBell: notificationBell,
+        notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false),
         instance: instance
       )
     }
@@ -124,11 +89,7 @@ struct VideoChannelFeature {
       channelId: String, channelName: String, avatarUrl: String?, bannerUrl: String?,
       description: String?, host: String
     )
-    case saveChannel(VideoChannel)
-    case instanceLoaded(Instance)
-    case notificationBell(NotificationBellFeature.Action)
     case channelPreview(ChannelPreviewFeature.Action)
-    case subscriptionStateLoaded(Bool, Bool)
 
     // Video list actions
     case loadVideos
@@ -145,9 +106,6 @@ struct VideoChannelFeature {
   }
 
   var body: some ReducerOf<Self> {
-    Scope(state: \.notificationBell, action: \.notificationBell) {
-      NotificationBellFeature()
-    }
     Scope(state: \.channelPreview, action: \.channelPreview) {
       ChannelPreviewFeature()
     }
@@ -155,10 +113,6 @@ struct VideoChannelFeature {
       switch action {
       case .loadChannelFromRow(
         let channelId, let channelName, let avatarUrl, let bannerUrl, let description, let host):
-        print(
-          "🔍 loadChannelFromRow: channelId='\(channelId)', channelName='\(channelName)', host='\(host)'"
-        )
-        // Set channel name immediately for navigation title
         state.channelName = channelName
 
         // Fetch full channel details from API to get description
@@ -206,59 +160,12 @@ struct VideoChannelFeature {
             description: description
           )
         )
-        print(
-          "🔍 channelDetailsLoaded: videoChannel.id='\(state.videoChannel?.id ?? "nil")', videoDetails.channel.name='\(state.videoDetails?.channel?.name ?? "nil")'"
-        )
-        // Now load videos (channel details are set)
         let videoDetails = state.videoDetails
         return .run { send in
-          await send(.notificationBell(.setChannelId(channelId)))
           if let videoDetails {
             await send(.channelPreview(.loadChannelPreview(videoDetails)))
           }
           await send(.loadVideos)
-        }
-
-      case .saveChannel(let channel):
-        state.videoChannel = channel
-        return .run { [client = state.client, channel = channel] send in
-          @Dependency(\.defaultDatabase) var database
-          var localNotificationState = false
-          if let subscription = try? await database.read({ db in
-            try PeertubeSubscription.find(channel.id).fetchOne(db)
-          }) {
-            print("subscription found in table")
-            print(subscription)
-            localNotificationState = subscription.notifyOnNewVideo
-          } else {
-            print("Subscription not found in table")
-            print(channel.id)
-          }
-
-          if client.currentToken != nil {
-            if let isSubscribed = try? await client.checkSubscription(channelUri: channel.id) {
-              await send(.subscriptionStateLoaded(isSubscribed, localNotificationState))
-            }
-          } else {
-            let hasLocalSub = try? await database.read { db in
-              try PeertubeSubscription.find(channel.id).fetchOne(db) != nil
-            }
-            await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
-          }
-        }
-
-      case .instanceLoaded(let instance):
-        state.instance = instance
-        state.channelPreview.instance = instance
-        return .none
-
-      case .notificationBell:
-        return .none
-
-      case .subscriptionStateLoaded(let isSubscribed, let notifyOnNewVideo):
-        state.isSubscribedToChannel = isSubscribed
-        return .run { send in
-          await send(.notificationBell(.setToggleState(notifyOnNewVideo)))
         }
 
       case .loadVideos:
@@ -273,13 +180,8 @@ struct VideoChannelFeature {
         } else if let channel = state.videoChannel {
           channelId = channel.id
         } else {
-          print(
-            "🔍 loadVideos: FAILED - videoDetails=\(state.videoDetails != nil), videoChannel=\(state.videoChannel != nil)"
-          )
           return .none
         }
-        print(
-          "🔍 loadVideos: channelId='\(channelId)', videoChannel=\(state.videoChannel?.id ?? "nil")")
 
         state.isLoadingVideos = true
         state.currentPage = 0
@@ -287,17 +189,14 @@ struct VideoChannelFeature {
 
         return .run {
           [client = state.client, channelId = channelId, pageSize = state.pageSize] send in
-          print("🔍 loadVideos API call: channelId='\(channelId)'")
           do {
             let videos = try await client.getVideosPaginated(
               channelIdentifier: channelId,
               start: 0,
               count: pageSize
             )
-            print("🔍 loadVideos API success: \(videos.count) videos")
             await send(.finishLoadingVideos(videos))
           } catch {
-            print("🔍 loadVideos API error: \(error)")
             await send(.finishLoadingVideos([]))
           }
         }
@@ -376,7 +275,7 @@ struct VideoChannelFeature {
             instanceDisplayHost: state.host,
             instanceDisplayAvatarUrl: state.instance?.avatarUrl,
             userBadge: UserBadgeFeature.State(
-              variant: .medium,
+              variant: .tiny,
               avatarUrl: caUrl ?? "",
               channelDisplayName: cdName,
               instanceDisplayName: state.host,
@@ -427,123 +326,114 @@ struct VideoChannelFeature {
 }
 
 struct VideoChannelView: View {
-  @Bindable var store: StoreOf<VideoChannelFeature>
-
-  private var channelDisplayName: String {
-    store.state.channelName
-      ?? store.state.videoDetails?.channel?.displayName
-      ?? store.state.videoChannel?.name
-      ?? "Channel"
-  }
+  let store: StoreOf<VideoChannelFeature>
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        // Channel header
-        channelHeader
+        VStack(alignment: .leading, spacing: 12) {
+          if let bannerUrlString = store.videoChannel?.bannerUrl,
+            let bannerUrl = URL(string: bannerUrlString)
+          {
+            AsyncImage(url: bannerUrl) { image in
+              image.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+              Color.gray
+            }
+            .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 96)
+            .clipped()
+            .clipShape(.rect(cornerRadius: 12))
+          }
+
+          ChannelPreviewView(
+            store: store.scope(state: \.channelPreview, action: \.channelPreview)
+          )
+
+          if let description = store.videoDetails?.channel?.description
+            ?? store.videoChannel?.description,
+            !description.isEmpty
+          {
+            Text(description)
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+              .lineLimit(3)
+          }
+
+          HStack {
+            Spacer()
+            VStack(spacing: 4) {
+              Text("4,214")
+                .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 17, relativeTo: .headline))
+                .foregroundStyle(Color.Label.primary)
+              Text("Subscribers")
+                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 11, relativeTo: .caption2))
+                .foregroundStyle(Color.Label.secondary)
+            }
+            Spacer()
+            Divider()
+            Spacer()
+            VStack(spacing: 4) {
+              Text("454")
+                .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 17, relativeTo: .headline))
+                .foregroundStyle(Color.Label.primary)
+              Text("Videos")
+                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 11, relativeTo: .caption2))
+                .foregroundStyle(Color.Label.secondary)
+            }
+            Spacer()
+            Divider()
+            Spacer()
+            VStack(spacing: 4) {
+              Text("41,773")
+                .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 17, relativeTo: .headline))
+                .foregroundStyle(Color.Label.primary)
+              Text("Views")
+                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 11, relativeTo: .caption2))
+                .foregroundStyle(Color.Label.secondary)
+            }
+            Spacer()
+          }
+          .padding(12)
+          .frame(maxWidth: .infinity)
+          .background(Color(uiColor: UIColor.secondarySystemBackground))
+          .clipShape(.rect(cornerRadius: 26))
+        }
 
         Divider()
 
-        // Videos section
-        videosSection
+        VStack(alignment: .leading, spacing: 12) {
+          Text("Videos")
+            .font(.headline)
+
+          if store.isLoadingVideos && store.videoCards.isEmpty {
+            ProgressView()
+              .frame(maxWidth: .infinity, minHeight: 200)
+          } else if store.videoCards.isEmpty && store.hasLoadedAtLeastOnce {
+            ContentUnavailableView {
+              Label("No videos", systemImage: "video")
+            } description: {
+              Text("This channel doesn't have any videos yet")
+            }
+          } else {
+            LazyVStack(spacing: 16) {
+              ForEach(
+                store.scope(state: \.videoCards, action: \.videoCards)
+              ) { cardStore in
+                VideoCardView(store: cardStore)
+                  .onAppear {
+                    store.send(.loadMoreVideosIfNeeded(currentItemId: cardStore.videoUUID))
+                  }
+              }
+
+              if store.isLoadingVideos && !store.videoCards.isEmpty {
+                ProgressView()
+                  .padding()
+              }
+            }
+          }
+        }
       }
       .padding()
-    }
-    //    .navigationTitle(channelDisplayName)
-    //    .navigationBarTitleDisplayMode(.)
-  }
-
-  private var channelHeader: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      if let bannerUrlString = store.state.videoChannel?.bannerUrl,
-        let bannerUrl = URL(string: bannerUrlString)
-      {
-        AsyncImage(url: bannerUrl) { image in
-          image.resizable().aspectRatio(contentMode: .fill)
-        } placeholder: {
-          Color.gray
-        }
-        .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 96)
-        .clipped()
-        .clipShape(.rect(cornerRadius: 12))
-      }
-
-      //      HStack(alignment: .top) {
-      //        AvatarView(
-      //          url: store.state.videoDetails?.channel?.avatars?.first?.fileUrl
-      //            ?? store.state.videoChannel?.avatarUrl,
-      //          name: store.state.videoDetails?.channel?.displayName ?? store.state.videoChannel?.name
-      //            ?? "Unknown Channel",
-      //          size: 60
-      //        )
-      //
-      //        VStack(alignment: .leading, spacing: 4) {
-      //          Text(
-      //            store.state.videoDetails?.channel?.displayName ?? store.state.videoChannel?.name
-      //              ?? "Unknown Channel"
-      //          )
-      //          .font(.headline)
-      //
-      //          if let instanceName = store.state.videoDetails?.channel?.host
-      //            ?? store.state.videoChannel?.instanceID
-      //          {
-      //            InstanceIndicator(
-      //              instanceName: instanceName, instanceImage: store.state.instance?.avatarUrl)
-      //          }
-      //        }
-      //
-      //        Spacer()
-      //
-      //        subscribeButton
-      //      }
-      ChannelPreviewView(
-        store: store.scope(state: \.channelPreview, action: \.channelPreview)
-      )
-
-      // Channel description
-      if let description = store.state.videoDetails?.channel?.description
-        ?? store.state.videoChannel?.description,
-        !description.isEmpty
-      {
-        Text(description)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-          .lineLimit(3)
-      }
-    }
-  }
-
-  private var videosSection: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Videos")
-        .font(.headline)
-
-      if store.state.isLoadingVideos && store.state.videoCards.isEmpty {
-        ProgressView()
-          .frame(maxWidth: .infinity, minHeight: 200)
-      } else if store.state.videoCards.isEmpty && store.state.hasLoadedAtLeastOnce {
-        ContentUnavailableView {
-          Label("No videos", systemImage: "video")
-        } description: {
-          Text("This channel doesn't have any videos yet")
-        }
-      } else {
-        LazyVStack(spacing: 16) {
-          ForEach(
-            store.scope(state: \.videoCards, action: \.videoCards)
-          ) { cardStore in
-            VideoCardView(store: cardStore)
-              .onAppear {
-                store.send(.loadMoreVideosIfNeeded(currentItemId: cardStore.state.videoUUID))
-              }
-          }
-
-          if store.state.isLoadingVideos && !store.state.videoCards.isEmpty {
-            ProgressView()
-              .padding()
-          }
-        }
-      }
     }
   }
 }
@@ -559,10 +449,6 @@ struct VideoChannelView: View {
       store: Store(
         initialState: VideoChannelFeature.State(
           host: "peertube.cpy.re",
-          notificationBell: NotificationBellFeature.State(
-            channelId: "chocopie@peertube.cpy.re",
-            isOn: false
-          ),
           videoDetails: TubeSDK.VideoDetails(
             channel: TubeSDK.VideoChannel(
               id: 1,

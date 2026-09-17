@@ -150,7 +150,6 @@ struct FeedNavigationFeature {
 
     var channelState = VideoChannelFeature.State(
       host: host,
-      notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false),
       instance: instance
     )
     channelState.channelName = channelName
@@ -199,7 +198,6 @@ struct FeedNavigationFeature {
 
     var channelState = VideoChannelFeature.State(
       host: instance.host,
-      notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false),
       instance: instance
     )
     channelState.channelName = channel.name
