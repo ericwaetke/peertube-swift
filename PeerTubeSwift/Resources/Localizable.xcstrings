@@ -31,6 +31,12 @@
     "Add an Instance to get their latest videos" : {
 
     },
+    "Add Language …" : {
+
+    },
+    "Available Languages" : {
+
+    },
     "Cancel" : {
 
     },
@@ -115,9 +121,6 @@
           }
         }
       }
-    },
-    "Deutsch" : {
-
     },
     "Display Name" : {
 
@@ -277,7 +280,13 @@
     "Recommended" : {
 
     },
+    "Recommended Languages" : {
+
+    },
     "Reload" : {
+
+    },
+    "Remove" : {
 
     },
     "Reply" : {
@@ -302,6 +311,9 @@
 
     },
     "Select a Community" : {
+
+    },
+    "Select a Language" : {
 
     },
     "Select Your Preferred Languages" : {
@@ -362,6 +374,9 @@
 
     },
     "Videos" : {
+
+    },
+    "Videos in all languages will be shown in search" : {
 
     },
     "Watch History" : {

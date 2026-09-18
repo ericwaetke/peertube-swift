@@ -79,17 +79,17 @@ struct OnboardingLaunchScreenView: View {
   var actionArea: some View {
     VStack {
       Button("Get Started Without Account") {
-
+        store.send(.startWithoutAccountButtonTapped)
       }
       .buttonStyle(RiverButtonLarge(type: .filled))
 
       Button("Use Peertube Account") {
-
+        store.send(.usePeerTubeAccountButtonTapped)
       }
       .buttonStyle(RiverButtonLarge(type: .gray))
 
       Button("What’s Peertube?") {
-
+        store.send(.infoButtonTapped)
       }
       .buttonStyle(RiverButtonLarge(type: .plain))
     }
