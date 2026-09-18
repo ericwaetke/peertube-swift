@@ -26,21 +26,8 @@ struct VideoPlayerView: View {
   var channelName: String?
   var thumbnailPath: String?
   var pauseTrigger: Int = 0
+  var playerManager: PlayerManager?
 
-  // Legacy initializer for single URL (backwards compatibility)
-  init(videoURL _: URL) {
-    _isPlayerReady = .constant(false)
-    videoFiles = []
-    selectedVideoFile = nil
-    startTime = nil
-    seekRequest = nil
-    videoTitle = nil
-    channelName = nil
-    thumbnailPath = nil
-    pauseTrigger = 0
-  }
-
-  // New initializer for VideoFile arrays with quality selection
   init(
     isPlayerReady: Binding<Bool> = .constant(false),
     onTimeUpdate: ((Int) -> Void)? = nil,
@@ -51,7 +38,8 @@ struct VideoPlayerView: View {
     videoTitle: String? = nil,
     channelName: String? = nil,
     thumbnailPath: String? = nil,
-    pauseTrigger: Int = 0
+    pauseTrigger: Int = 0,
+    playerManager: PlayerManager? = nil
   ) {
     _isPlayerReady = isPlayerReady
     self.onTimeUpdate = onTimeUpdate
@@ -63,6 +51,7 @@ struct VideoPlayerView: View {
     self.channelName = channelName
     self.thumbnailPath = thumbnailPath
     self.pauseTrigger = pauseTrigger
+    self.playerManager = playerManager
   }
 
   var body: some View {
@@ -77,7 +66,8 @@ struct VideoPlayerView: View {
         videoTitle: videoTitle,
         channelName: channelName,
         thumbnailPath: thumbnailPath,
-        pauseTrigger: pauseTrigger
+        pauseTrigger: pauseTrigger,
+        playerManager: playerManager
       )
       .allowsHitTesting(isPlayerReady)
 
@@ -107,6 +97,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
   var channelName: String? = nil
   var thumbnailPath: String? = nil
   var pauseTrigger: Int = 0
+  var playerManager: PlayerManager? = nil
 
   class Coordinator: NSObject {
     var parent: VideoPlayerViewControllerRepresentable
@@ -233,6 +224,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
     if let player = createPlayerWithCombinedStreams() {
       playerViewController.player = player
       context.coordinator.addObserver(to: player)
+      playerManager?.register(player: player)
     }
 
     #if targetEnvironment(preview)
@@ -331,6 +323,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
       print("🎬 VideoPlayer: Created new player successfully")
       uiViewController.player = newPlayer
       context.coordinator.addObserver(to: newPlayer)
+      playerManager?.register(player: newPlayer)
 
       // Restore playback state
       if let currentTime = currentTime {

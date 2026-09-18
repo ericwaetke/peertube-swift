@@ -49,6 +49,8 @@ struct AppFeature {
     case searchTab(SearchTabFeature.Action)
     case profileTab(ProfileTabFeature.Action)
     case videoDetail(PresentationAction<VideoDetailsFeature.Action>)
+
+    case restoreVideoFromPiP(PlayerManager.VideoInfo)
   }
 
   @Dependency(\.authClient) var authClient
@@ -291,6 +293,14 @@ struct AppFeature {
       //        }
       case .profileTab:
         return .none
+
+      case .restoreVideoFromPiP(let info):
+        state.videoDetail = VideoDetailsFeature.State(
+          host: info.host,
+          videoId: info.videoId,
+          channelId: nil
+        )
+        return .none
       }
     }
 
@@ -321,6 +331,7 @@ enum TubeTab {
 
 struct ContentView: View {
   @Bindable var store: StoreOf<AppFeature>
+  @State var playerManager = PlayerManager()
 
   var body: some View {
     Group {
@@ -372,12 +383,18 @@ struct ContentView: View {
     .task {
       await store.send(.task).finish()
     }
+    .onAppear {
+      playerManager.onPiPRestore = { [store] in
+        guard let info = playerManager.currentVideoInfo else { return }
+        store.send(.restoreVideoFromPiP(info))
+      }
+    }
     .sheet(
       item: $store.scope(
         state: \.videoDetail, action: \.videoDetail
       )
     ) { store in
-      VideoDetails(store: store)
+      VideoDetails(store: store, playerManager: playerManager)
         .presentationDragIndicator(.visible)
     }
   }

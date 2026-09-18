@@ -145,6 +145,9 @@
     "Explore" : {
 
     },
+    "Get Started Without Account" : {
+
+    },
     "Hide replies" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -286,6 +289,9 @@
     "Retry" : {
 
     },
+    "River" : {
+
+    },
     "Save" : {
 
     },
@@ -305,6 +311,9 @@
 
     },
     "Sign In" : {
+
+    },
+    "Stream Videos Independent of the Tech Giants" : {
 
     },
     "Subscribe" : {
@@ -334,6 +343,9 @@
     "Unsubscribe" : {
 
     },
+    "Use Peertube Account" : {
+
+    },
     "Username" : {
 
     },
@@ -344,6 +356,9 @@
 
     },
     "Watch History" : {
+
+    },
+    "What’s Peertube?" : {
 
     },
     "Write a comment …" : {

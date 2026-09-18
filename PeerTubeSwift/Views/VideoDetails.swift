@@ -212,6 +212,7 @@ struct VideoDetailsFeature {
 
 struct VideoDetails: View {
   let store: StoreOf<VideoDetailsFeature>
+  let playerManager: PlayerManager
   let formatter = RelativeDateTimeFormatter()
   @State private var isPlayerReady = false
 
@@ -239,7 +240,8 @@ struct VideoDetails: View {
               videoTitle: videoDetails.name,
               channelName: videoDetails.channel?.displayName,
               thumbnailPath: videoDetails.bestThumbnailUrl(client: store.client, size: .large),
-              pauseTrigger: self.store.pauseTrigger
+              pauseTrigger: self.store.pauseTrigger,
+              playerManager: playerManager
             )
             .frame(
               minWidth: 0,
@@ -320,6 +322,20 @@ struct VideoDetails: View {
     .task {
       await self.store.send(.screenLoaded).finish()
     }
+    .onDisappear {
+      playerManager.currentVideoInfo = PlayerManager.VideoInfo(
+        host: store.host,
+        videoId: store.videoId,
+        title: store.videoDetails?.name,
+        channelName: store.videoDetails?.channel?.displayName,
+        thumbnailUrl: store.videoDetails?.bestThumbnailUrl(client: store.client, size: .large)
+      )
+      //        playerManager.startPiP()
+      Task {
+        try? await Task.sleep(for: .milliseconds(150))
+        playerManager.startPiP()
+      }
+    }
   }
 }
 
@@ -328,6 +344,8 @@ struct VideoDetails: View {
     try! $0.bootstrapDatabase()
     try! $0.defaultDatabase.seed()
   }
+
+  let playerManager = PlayerManager()
 
   NavigationStack {
     VideoDetails(
@@ -339,6 +357,7 @@ struct VideoDetails: View {
         )
       ) {
         VideoDetailsFeature()
-      })
+      },
+      playerManager: playerManager)
   }
 }
