@@ -372,7 +372,6 @@ struct ContentView: View {
           ) {
             NavigationStack {
               ProfileTab(store: self.store.scope(state: \.profileTab, action: \.profileTab))
-
             }
           }
         }
@@ -387,6 +386,15 @@ struct ContentView: View {
       playerManager.onPiPRestore = { [store] in
         guard let info = playerManager.currentVideoInfo else { return }
         store.send(.restoreVideoFromPiP(info))
+      }
+    }
+    .onChange(of: store.videoDetail) { oldValue, newValue in
+      if oldValue != nil && newValue == nil && playerManager.currentVideoInfo != nil {
+        // Sheet dismissing → start PiP
+        playerManager.startPiP()
+      } else if newValue != nil && playerManager.isPiPActive {
+        // New video opened while PiP is active → stop PiP immediately
+        playerManager.stopPiP()
       }
     }
     .sheet(

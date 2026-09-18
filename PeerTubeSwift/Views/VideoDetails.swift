@@ -241,7 +241,8 @@ struct VideoDetails: View {
               channelName: videoDetails.channel?.displayName,
               thumbnailPath: videoDetails.bestThumbnailUrl(client: store.client, size: .large),
               pauseTrigger: self.store.pauseTrigger,
-              playerManager: playerManager
+              playerManager: playerManager,
+              videoId: store.videoId
             )
             .frame(
               minWidth: 0,
@@ -322,19 +323,15 @@ struct VideoDetails: View {
     .task {
       await self.store.send(.screenLoaded).finish()
     }
-    .onDisappear {
+    .onChange(of: store.videoDetails) { _, details in
+      guard let details else { return }
       playerManager.currentVideoInfo = PlayerManager.VideoInfo(
         host: store.host,
         videoId: store.videoId,
-        title: store.videoDetails?.name,
-        channelName: store.videoDetails?.channel?.displayName,
-        thumbnailUrl: store.videoDetails?.bestThumbnailUrl(client: store.client, size: .large)
+        title: details.name,
+        channelName: details.channel?.displayName,
+        thumbnailUrl: details.bestThumbnailUrl(client: store.client, size: .large)
       )
-      //        playerManager.startPiP()
-      Task {
-        try? await Task.sleep(for: .milliseconds(150))
-        playerManager.startPiP()
-      }
     }
   }
 }

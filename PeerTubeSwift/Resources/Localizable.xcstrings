@@ -116,6 +116,9 @@
         }
       }
     },
+    "Deutsch" : {
+
+    },
     "Display Name" : {
 
     },
@@ -301,6 +304,12 @@
     "Select a Community" : {
 
     },
+    "Select Your Preferred Languages" : {
+
+    },
+    "Selected Languages" : {
+
+    },
     "Settings" : {
 
     },
@@ -383,6 +392,9 @@
 
     },
     "Your Subscriptions" : {
+
+    },
+    "Your video recommendations will be based on these languages. Videos in other languages will still be available." : {
 
     }
   },

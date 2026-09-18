@@ -27,6 +27,7 @@ struct VideoPlayerView: View {
   var thumbnailPath: String?
   var pauseTrigger: Int = 0
   var playerManager: PlayerManager?
+  var videoId: String?
 
   init(
     isPlayerReady: Binding<Bool> = .constant(false),
@@ -39,7 +40,8 @@ struct VideoPlayerView: View {
     channelName: String? = nil,
     thumbnailPath: String? = nil,
     pauseTrigger: Int = 0,
-    playerManager: PlayerManager? = nil
+    playerManager: PlayerManager? = nil,
+    videoId: String? = nil
   ) {
     _isPlayerReady = isPlayerReady
     self.onTimeUpdate = onTimeUpdate
@@ -52,6 +54,7 @@ struct VideoPlayerView: View {
     self.thumbnailPath = thumbnailPath
     self.pauseTrigger = pauseTrigger
     self.playerManager = playerManager
+    self.videoId = videoId
   }
 
   var body: some View {
@@ -67,7 +70,8 @@ struct VideoPlayerView: View {
         channelName: channelName,
         thumbnailPath: thumbnailPath,
         pauseTrigger: pauseTrigger,
-        playerManager: playerManager
+        playerManager: playerManager,
+        videoId: videoId
       )
       .allowsHitTesting(isPlayerReady)
 
@@ -98,6 +102,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
   var thumbnailPath: String? = nil
   var pauseTrigger: Int = 0
   var playerManager: PlayerManager? = nil
+  var videoId: String? = nil
 
   class Coordinator: NSObject {
     var parent: VideoPlayerViewControllerRepresentable
@@ -109,6 +114,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
     var lastSeekRequestId: UUID?
     var hasNotifiedPlayerReady = false
     var lastPauseTrigger: Int = 0
+    var isReusedPlayer = false
 
     init(_ parent: VideoPlayerViewControllerRepresentable) {
       self.parent = parent
@@ -220,11 +226,23 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
 
     let playerViewController = AVPlayerViewController()
 
-    // Create player with combined streams if needed
-    if let player = createPlayerWithCombinedStreams() {
+    // Reuse existing player from PlayerManager if available (e.g. restoring from PiP)
+    if let videoId, let existingPlayer = playerManager?.existingPlayer(for: videoId) {
+      print("🎬 VideoPlayer: Reusing existing player for video \(videoId)")
+      playerViewController.player = existingPlayer
+      context.coordinator.isReusedPlayer = true
+      context.coordinator.hasNotifiedPlayerReady = true
+      context.coordinator.initialSeekPerformed = true
+      context.coordinator.addObserver(to: existingPlayer)
+      // Defer to next run loop — setting state during makeUIViewController causes
+      // "Modifying state during view update" and SwiftUI silently drops the write
+      Task { @MainActor in
+        isPlayerReady = true
+      }
+    } else if let player = createPlayerWithCombinedStreams() {
       playerViewController.player = player
       context.coordinator.addObserver(to: player)
-      playerManager?.register(player: player)
+      playerManager?.register(player: player, videoId: videoId ?? "")
     }
 
     #if targetEnvironment(preview)
@@ -239,6 +257,16 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
   func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
     context.coordinator.parent = self
     print("🎬 VideoPlayer: updateUIViewController called")
+
+    // Skip all player URL checks for reused players (e.g. PiP restore)
+    if context.coordinator.isReusedPlayer {
+      if !isPlayerReady {
+        Task { @MainActor in
+          isPlayerReady = true
+        }
+      }
+      return
+    }
 
     // Handle pause trigger
     if pauseTrigger != context.coordinator.lastPauseTrigger {
@@ -323,7 +351,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
       print("🎬 VideoPlayer: Created new player successfully")
       uiViewController.player = newPlayer
       context.coordinator.addObserver(to: newPlayer)
-      playerManager?.register(player: newPlayer)
+      playerManager?.register(player: newPlayer, videoId: videoId ?? "")
 
       // Restore playback state
       if let currentTime = currentTime {
