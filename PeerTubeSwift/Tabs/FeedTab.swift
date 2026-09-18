@@ -58,13 +58,8 @@ struct FeedTabFeature {
         switch action {
         case .element(
           id: _,
-          action: .channelDetail(.delegate(.navigateToVideo(host: let host, videoId: let videoId)))):
-          return FeedNavigationFeature.navigateToVideo(
-            &state.navigation, host: host, videoId: videoId
-          )
-          .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
-            .navigation(action)
-          }
+          action: .channelDetail(.delegate(.navigateToVideo(host: _, videoId: _)))):
+          return .none
 
         default:
           return .none
@@ -72,11 +67,8 @@ struct FeedTabFeature {
 
       case .subscriptionFeed(let action):
         switch action {
-        case .videoTapped(let row):
-          return FeedNavigationFeature.navigateToVideoFromRow(&state.navigation, row: row)
-            .map { (action: FeedNavigationFeature.Action) -> FeedTabFeature.Action in
-              .navigation(action)
-            }
+        case .videoTapped:
+          return .none
 
         case .channelTapped(let row):
           return FeedNavigationFeature.navigateToChannelFromRow(&state.navigation.path, row: row)
@@ -89,8 +81,6 @@ struct FeedTabFeature {
         }
 
       case .delegate:
-        return .none
-      case .navigation(.videoDetail(_)):
         return .none
       }
     }
@@ -107,52 +97,6 @@ struct FeedTab: View {
     NavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
       Feed(store: self.store.scope(state: \.subscriptionFeed, action: \.subscriptionFeed))
         .navigationTitle("Your Subscriptions")
-      //        .toolbar {
-      //          ToolbarItem(placement: .topBarTrailing) {
-      //            Menu {
-      //              if let session = store.session {
-      //                VStack(alignment: .leading) {
-      //                  Text(session.username)
-      //                    .font(.headline)
-      //                  Text(session.host)
-      //                    .font(.caption)
-      //                    .foregroundStyle(.secondary)
-      //                }
-      //                Divider()
-      //
-      //                Button {
-      //                  self.store.send(.manageSubscriptionButtonTapped)
-      //                } label: {
-      //                  Label("Manage Subscriptions", systemImage: "heart")
-      //                }
-      //              } else {
-      //                Text("Not logged in")
-      //                  .font(.headline)
-      //              }
-      //
-      //              Divider()
-      //
-      //              Button {
-      //                self.store.send(.delegate(.openSettings))
-      //              } label: {
-      //                Label("Settings", systemImage: "gear")
-      //              }
-      //            } label: {
-      //              if let session = store.session {
-      //                AvatarView(
-      //                  url: session.avatarUrl,
-      //                  name: session.username,
-      //                  size: 32
-      //                )
-      //              } else {
-      //                Image(systemName: "person.circle.fill")
-      //                  .resizable()
-      //                  .frame(width: 32, height: 32)
-      //                  .foregroundStyle(.secondary)
-      //              }
-      //            }
-      //          }
-      //        }
     } destination: { pathStore in
       switch pathStore.case {
       case .channelDetail(let store):
@@ -160,14 +104,6 @@ struct FeedTab: View {
       case .feed(let store):
         Feed(store: store)
       }
-    }
-    .sheet(
-      item: $store.scope(
-        state: \.navigation.videoDetail, action: \.navigation.videoDetail
-      )
-    ) { store in
-      VideoDetails(store: store)
-        .presentationDragIndicator(.visible)
     }
 
     .sheet(item: $store.scope(state: \.manageSubscriptions, action: \.manageSubsctiptions)) {

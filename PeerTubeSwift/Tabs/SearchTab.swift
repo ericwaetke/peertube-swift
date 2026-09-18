@@ -60,13 +60,8 @@ struct SearchTabFeature {
         switch action {
         case .element(
           id: _,
-          action: .channelDetail(.delegate(.navigateToVideo(host: let host, videoId: let videoId)))):
-          return FeedNavigationFeature.navigateToVideo(
-            &state.navigation, host: host, videoId: videoId
-          )
-          .map { (action: FeedNavigationFeature.Action) -> SearchTabFeature.Action in
-            .navigation(action)
-          }
+          action: .channelDetail(.delegate(.navigateToVideo(host: _, videoId: _)))):
+          return .none
 
         default:
           return .none
@@ -97,8 +92,6 @@ struct SearchTabFeature {
 
       case .setSearchActive(let active):
         state.isSearchActive = active
-        return .none
-      case .navigation(.videoDetail(_)):
         return .none
       case .categoryTapped(let category):
         state.navigation.path.append(
@@ -163,14 +156,6 @@ struct SearchTab: View {
       contentView
     } destination: { pathStore in
       destinationView(for: pathStore)
-    }
-    .sheet(
-      item: $store.scope(
-        state: \.navigation.videoDetail, action: \.navigation.videoDetail
-      )
-    ) { store in
-      VideoDetails(store: store)
-        .presentationDragIndicator(.visible)
     }
   }
 

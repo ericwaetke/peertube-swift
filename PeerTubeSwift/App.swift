@@ -31,6 +31,8 @@ struct AppFeature {
     var searchTab = SearchTabFeature.State()
     var profileTab = ProfileTabFeature.State()
 
+    @Presents var videoDetail: VideoDetailsFeature.State?
+
     @Shared(.inMemory("client")) var client: TubeSDKClient?
     @Shared(.inMemory("session")) var session: UserSession?
   }
@@ -46,6 +48,7 @@ struct AppFeature {
     case exploreTab(ExploreTabFeature.Action)
     case searchTab(SearchTabFeature.Action)
     case profileTab(ProfileTabFeature.Action)
+    case videoDetail(PresentationAction<VideoDetailsFeature.Action>)
   }
 
   @Dependency(\.authClient) var authClient
@@ -145,6 +148,113 @@ struct AppFeature {
         return .none
       case .exploreTab(.delegate(.openSettings)):
         return .none
+
+      case .feedTab(.subscriptionFeed(.videoTapped(let row))):
+        guard let instance = row.instance else { return .none }
+        state.videoDetail = VideoDetailsFeature.State(
+          host: instance.host,
+          videoId: row.video.id.uuidString,
+          channelId: row.channel?.id
+        )
+        return .none
+
+      case .feedTab(
+        .navigation(
+          .path(
+            .element(
+              id: _,
+              action: .channelDetail(
+                .delegate(.navigateToVideo(host: let host, videoId: let videoId))))))):
+        state.videoDetail = VideoDetailsFeature.State(host: host, videoId: videoId, channelId: nil)
+        return .none
+
+      case .exploreTab(
+        .navigation(.path(.element(id: _, action: .feed(.videoTapped(row: let row)))))):
+        guard let instance = row.instance else { return .none }
+        state.videoDetail = VideoDetailsFeature.State(
+          host: instance.host,
+          videoId: row.video.id.uuidString,
+          channelId: row.channel?.id
+        )
+        return .none
+
+      case .exploreTab(
+        .navigation(
+          .path(
+            .element(
+              id: _,
+              action: .channelDetail(
+                .delegate(.navigateToVideo(host: let host, videoId: let videoId))))))):
+        state.videoDetail = VideoDetailsFeature.State(host: host, videoId: videoId, channelId: nil)
+        return .none
+
+      case .searchTab(
+        .navigation(.path(.element(id: _, action: .feed(.videoTapped(row: let row)))))):
+        guard let instance = row.instance else { return .none }
+        state.videoDetail = VideoDetailsFeature.State(
+          host: instance.host,
+          videoId: row.video.id.uuidString,
+          channelId: row.channel?.id
+        )
+        return .none
+
+      case .searchTab(
+        .navigation(
+          .path(
+            .element(
+              id: _,
+              action: .channelDetail(
+                .delegate(.navigateToVideo(host: let host, videoId: let videoId))))))):
+        state.videoDetail = VideoDetailsFeature.State(host: host, videoId: videoId, channelId: nil)
+        return .none
+
+      case .videoDetail(
+        .presented(.delegate(.navigateToChannel(host: let host, channel: let channel)))):
+        state.videoDetail = nil
+        guard let channelName = channel.name else { return .none }
+        let channelIdentifier = "\(channelName)@\(host)"
+
+        switch state.selectedTab {
+        case .feed:
+          return FeedNavigationFeature.navigateToChannel(
+            &state.feedTab.navigation.path,
+            host: host,
+            channelIdentifier: channelIdentifier,
+            channelName: channel.name,
+            avatarUrl: channel.avatars?.first?.fileUrl,
+            bannerUrl: channel.banners?.first?.fileUrl,
+            channelDescription: channel.description,
+            instance: Instance(host: host, scheme: "https")
+          ).map { .feedTab(.navigation($0)) }
+        case .explore:
+          return FeedNavigationFeature.navigateToChannel(
+            &state.exploreTab.navigation.path,
+            host: host,
+            channelIdentifier: channelIdentifier,
+            channelName: channel.name,
+            avatarUrl: channel.avatars?.first?.fileUrl,
+            bannerUrl: channel.banners?.first?.fileUrl,
+            channelDescription: channel.description,
+            instance: Instance(host: host, scheme: "https")
+          ).map { .exploreTab(.navigation($0)) }
+        case .search:
+          return FeedNavigationFeature.navigateToChannel(
+            &state.searchTab.navigation.path,
+            host: host,
+            channelIdentifier: channelIdentifier,
+            channelName: channel.name,
+            avatarUrl: channel.avatars?.first?.fileUrl,
+            bannerUrl: channel.banners?.first?.fileUrl,
+            channelDescription: channel.description,
+            instance: Instance(host: host, scheme: "https")
+          ).map { .searchTab(.navigation($0)) }
+        case .profile:
+          return .none
+        }
+
+      case .videoDetail:
+        return .none
+
       case .feedTab(_), .exploreTab:
         return .none
       case .searchTab:
@@ -195,6 +305,9 @@ struct AppFeature {
     }
     Scope(state: \.profileTab, action: \.profileTab) {
       ProfileTabFeature()
+    }
+    .ifLet(\.$videoDetail, action: \.videoDetail) {
+      VideoDetailsFeature()
     }
   }
 }
@@ -258,6 +371,14 @@ struct ContentView: View {
     }
     .task {
       await store.send(.task).finish()
+    }
+    .sheet(
+      item: $store.scope(
+        state: \.videoDetail, action: \.videoDetail
+      )
+    ) { store in
+      VideoDetails(store: store)
+        .presentationDragIndicator(.visible)
     }
   }
 }

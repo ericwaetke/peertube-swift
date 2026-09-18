@@ -80,12 +80,10 @@ struct FeedNavigationFeature {
   @ObservableState
   struct State: Equatable {
     var path = StackState<Path.State>()
-    @Presents var videoDetail: VideoDetailsFeature.State?
   }
 
   enum Action {
     case path(StackActionOf<Path>)
-    case videoDetail(PresentationAction<VideoDetailsFeature.Action>)
   }
 
   var body: some ReducerOf<Self> {
@@ -93,46 +91,14 @@ struct FeedNavigationFeature {
       switch action {
       case .path(let action):
         switch action {
-        case .element(
-          id: _,
-          action: .channelDetail(.delegate(.navigateToVideo(host: let host, videoId: let videoId)))):
-          state.videoDetail = VideoDetailsFeature.State(
-            host: host, videoId: videoId, channelId: nil)
-          return .none
-        case .element(id: _, action: .feed(.videoTapped(row: let row))):
-          return Self.navigateToVideoFromRow(&state, row: row)
         case .element(id: _, action: .feed(.channelTapped(row: let row))):
           return Self.navigateToChannelFromRow(&state.path, row: row)
         default:
           return .none
         }
-
-      case .videoDetail(
-        .presented(.delegate(.navigateToChannel(host: let host, channel: let channel)))):
-        state.videoDetail = nil
-        guard let channelName = channel.name else {
-          return .none
-        }
-        let channelIdentifier = "\(channelName)@\(host)"
-        return Self.navigateToChannel(
-          &state.path,
-          host: host,
-          channelIdentifier: channelIdentifier,
-          channelName: channel.name,
-          avatarUrl: channel.avatars?.first?.fileUrl,
-          bannerUrl: channel.banners?.first?.fileUrl,
-          channelDescription: channel.description,
-          instance: Instance(host: host, scheme: "https")  // TODO: this is yucky, lets remove this
-        )
-
-      case .videoDetail:
-        return .none
       }
     }
     .forEach(\.path, action: \.path)
-    .ifLet(\.$videoDetail, action: \.videoDetail) {
-      VideoDetailsFeature()
-    }
   }
 
   /// Helper to navigate to a channel with proper state management
@@ -176,15 +142,6 @@ struct FeedNavigationFeature {
     }
   }
 
-  /// Navigate to video detail
-  static func navigateToVideo(
-    _ state: inout State, host: String, videoId: String
-  ) -> Effect<Action> {
-    state.videoDetail = VideoDetailsFeature.State(
-      host: host, videoId: videoId, channelId: nil)
-    return .none
-  }
-
   /// Navigate to channel from a VideoRow
   static func navigateToChannelFromRow(
     _ path: inout StackState<Path.State>,
@@ -223,20 +180,6 @@ struct FeedNavigationFeature {
     }
   }
 
-  /// Navigate to video from a VideoRow
-  static func navigateToVideoFromRow(
-    _ state: inout State,
-    row: VideoRow
-  ) -> Effect<Action> {
-    guard let instance = row.instance else { return .none }
-
-    state.videoDetail = VideoDetailsFeature.State(
-      host: instance.host,
-      videoId: row.video.id.uuidString,
-      channelId: row.channel?.id
-    )
-    return .none
-  }
 }
 
 extension FeedNavigationFeature.Path.State: Equatable {}
