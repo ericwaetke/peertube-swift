@@ -136,8 +136,9 @@ struct VideoCardView: View {
         } placeholder: {
           Color.secondary
         }
-        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: .infinity)
         .aspectRatio(16 / 9, contentMode: .fit)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: .infinity)
+
         .clipShape(.rect(cornerRadius: 8))
         .overlay(
           RoundedRectangle(cornerRadius: 8)

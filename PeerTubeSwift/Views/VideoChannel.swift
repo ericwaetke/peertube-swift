@@ -15,6 +15,8 @@ struct VideoChannelFeature {
 
     var channelPreview: ChannelPreviewFeature.State
 
+    var titleVisible: Bool = false
+
     var instance: Instance?
     var videoChannel: VideoChannel?
     var videoDetails: TubeSDK.VideoDetails?
@@ -65,6 +67,8 @@ struct VideoChannelFeature {
     case videoTapped(TubeSDK.Video)
     case videoCards(IdentifiedActionOf<VideoCardFeature>)
 
+    case setTitleVisible(Bool)
+
     case delegate(Delegate)
 
     enum Delegate: Equatable {
@@ -88,31 +92,31 @@ struct VideoChannelFeature {
             client = state.client, channelId = channelId, channelName = channelName,
             avatarUrl = avatarUrl, bannerUrl = bannerUrl, description = description, host = host
           ] send in
-            do {
-              let fullChannel = try await client.getChannel(channelIdentifier: channelId)
-              let banner: String? = fullChannel.banners?.first?.fileUrl
-              await send(
-                .channelDetailsLoaded(
-                  channelId: channelId,
-                  channelName: fullChannel.displayName ?? channelName,
-                  avatarUrl: fullChannel.avatars?.first?.fileUrl ?? avatarUrl,
-                  bannerUrl: banner,
-                  description: fullChannel.description,
-                  host: host,
-                  followerCount: fullChannel.followersCount
-                ))
-            } catch {
-              await send(
-                .channelDetailsLoaded(
-                  channelId: channelId,
-                  channelName: channelName,
-                  avatarUrl: avatarUrl,
-                  bannerUrl: bannerUrl,
-                  description: description,
-                  host: host,
-                  followerCount: nil
-                ))
-            }
+          do {
+            let fullChannel = try await client.getChannel(channelIdentifier: channelId)
+            let banner: String? = fullChannel.banners?.first?.fileUrl
+            await send(
+              .channelDetailsLoaded(
+                channelId: channelId,
+                channelName: fullChannel.displayName ?? channelName,
+                avatarUrl: fullChannel.avatars?.first?.fileUrl ?? avatarUrl,
+                bannerUrl: banner,
+                description: fullChannel.description,
+                host: host,
+                followerCount: fullChannel.followersCount
+              ))
+          } catch {
+            await send(
+              .channelDetailsLoaded(
+                channelId: channelId,
+                channelName: channelName,
+                avatarUrl: avatarUrl,
+                bannerUrl: bannerUrl,
+                description: description,
+                host: host,
+                followerCount: nil
+              ))
+          }
         }
 
       case .channelDetailsLoaded(
@@ -180,9 +184,9 @@ struct VideoChannelFeature {
               start: 0,
               count: pageSize
             )
-              await send(.finishLoadingVideos(response.data, total: response.total))
+            await send(.finishLoadingVideos(response.data, total: response.total))
           } catch {
-              await send(.finishLoadingVideos([], total: nil))
+            await send(.finishLoadingVideos([], total: nil))
           }
         }
 
@@ -227,9 +231,9 @@ struct VideoChannelFeature {
               start: nextPage * pageSize,
               count: pageSize
             )
-              await send(.finishLoadingVideos(response.data, total: response.total))
+            await send(.finishLoadingVideos(response.data, total: response.total))
           } catch {
-              await send(.finishLoadingVideos([], total: nil))
+            await send(.finishLoadingVideos([], total: nil))
           }
         }
 
@@ -247,7 +251,7 @@ struct VideoChannelFeature {
           let cdName = state.videoChannel?.name ?? state.channelName ?? "Channel"
           let caUrl = video.channel?.avatars?.first?.fileUrl
           return VideoCardFeature.State(
-            variant: .small,
+            variant: .large,
             id: video.uuid?.uuidString ?? UUID().uuidString,
             videoUUID: video.uuid?.uuidString,
             videoName: video.name ?? "Unknown",
@@ -263,7 +267,7 @@ struct VideoChannelFeature {
             instanceDisplayHost: state.host,
             instanceDisplayAvatarUrl: state.instance?.avatarUrl,
             userBadge: UserBadgeFeature.State(
-              variant: .tiny,
+              variant: .medium,
               avatarUrl: caUrl ?? "",
               channelDisplayName: cdName,
               instanceDisplayName: state.host,
@@ -305,6 +309,9 @@ struct VideoChannelFeature {
 
       case .delegate:
         return .none
+      case .setTitleVisible(let visibility):
+        state.titleVisible = visibility
+        return .none
       }
     }
     .forEach(\.videoCards, action: \.videoCards) {
@@ -315,7 +322,7 @@ struct VideoChannelFeature {
 
 struct VideoChannelView: View {
   let store: StoreOf<VideoChannelFeature>
-    @State private var favoriteColor = 0
+  @State private var favoriteColor = 0
 
   var body: some View {
     ScrollView {
@@ -379,10 +386,19 @@ struct VideoChannelView: View {
         .padding()
         .background(Color(uiColor: .systemBackground))
         .overlay(Divider(), alignment: .bottom)
+        .onGeometryChange(for: Bool.self) {
+          let height = $0.size.height
+          let offset = $0.frame(in: .global).minY
+          return -offset > height / 2
+        } action: { newValue in
+          store.send(.setTitleVisible(newValue))
+        }
 
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
           Text("Videos")
             .font(.headline)
+            .padding()
+            .padding(.bottom, 0)
 
           if store.isLoadingVideos && store.videoCards.isEmpty {
             ProgressView()
@@ -393,6 +409,7 @@ struct VideoChannelView: View {
             } description: {
               Text("This channel doesn't have any videos yet")
             }
+            .padding()
           } else {
             LazyVStack(spacing: 16) {
               ForEach(
@@ -410,36 +427,43 @@ struct VideoChannelView: View {
               }
             }
           }
-        Spacer()
+          Spacer()
         }
-        .padding()
         .background(Color(uiColor: .secondarySystemBackground))
       }
       .toolbar {
+        if store.state.titleVisible {
           ToolbarItem(placement: .title) {
-              UserBadge(
-                store: UserBadgeFeature.State(
-                    variant: .small,
-                    avatarUrl: ,
-                    channelDisplayName: <#String#>,
-                    instanceDisplayName: <#String#>,
-                    instanceIconUrl: <#String?#>)
-              )
-          }
-          if #available(iOS 26.0, *) {
-              ToolbarItem(placement: .primaryAction) {
-                  ShareLink(item: URL(string: "https://woven.design")!)
-                      .buttonStyle(RiverButtonToolbar(type: .gray))
+            UserBadge(
+              store: Store(
+                initialState: UserBadgeFeature.State(
+                  variant: .medium,
+                  avatarUrl: store.videoChannel?.avatarUrl,
+                  channelDisplayName: store.videoChannel?.name ?? store.channelName ?? "Channel",
+                  instanceDisplayName: store.host,
+                  instanceIconUrl: store.instance?.avatarUrl)
+              ) {
+                UserBadgeFeature()
               }
-              .sharedBackgroundVisibility(.hidden)
-          } else {
-              ToolbarItem(placement: .primaryAction) {
-                  ShareLink(item: URL(string: "https://woven.design")!)
-                      .buttonStyle(RiverButtonToolbar(type: .gray))
-              }
+            )
+            .transition(.blurReplace)
           }
-          
+        }
+        if #available(iOS 26.0, *) {
+          ToolbarItem(placement: .primaryAction) {
+            ShareLink(item: URL(string: "https://woven.design")!)
+              .buttonStyle(RiverButtonToolbar(type: .gray))
+          }
+          .sharedBackgroundVisibility(.hidden)
+        } else {
+          ToolbarItem(placement: .primaryAction) {
+            ShareLink(item: URL(string: "https://woven.design")!)
+              .buttonStyle(RiverButtonToolbar(type: .gray))
+          }
+        }
       }
+      .animation(.bouncy(duration: 0.25), value: store.state.titleVisible)
+      .toolbarTitleDisplayMode(.inline)
     }
   }
 }
