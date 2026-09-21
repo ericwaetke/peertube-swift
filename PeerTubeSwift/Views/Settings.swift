@@ -48,6 +48,7 @@ struct SettingsFeature {
         state.onboarding = OnboardingFeature.State(
           onboardingStep: .launchScreen,
           launchScreen: OnboardingLaunchScreenFeature.State(),
+          login: LoginFeature.State(),
           preferedLanguage: OnboardingPreferedLanguageFeature.State(),
           topics: OnboardingTopicsFeature.State()
         )

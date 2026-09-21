@@ -46,6 +46,7 @@ struct OnboardingTopicsView: View {
 
   var body: some View {
     ScrollView {
+      //        Text(store.state.selectedCategories.count)
       LazyVGrid(columns: [GridItem(.adaptive(minimum: 170))]) {
         ForEach(Array(shownCategories.keys), id: \.self) { category in
           CategoryCard(category: category)

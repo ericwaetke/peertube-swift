@@ -17,20 +17,25 @@ import FontKit
 import SwiftUI
 
 enum OnboardingStepCount: Int {
-  case withLogin = 5
-  case withoutLogin = 4
+  case withLogin = 4
+  case withoutLogin = 3
 }
 
 enum OnboardingStep {
   case launchScreen
+  case login
   case preferedLanguage
   case topics
 
-  var stepIndex: Int {
-    switch self {
-    case .launchScreen: 0
-    case .preferedLanguage: 1
-    case .topics: 2
+  func stepIndex(for stepCount: OnboardingStepCount) -> Int {
+    switch (self, stepCount) {
+    case (.launchScreen, _): 0
+    case (.login, .withLogin): 1
+    case (.preferedLanguage, .withLogin): 2
+    case (.topics, .withLogin): 3
+    case (.preferedLanguage, .withoutLogin): 1
+    case (.topics, .withoutLogin): 2
+    case (.login, .withoutLogin): -1  // shouldn't happen
     }
   }
 
@@ -47,7 +52,7 @@ enum OnboardingStep {
 
   var nextButtonVisible: Bool {
     switch self {
-    case .launchScreen:
+    case .launchScreen, .login:
       false
     case .preferedLanguage, .topics:
       true
@@ -57,13 +62,13 @@ enum OnboardingStep {
     switch self {
     case .launchScreen:
       false
-    case .preferedLanguage, .topics:
+    case .login, .preferedLanguage, .topics:
       true
     }
   }
   var onboardingHeaderVisible: Bool {
     switch self {
-    case .launchScreen:
+    case .launchScreen, .login:
       false
     case .preferedLanguage, .topics:
       true
@@ -71,7 +76,7 @@ enum OnboardingStep {
   }
   var skipButtonVisible: Bool {
     switch self {
-    case .launchScreen:
+    case .launchScreen, .login:
       false
     case .preferedLanguage, .topics:
       true
@@ -88,16 +93,16 @@ struct OnboardingFeature {
     var onboardingStep: OnboardingStep = .launchScreen
     var onboardingStepCount: OnboardingStepCount = .withoutLogin
 
-    // Login Screen
-    @Presents var login: LoginFeature.State?
-
     // 01 Launch Screen
     var launchScreen: OnboardingLaunchScreenFeature.State
 
-    // 02 Prefered Language
+    // 02 Login Screen
+    var login: LoginFeature.State
+
+    // 03 Prefered Language
     var preferedLanguage: OnboardingPreferedLanguageFeature.State
 
-    // 03 Topics
+    // 02 Topics
     var topics: OnboardingTopicsFeature.State
   }
 
@@ -109,16 +114,16 @@ struct OnboardingFeature {
     case nextButtonTapped
     case skipButtonTapped
 
-    // Login Screen
-    case login(PresentationAction<LoginFeature.Action>)
-
     // 01 Launch Screen
     case launchScreen(OnboardingLaunchScreenFeature.Action)
 
-    // 02 Prefered Language
+    // 02 Login Screen
+    case login(LoginFeature.Action)
+
+    // 03 Prefered Language
     case preferedLanguage(OnboardingPreferedLanguageFeature.Action)
 
-    // 03 Topics
+    // 04 Topics
     case topics(OnboardingTopicsFeature.Action)
   }
 
@@ -127,11 +132,15 @@ struct OnboardingFeature {
     Scope(state: \.launchScreen, action: \.launchScreen) {
       OnboardingLaunchScreenFeature()
     }
-    // 02 Prefered Language
+    // 02 Login Screen
+    Scope(state: \.login, action: \.login) {
+      LoginFeature()
+    }
+    // 03 Prefered Language
     Scope(state: \.preferedLanguage, action: \.preferedLanguage) {
       OnboardingPreferedLanguageFeature()
     }
-    // 03 Topics
+    // 04 Topics
     Scope(state: \.topics, action: \.topics) {
       OnboardingTopicsFeature()
     }
@@ -142,13 +151,19 @@ struct OnboardingFeature {
         return .none
 
       case .backButtonTapped:
-        return .run { [step = state.onboardingStep] send in
+        return .run { [step = state.onboardingStep, stepCount = state.onboardingStepCount] send in
           await UIImpactFeedbackGenerator(style: .soft).impactOccurred()
           switch step {
           case .launchScreen:
             return
-          case .preferedLanguage:
+          case .login:
             return await send(.setOnboardingStep(.launchScreen))
+          case .preferedLanguage:
+            if stepCount == .withLogin {
+              return await send(.setOnboardingStep(.login))
+            } else {
+              return await send(.setOnboardingStep(.launchScreen))
+            }
           case .topics:
             return await send(.setOnboardingStep(.preferedLanguage))
           }
@@ -159,6 +174,8 @@ struct OnboardingFeature {
           switch step {
           case .launchScreen:
             return
+          case .login:
+            return await send(.setOnboardingStep(.preferedLanguage))
           case .preferedLanguage:
             return await send(.setOnboardingStep(.topics))
           case .topics:
@@ -174,11 +191,17 @@ struct OnboardingFeature {
         state.onboardingStep = step
         return .none
 
+      // Login
+      case .login(_):
+        return .none
+
       // 01 Launch Screen
       case .launchScreen(.startWithoutAccountButtonTapped):
+        state.onboardingStepCount = .withoutLogin
         return .send(.setOnboardingStep(.preferedLanguage))
       case .launchScreen(.usePeerTubeAccountButtonTapped):
-        return .none
+        state.onboardingStepCount = .withLogin
+        return .send(.setOnboardingStep(.login))
       case .launchScreen(.infoButtonTapped):
         return .none
 
@@ -195,7 +218,7 @@ struct OnboardingFeature {
 }
 
 struct OnboardingView: View {
-  let store: StoreOf<OnboardingFeature>
+  @Bindable var store: StoreOf<OnboardingFeature>
 
   var body: some View {
     ZStack(alignment: .center) {
@@ -215,6 +238,11 @@ struct OnboardingView: View {
           )
           .containerRelativeFrame(.horizontal)
 
+          if store.onboardingStepCount == .withLogin {
+            LoginView(store: store.scope(state: \.login, action: \.login))
+              .containerRelativeFrame(.horizontal)
+          }
+
           OnboardingPreferedLanguageView(
             store: store.scope(\.preferedLanguage, action: \.preferedLanguage)
           )
@@ -228,39 +256,68 @@ struct OnboardingView: View {
           .padding(.top, 110)  // onboarding Header is 86px + 2 × 8px top and bottom padding + 8 more padding
         }
         .zIndex(1)
-        .offset(x: CGFloat(store.state.onboardingStep.stepIndex) * -geometry.size.width)
+        .offset(
+          x: CGFloat(store.state.onboardingStep.stepIndex(for: store.state.onboardingStepCount))
+            * -geometry.size.width)
       }
 
-      VStack {
-        Spacer()
-        HStack {
-          if store.onboardingStep.backButtonVisible {
-            Button("Back") {
-              store.send(.backButtonTapped)
-            }
-            .buttonStyle(RiverButtonLarge(type: .gray))
-            .transition(.offset(y: 50).combined(with: .blurReplace))
-          }
-          Spacer()
-          if store.onboardingStep.nextButtonVisible {
-            Button("Next") {
-              store.send(.nextButtonTapped)
-            }
-            .buttonStyle(RiverButtonLarge(type: .filled))
-            .transition(.offset(y: 50).combined(with: .blurReplace))
-          }
-        }
-        .padding()
-      }
-      .containerRelativeFrame(.horizontal)
-      .containerRelativeFrame(.vertical)
-      .zIndex(2)
-      .animation(.default, value: store.state.onboardingStep.backButtonVisible)
-      .animation(.default, value: store.state.onboardingStep.nextButtonVisible)
+      bottomBar
     }
     .background(Color(uiColor: .secondarySystemBackground))
     .animation(.default, value: store.onboardingStep.onboardingHeaderVisible)
     .animation(.default, value: store.state.onboardingStep)
+  }
+
+  @ViewBuilder
+  var bottomBar: some View {
+    VStack {
+      Spacer()
+      HStack {
+        if store.onboardingStep.backButtonVisible {
+          Button("Back") {
+            store.send(.backButtonTapped)
+          }
+          .buttonStyle(RiverButtonLarge(type: .gray))
+          .transition(.offset(y: 50).combined(with: .blurReplace))
+        }
+        Spacer()
+        if store.onboardingStep == .topics && store.state.topics.selectedCategories.count > 0 {
+          Text("\(store.state.topics.selectedCategories.count) Selected")
+            .contentTransition(
+              .numericText(value: Double(store.state.topics.selectedCategories.count))
+            )
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(
+              Capsule()
+                .fill(.white)
+            )
+            .transition(.offset(y: 50).combined(with: .blurReplace))
+
+          Spacer()
+        }
+        if store.onboardingStep.nextButtonVisible {
+          Button("Next") {
+            store.send(.nextButtonTapped)
+          }
+          .buttonStyle(RiverButtonLarge(type: .filled))
+          .transition(.offset(y: 50).combined(with: .blurReplace))
+        }
+      }
+      .animation(.default, value: store.state.topics.selectedCategories.count)
+      .padding()
+      .padding(.bottom, 44)
+      .background {
+        gradientView
+      }
+
+    }
+    .ignoresSafeArea()
+    .containerRelativeFrame(.horizontal)
+    .containerRelativeFrame(.vertical)
+    .zIndex(2)
+    .animation(.default, value: store.state.onboardingStep.backButtonVisible)
+    .animation(.default, value: store.state.onboardingStep.nextButtonVisible)
   }
 
   @ViewBuilder
@@ -294,7 +351,8 @@ struct OnboardingView: View {
                 Capsule()
                   .fill(Color.green)
                   .scaleEffect(
-                    x: store.onboardingStep.stepIndex - 1 >= index ? 1 : 0,
+                    x: store.onboardingStep.stepIndex(for: store.onboardingStepCount) - 1 >= index
+                      ? 1 : 0,
                     anchor: .leading
                   )
               )
@@ -315,14 +373,36 @@ struct OnboardingView: View {
     .frame(height: 86)
     .padding()
   }
+
+  @ViewBuilder
+  var gradientView: some View {
+    Rectangle()
+      .fill(.ultraThinMaterial)
+      .mask {
+        VStack(spacing: 0) {
+          LinearGradient(
+            colors: [
+              Color.black.opacity(0),
+              Color.white.opacity(1),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+          )
+          Rectangle()
+        }
+      }
+      .allowsHitTesting(false)
+      .frame(height: .infinity)
+  }
 }
 
 #Preview {
   OnboardingView(
     store: Store(
       initialState: OnboardingFeature.State(
-        onboardingStep: .preferedLanguage,
+        onboardingStep: .topics,
         launchScreen: OnboardingLaunchScreenFeature.State(),
+        login: LoginFeature.State(),
         preferedLanguage: OnboardingPreferedLanguageFeature.State(),
         topics: OnboardingTopicsFeature.State()
       )
