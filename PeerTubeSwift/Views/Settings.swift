@@ -18,11 +18,16 @@ struct SettingsFeature {
     @Shared(.inMemory("session")) var session: UserSession?
 
     @Shared(.inMemory("client")) var client: TubeSDKClient?
+
+    @Presents var onboarding: OnboardingFeature.State?
   }
 
   enum Action {
     case buttonTapped
     case logoutButtonTapped
+    case onboardingButtonTapped
+
+    case onboarding(PresentationAction<OnboardingFeature.Action>)
   }
 
   @Dependency(\.authClient) var authClient
@@ -39,7 +44,20 @@ struct SettingsFeature {
         return .run { send in
           try? await authClient.deleteSession()
         }
+      case .onboardingButtonTapped:
+        state.onboarding = OnboardingFeature.State(
+          onboardingStep: .launchScreen,
+          launchScreen: OnboardingLaunchScreenFeature.State(),
+          preferedLanguage: OnboardingPreferedLanguageFeature.State(),
+          topics: OnboardingTopicsFeature.State()
+        )
+        return .none
+      case .onboarding(_):
+        return .none
       }
+    }
+    .ifLet(\.$onboarding, action: \.onboarding) {
+      OnboardingFeature()
     }
   }
 }
@@ -140,8 +158,20 @@ struct SettingsView: View {
           .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
           .containerRelativeFrame(.horizontal)
       }
+      Button {
+        store.send(.onboardingButtonTapped)
+      } label: {
+        Text("Replay Onboarding")
+          .foregroundStyle(Color("Label/Action"))
+          .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
+          .containerRelativeFrame(.horizontal)
+      }
     }
     .navigationTitle("Account Settings")
+    .fullScreenCover(item: $store.scope(state: \.onboarding, action: \.onboarding)) { childStore in
+      OnboardingView(store: childStore)
+    }
+
   }
 }
 

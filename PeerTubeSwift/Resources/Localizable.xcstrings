@@ -295,6 +295,9 @@
     "Remove" : {
 
     },
+    "Replay Onboarding" : {
+
+    },
     "Reply" : {
 
     },
@@ -320,9 +323,6 @@
 
     },
     "Select a Language" : {
-
-    },
-    "Select your Preferred Languages" : {
 
     },
     "Select Your Preferred Languages" : {
@@ -371,9 +371,6 @@
 
     },
     "To sign in, you’ll need an account with a Peertube community. You can find a list of all communities here." : {
-
-    },
-    "Topics" : {
 
     },
     "Try Again" : {

@@ -24,18 +24,22 @@ enum OnboardingStepCount: Int {
 enum OnboardingStep {
   case launchScreen
   case preferedLanguage
+  case topics
 
   var stepIndex: Int {
     switch self {
     case .launchScreen: 0
     case .preferedLanguage: 1
+    case .topics: 2
     }
   }
 
   var headline: String? {
     switch self {
     case .preferedLanguage:
-      "Select your Prefered Langauges"
+      "Select your Prefered Languages"
+    case .topics:
+      "What topics are you interested in?"
     default:
       nil
     }
@@ -45,7 +49,7 @@ enum OnboardingStep {
     switch self {
     case .launchScreen:
       false
-    case .preferedLanguage:
+    case .preferedLanguage, .topics:
       true
     }
   }
@@ -53,7 +57,7 @@ enum OnboardingStep {
     switch self {
     case .launchScreen:
       false
-    case .preferedLanguage:
+    case .preferedLanguage, .topics:
       true
     }
   }
@@ -61,7 +65,7 @@ enum OnboardingStep {
     switch self {
     case .launchScreen:
       false
-    case .preferedLanguage:
+    case .preferedLanguage, .topics:
       true
     }
   }
@@ -69,7 +73,7 @@ enum OnboardingStep {
     switch self {
     case .launchScreen:
       false
-    case .preferedLanguage:
+    case .preferedLanguage, .topics:
       true
     }
   }
@@ -77,16 +81,24 @@ enum OnboardingStep {
 
 @Reducer
 struct OnboardingFeature {
+  @Dependency(\.dismiss) var dismiss
+
   @ObservableState
   struct State: Equatable {
     var onboardingStep: OnboardingStep = .launchScreen
     var onboardingStepCount: OnboardingStepCount = .withoutLogin
+
+    // Login Screen
+    @Presents var login: LoginFeature.State?
 
     // 01 Launch Screen
     var launchScreen: OnboardingLaunchScreenFeature.State
 
     // 02 Prefered Language
     var preferedLanguage: OnboardingPreferedLanguageFeature.State
+
+    // 03 Topics
+    var topics: OnboardingTopicsFeature.State
   }
 
   enum Action {
@@ -95,20 +107,33 @@ struct OnboardingFeature {
 
     case backButtonTapped
     case nextButtonTapped
+    case skipButtonTapped
+
+    // Login Screen
+    case login(PresentationAction<LoginFeature.Action>)
 
     // 01 Launch Screen
     case launchScreen(OnboardingLaunchScreenFeature.Action)
 
     // 02 Prefered Language
     case preferedLanguage(OnboardingPreferedLanguageFeature.Action)
+
+    // 03 Topics
+    case topics(OnboardingTopicsFeature.Action)
   }
 
   var body: some Reducer<State, Action> {
+    // 01 Launch Screen
     Scope(state: \.launchScreen, action: \.launchScreen) {
       OnboardingLaunchScreenFeature()
     }
+    // 02 Prefered Language
     Scope(state: \.preferedLanguage, action: \.preferedLanguage) {
       OnboardingPreferedLanguageFeature()
+    }
+    // 03 Topics
+    Scope(state: \.topics, action: \.topics) {
+      OnboardingTopicsFeature()
     }
     Reduce { state, action in
       switch action {
@@ -117,9 +142,33 @@ struct OnboardingFeature {
         return .none
 
       case .backButtonTapped:
-        return .send(.setOnboardingStep(.launchScreen))
+        return .run { [step = state.onboardingStep] send in
+          await UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+          switch step {
+          case .launchScreen:
+            return
+          case .preferedLanguage:
+            return await send(.setOnboardingStep(.launchScreen))
+          case .topics:
+            return await send(.setOnboardingStep(.preferedLanguage))
+          }
+        }
       case .nextButtonTapped:
-        return .none
+        return .run { [step = state.onboardingStep] send in
+          await UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+          switch step {
+          case .launchScreen:
+            return
+          case .preferedLanguage:
+            return await send(.setOnboardingStep(.topics))
+          case .topics:
+            return
+          }
+        }
+      case .skipButtonTapped:
+        return .run { send in
+          await dismiss()
+        }
 
       case .setOnboardingStep(let step):
         state.onboardingStep = step
@@ -135,6 +184,10 @@ struct OnboardingFeature {
 
       //02
       case .preferedLanguage(_):
+        return .none
+
+      // 03
+      case .topics(_):
         return .none
       }
     }
@@ -161,8 +214,15 @@ struct OnboardingView: View {
             store: store.scope(state: \.launchScreen, action: \.launchScreen)
           )
           .containerRelativeFrame(.horizontal)
+
           OnboardingPreferedLanguageView(
             store: store.scope(\.preferedLanguage, action: \.preferedLanguage)
+          )
+          .containerRelativeFrame(.horizontal)
+          .padding(.top, 110)  // onboarding Header is 86px + 2 × 8px top and bottom padding + 8 more padding
+
+          OnboardingTopicsView(
+            store: store.scope(\.topics, action: \.topics)
           )
           .containerRelativeFrame(.horizontal)
           .padding(.top, 110)  // onboarding Header is 86px + 2 × 8px top and bottom padding + 8 more padding
@@ -212,6 +272,7 @@ struct OnboardingView: View {
             .font(CustomFont.fjallaOne.swiftUIFont(size: 28, relativeTo: .title))
             .lineLimit(2)
             .transition(.offset(y: -50).combined(with: .blurReplace))
+            .contentTransition(.identity)
         }
         Spacer()
         if store.onboardingStep.onboardingHeaderVisible && store.onboardingStep.skipButtonVisible {
@@ -228,12 +289,15 @@ struct OnboardingView: View {
           ForEach(0..<store.onboardingStepCount.rawValue) { index in
             Capsule()
               .stroke(Color(uiColor: .tertiarySystemFill), lineWidth: 1)
-              .fill(
-                store.onboardingStep.stepIndex - 1 >= index
-                  ? Color.green
-                  : Color(uiColor: .systemGray4)
+              .fill(Color(uiColor: .systemGray4))
+              .overlay(
+                Capsule()
+                  .fill(Color.green)
+                  .scaleEffect(
+                    x: store.onboardingStep.stepIndex - 1 >= index ? 1 : 0,
+                    anchor: .leading
+                  )
               )
-
               .frame(height: 7)
               .containerRelativeFrame(
                 .horizontal,
@@ -259,7 +323,8 @@ struct OnboardingView: View {
       initialState: OnboardingFeature.State(
         onboardingStep: .preferedLanguage,
         launchScreen: OnboardingLaunchScreenFeature.State(),
-        preferedLanguage: OnboardingPreferedLanguageFeature.State()
+        preferedLanguage: OnboardingPreferedLanguageFeature.State(),
+        topics: OnboardingTopicsFeature.State()
       )
     ) {
       OnboardingFeature()
