@@ -247,6 +247,9 @@
     "Newest" : {
 
     },
+    "Next" : {
+
+    },
     "No videos" : {
 
     },
@@ -319,6 +322,9 @@
     "Select a Language" : {
 
     },
+    "Select your Preferred Languages" : {
+
+    },
     "Select Your Preferred Languages" : {
 
     },
@@ -335,6 +341,9 @@
 
     },
     "Sign In" : {
+
+    },
+    "Skip" : {
 
     },
     "Stream Videos Independent of the Tech Giants" : {
@@ -362,6 +371,9 @@
 
     },
     "To sign in, you’ll need an account with a Peertube community. You can find a list of all communities here." : {
+
+    },
+    "Topics" : {
 
     },
     "Try Again" : {

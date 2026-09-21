@@ -56,6 +56,8 @@ struct OnboardingLaunchScreenView: View {
         actionArea
       }
     }
+    .containerRelativeFrame(.horizontal)
+    .background(Color(uiColor: .secondarySystemBackground))
   }
 
   @ViewBuilder
