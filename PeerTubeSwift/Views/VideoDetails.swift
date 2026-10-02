@@ -37,7 +37,8 @@ struct VideoDetailsFeature {
       actions = VideoActionsFeature.State(host: host, videoId: videoId)
       channelPreview = ChannelPreviewFeature.State(
         host: host,
-        notificationBell: NotificationBellFeature.State(channelId: channelId)
+        notificationBell: NotificationBellFeature.State(channelId: channelId),
+        videoChannel: nil
       )
       description = VideoDescriptionFeature.State()
       comments = VideoCommentsFeature.State(videoId: videoId)
@@ -172,7 +173,7 @@ struct VideoDetailsFeature {
         state.videoDetails = videoDetails
 
         state.actions.videoDetails = videoDetails
-        state.channelPreview.videoDetails = videoDetails
+        state.channelPreview.videoChannel = videoDetails.channel
         state.description.videoDetails = videoDetails
         state.comments.videoDetails = videoDetails
 
@@ -182,17 +183,21 @@ struct VideoDetailsFeature {
           }
         }
 
-        return .merge(
-          .send(.channelPreview(.loadChannelPreview(videoDetails))),
-          .send(.actions(.loadUserRating)),
-          .send(.comments(.loadComments)),
-        )
+        return .run { [videoDetails = videoDetails] send in
+
+          if let videoChannel = videoDetails.channel {
+            await send(.channelPreview(.loadChannelPreview(videoChannel)))
+          }
+
+          await send(.actions(.loadUserRating))
+          await send(.comments(.loadComments))
+        }
 
       case .description(.delegate(.seekTo(let time))):
         return .send(.seekTo(time))
 
       case .channelPreview(.channelTapped):
-        guard let channel = state.channelPreview.videoDetails?.channel,
+        guard let channel = state.channelPreview.videoChannel,
           let channelName = channel.name
         else {
           return .none

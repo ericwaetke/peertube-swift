@@ -44,6 +44,7 @@ struct VideoChannelFeature {
       self.channelPreview = ChannelPreviewFeature.State(
         host: host,
         notificationBell: NotificationBellFeature.State(channelId: nil, isOn: false),
+        videoChannel: videoDetails?.channel,
         instance: instance
       )
     }
@@ -137,23 +138,23 @@ struct VideoChannelFeature {
           instanceID: host,
           followerCount: followerCount
         )
+
+        let tubeSdkVideoChannel = TubeSDK.VideoChannel(
+          name: channelId.components(separatedBy: "@").first,
+          avatars: avatarUrl.flatMap { url in
+            [TubeSDK.ActorImage(fileUrl: url)]
+          },
+          host: host,
+          displayName: channelName,
+          description: description
+        )
         // Also create a minimal VideoDetails so the view has channel info
         state.videoDetails = TubeSDK.VideoDetails(
-          channel: TubeSDK.VideoChannel(
-            name: channelId.components(separatedBy: "@").first,
-            avatars: avatarUrl.flatMap { url in
-              [TubeSDK.ActorImage(fileUrl: url)]
-            },
-            host: host,
-            displayName: channelName,
-            description: description
-          )
+          channel: tubeSdkVideoChannel
         )
-        let videoDetails = state.videoDetails
-        return .run { send in
-          if let videoDetails {
-            await send(.channelPreview(.loadChannelPreview(videoDetails)))
-          }
+
+        return .run { [videoChannel = tubeSdkVideoChannel] send in
+          await send(.channelPreview(.loadChannelPreview(videoChannel)))
           await send(.loadVideos)
         }
 

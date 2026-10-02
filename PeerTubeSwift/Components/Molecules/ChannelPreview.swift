@@ -1,8 +1,14 @@
 import ComposableArchitecture
 import Dependencies
+import FontKit
 import SQLiteData
 import SwiftUI
 import TubeSDK
+
+enum ChannelPreviewVariant {
+  case regular
+  case prominent
+}
 
 @Reducer
 struct ChannelPreviewFeature {
@@ -14,27 +20,28 @@ struct ChannelPreviewFeature {
 
     var userBadge: UserBadgeFeature.State
     var notificationBell: NotificationBellFeature.State
-    var videoDetails: TubeSDK.VideoDetails?
+    var videoChannel: TubeSDK.VideoChannel?
     var instance: Instance?
     var isSubscribedToChannel = false
+    var variant: ChannelPreviewVariant = .regular
 
     init(
       host: String,
       notificationBell: NotificationBellFeature.State,
-      videoDetails: TubeSDK.VideoDetails? = nil,
+      videoChannel: TubeSDK.VideoChannel?,
       instance: Instance? = nil,
       isSubscribedToChannel: Bool = false
     ) {
       self.host = host
       self.notificationBell = notificationBell
-      self.videoDetails = videoDetails
+      self.videoChannel = videoChannel
       self.instance = instance
       self.isSubscribedToChannel = isSubscribedToChannel
       self.userBadge = UserBadgeFeature.State(
         variant: .medium,
-        avatarUrl: videoDetails?.channel?.avatars?.first?.fileUrl,
-        channelDisplayName: videoDetails?.channel?.displayName ?? "Unknown Channel",
-        instanceDisplayName: videoDetails?.channel?.host ?? "Unknown Community",
+        avatarUrl: videoChannel?.avatars?.first?.fileUrl,
+        channelDisplayName: videoChannel?.displayName ?? "Unknown Channel",
+        instanceDisplayName: videoChannel?.host ?? "Unknown Community",
         instanceIconUrl: instance?.avatarUrl
       )
     }
@@ -44,7 +51,7 @@ struct ChannelPreviewFeature {
     case notificationBell(NotificationBellFeature.Action)
     case userBadge(UserBadgeFeature.Action)
 
-    case loadChannelPreview(TubeSDK.VideoDetails)
+    case loadChannelPreview(TubeSDK.VideoChannel)
     case instanceLoaded(Instance)
     case subscribeButtonTapped
     case changeSubscriptionState(Bool)
@@ -60,21 +67,21 @@ struct ChannelPreviewFeature {
       switch action {
       case .notificationBell:
         return .none
+      case .userBadge(_):
+        return .none
 
-      case .loadChannelPreview(let videoDetails):
-        state.videoDetails = videoDetails
+      case .loadChannelPreview(let videoChannel):
+        state.videoChannel = videoChannel
         state.userBadge = UserBadgeFeature.State(
           variant: .medium,
-          avatarUrl: videoDetails.channel?.avatars?.first?.fileUrl,
-          channelDisplayName: videoDetails.channel?.displayName ?? "Unknown Channel",
-          instanceDisplayName: videoDetails.channel?.host ?? "Unknown Community",
+          avatarUrl: videoChannel.avatars?.first?.fileUrl,
+          channelDisplayName: videoChannel.displayName ?? "Unknown Channel",
+          instanceDisplayName: videoChannel.host ?? "Unknown Community",
           instanceIconUrl: state.instance?.avatarUrl
         )
-
         // Get channel info for subscription
-        guard let channel = videoDetails.channel,
-          let channelUsername = channel.name,
-          let channelHost = channel.host
+        guard let channelUsername = videoChannel.name,
+          let channelHost = videoChannel.host
         else {
           return .none
         }
@@ -121,9 +128,9 @@ struct ChannelPreviewFeature {
         if state.userBadge.instanceIconUrl != instance.avatarUrl {
           state.userBadge = UserBadgeFeature.State(
             variant: .medium,
-            avatarUrl: state.videoDetails?.channel?.avatars?.first?.fileUrl,
-            channelDisplayName: state.videoDetails?.channel?.displayName ?? "Unknown Channel",
-            instanceDisplayName: state.videoDetails?.channel?.host ?? "Unknown Community",
+            avatarUrl: state.videoChannel?.avatars?.first?.fileUrl,
+            channelDisplayName: state.videoChannel?.displayName ?? "Unknown Channel",
+            instanceDisplayName: state.videoChannel?.host ?? "Unknown Community",
             instanceIconUrl: instance.avatarUrl
           )
         }
@@ -136,19 +143,18 @@ struct ChannelPreviewFeature {
 
       case .changeSubscriptionState(let newSubscriptionState):
         state.isSubscribedToChannel = newSubscriptionState
-        let videoDetails = state.videoDetails
+        let videoChannel = state.videoChannel
         return .run {
           [
             client = state.client,
-            videoDetails = videoDetails,
+            videoChannel = videoChannel,
             newSubscriptionState = newSubscriptionState
           ] _ in
           @Dependency(\.defaultDatabase) var database
 
-          guard let videoDetails = videoDetails,
-            let channel = videoDetails.channel,
-            let channelUsername = channel.name,
-            let channelHost = channel.host
+          guard let videoChannel = videoChannel,
+            let channelUsername = videoChannel.name,
+            let channelHost = videoChannel.host
           else {
             return
           }
@@ -184,8 +190,6 @@ struct ChannelPreviewFeature {
 
       case .channelTapped:
         return .none
-      case .userBadge(_):
-        return .none
       }
     }
   }
@@ -195,16 +199,29 @@ struct ChannelPreviewView: View {
   @Bindable var store: StoreOf<ChannelPreviewFeature>
 
   var body: some View {
-    HStack(alignment: .center, spacing: 12) {
-      UserBadge(
-        store: store.scope(
-          state: \.userBadge,
-          action: \.userBadge
-        ))
+    VStack {
+      HStack(alignment: .center, spacing: 12) {
+        UserBadge(
+          store: store.scope(
+            state: \.userBadge,
+            action: \.userBadge
+          ))
 
-      Spacer()
+        Spacer()
 
-      subscribeButton
+        subscribeButton
+      }
+
+      if store.variant == .prominent {
+        Text("Description")
+          .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline))
+        //                  .foregroundStyle(Color.Label.primary)
+
+        // Language and Category Tag
+        HStack {
+
+        }
+      }
     }
   }
 
@@ -240,14 +257,12 @@ struct ChannelPreviewView: View {
           channelId: "chocopie@peertube.cpy.re",
           isOn: false
         ),
-        videoDetails: TubeSDK.VideoDetails(
-          channel: TubeSDK.VideoChannel(
-            id: 1,
-            name: "chocopie",
-            host: "peertube.cpy.re",
-            displayName: "Choco Pie Channel",
-            description: "This is a test channel description."
-          )
+        videoChannel: TubeSDK.VideoChannel(
+          id: 1,
+          name: "chocopie",
+          host: "peertube.cpy.re",
+          displayName: "Choco Pie Channel",
+          description: "This is a test channel description."
         )
       )
     ) {
