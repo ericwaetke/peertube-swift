@@ -24,13 +24,18 @@ struct ChannelPreviewFeature {
     var instance: Instance?
     var isSubscribedToChannel = false
     var variant: ChannelPreviewVariant = .regular
+    var language: String?
+    var primaryCategory: String?
 
     init(
       host: String,
       notificationBell: NotificationBellFeature.State,
       videoChannel: TubeSDK.VideoChannel?,
       instance: Instance? = nil,
-      isSubscribedToChannel: Bool = false
+      isSubscribedToChannel: Bool = false,
+      variant: ChannelPreviewVariant = .regular,
+      language: String? = nil,
+      primaryCategory: String? = nil
     ) {
       self.host = host
       self.notificationBell = notificationBell
@@ -44,6 +49,9 @@ struct ChannelPreviewFeature {
         instanceDisplayName: videoChannel?.host ?? "Unknown Community",
         instanceIconUrl: instance?.avatarUrl
       )
+      self.variant = variant
+      self.language = language
+      self.primaryCategory = primaryCategory
     }
   }
 
@@ -199,29 +207,70 @@ struct ChannelPreviewView: View {
   @Bindable var store: StoreOf<ChannelPreviewFeature>
 
   var body: some View {
-    VStack {
-      HStack(alignment: .center, spacing: 12) {
-        UserBadge(
-          store: store.scope(
-            state: \.userBadge,
-            action: \.userBadge
-          ))
+    if store.variant == .prominent {
+      VStack(alignment: .leading, spacing: 12) {
+        mainChannelPreview
 
-        Spacer()
+        if let description = store.videoChannel?.description {
+          Text(description)
+            .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline))
+            .foregroundStyle(Color.Label.primary)
+        }
 
-        subscribeButton
-      }
+        if store.language != nil || store.primaryCategory != nil {
+          // Language and Category Tag
+          HStack {
+            if let language = store.language {
+              HStack(spacing: 4) {
+                Image(systemName: "globe")
+                Text(language)
+              }
+              .foregroundStyle(Color.Label.primary)
+              .padding(.horizontal, 6)
+              .padding(.vertical, 3)
+              .background(
+                RoundedRectangle(cornerRadius: 7)
+                  .fill(Color.Fill.secondary)
+              )
+            }
 
-      if store.variant == .prominent {
-        Text("Description")
-          .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline))
-        //                  .foregroundStyle(Color.Label.primary)
-
-        // Language and Category Tag
-        HStack {
-
+            if let primaryCategory = store.primaryCategory {
+              Text(primaryCategory)
+                .foregroundStyle(Color.Label.primary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(
+                  RoundedRectangle(cornerRadius: 7)
+                    .fill(Color(uiColor: .quaternaryLabel))
+                )
+            }
+          }
         }
       }
+      .padding(.horizontal, 12)
+      .padding(.vertical, 20)
+      .background(
+        RoundedRectangle(cornerRadius: 26)
+          .fill(.white)
+          .stroke(.separator, lineWidth: 0.33)
+      )
+    } else {
+      mainChannelPreview
+    }
+  }
+
+  @ViewBuilder
+  var mainChannelPreview: some View {
+    HStack(alignment: .center, spacing: 12) {
+      UserBadge(
+        store: store.scope(
+          state: \.userBadge,
+          action: \.userBadge
+        ))
+
+      Spacer()
+
+      subscribeButton
     }
   }
 
@@ -249,24 +298,58 @@ struct ChannelPreviewView: View {
     try! $0.defaultDatabase.seed()
   }
 
-  return ChannelPreviewView(
-    store: Store(
-      initialState: ChannelPreviewFeature.State(
-        host: "peertube.cpy.re",
-        notificationBell: NotificationBellFeature.State(
-          channelId: "chocopie@peertube.cpy.re",
-          isOn: false
-        ),
-        videoChannel: TubeSDK.VideoChannel(
-          id: 1,
-          name: "chocopie",
-          host: "peertube.cpy.re",
-          displayName: "Choco Pie Channel",
-          description: "This is a test channel description."
-        )
+  return VStack {
+    Spacer()
+    VStack {
+      Text("Regular")
+      ChannelPreviewView(
+        store: Store(
+          initialState: ChannelPreviewFeature.State(
+            host: "peertube.cpy.re",
+            notificationBell: NotificationBellFeature.State(
+              channelId: "chocopie@peertube.cpy.re",
+              isOn: false
+            ),
+            videoChannel: TubeSDK.VideoChannel(
+              id: 1,
+              name: "chocopie",
+              host: "peertube.cpy.re",
+              displayName: "Choco Pie Channel",
+              description: "This is a test channel description."
+            ),
+            variant: .regular
+          )
+        ) {
+          ChannelPreviewFeature()
+        }
       )
-    ) {
-      ChannelPreviewFeature()
     }
-  )
+    VStack {
+      Text("Prominent")
+      ChannelPreviewView(
+        store: Store(
+          initialState: ChannelPreviewFeature.State(
+            host: "peertube.cpy.re",
+            notificationBell: NotificationBellFeature.State(
+              channelId: "chocopie@peertube.cpy.re",
+              isOn: false
+            ),
+            videoChannel: TubeSDK.VideoChannel(
+              id: 1,
+              name: "chocopie",
+              host: "peertube.cpy.re",
+              displayName: "Choco Pie Channel",
+              description: "This is a test channel description."
+            ),
+            variant: .prominent,
+            language: "EN",
+          )
+        ) {
+          ChannelPreviewFeature()
+        }
+      )
+    }
+    Spacer()
+  }
+  .background(Color(uiColor: .secondarySystemBackground))
 }

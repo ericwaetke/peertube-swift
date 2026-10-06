@@ -56,7 +56,10 @@ struct OnboardingRecommendedChannelsView: View {
                     displayName: channel.name
                   ),
                   instance: Instance(host: "https", scheme: channel.instanceID),
-                  isSubscribedToChannel: false
+                  isSubscribedToChannel: false,
+                  variant: .prominent,
+                  language: "DE",
+                  primaryCategory: "Gaming"
                 ),
                 reducer: {
                   ChannelPreviewFeature()

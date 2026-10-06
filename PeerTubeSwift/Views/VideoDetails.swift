@@ -8,12 +8,15 @@
 import ComposableArchitecture
 import Dependencies
 import FontKit
+import PeerSeekSDK
 import SQLiteData
 import SwiftUI
 import TubeSDK
 
 @Reducer
 struct VideoDetailsFeature {
+  @Dependency(\.peerSeekClient) var peerSeekClient
+
   @ObservableState
   struct State: Equatable {
     let host: String
@@ -25,9 +28,12 @@ struct VideoDetailsFeature {
     var videoDetails: TubeSDK.VideoDetails?
     var pauseTrigger: Int = 0
 
+    var recommendedVideos: [VideoRecommendation] = []
+
     var actions: VideoActionsFeature.State
     var channelPreview: ChannelPreviewFeature.State
     var description: VideoDescriptionFeature.State
+    var relatedVideos: RelatedVideosFeature.State
     var comments: VideoCommentsFeature.State
     var isNotFound: Bool = false
 
@@ -41,6 +47,7 @@ struct VideoDetailsFeature {
         videoChannel: nil
       )
       description = VideoDescriptionFeature.State()
+      self.relatedVideos = RelatedVideosFeature.State()
       comments = VideoCommentsFeature.State(videoId: videoId)
     }
   }
@@ -54,9 +61,14 @@ struct VideoDetailsFeature {
     case screenLoaded
     case videoLoadFailed
 
+    case loadRecommendedVideos
+    case recommendedVideosLoaded([VideoRecommendation])
+    case recommendationsLoadFailed(String)
+
     case actions(VideoActionsFeature.Action)
     case channelPreview(ChannelPreviewFeature.Action)
     case description(VideoDescriptionFeature.Action)
+    case relatedVideos(RelatedVideosFeature.Action)
     case comments(VideoCommentsFeature.Action)
 
     case delegate(Delegate)
@@ -75,6 +87,9 @@ struct VideoDetailsFeature {
     }
     Scope(state: \.description, action: \.description) {
       VideoDescriptionFeature()
+    }
+    Scope(state: \.relatedVideos, action: \.relatedVideos) {
+      RelatedVideosFeature()
     }
     Scope(state: \.comments, action: \.comments) {
       VideoCommentsFeature()
@@ -191,6 +206,7 @@ struct VideoDetailsFeature {
 
           await send(.actions(.loadUserRating))
           await send(.comments(.loadComments))
+          await send(.loadRecommendedVideos)
         }
 
       case .description(.delegate(.seekTo(let time))):
@@ -209,6 +225,31 @@ struct VideoDetailsFeature {
         return .none
 
       case .actions, .channelPreview, .description, .comments:
+        return .none
+      case .loadRecommendedVideos:
+        return .run { [videoDetails = state.videoDetails] send in
+          guard let videoDetails,
+            let uuid = videoDetails.uuid
+          else {
+            print("couldnt load recommendations as videodetails is nil, or no uuid")
+            print(videoDetails)
+            return
+          }
+          print("The UUID is \(uuid)")
+          let related = try await peerSeekClient.getVideoRecommendations(uuid: uuid)
+          await send(.recommendedVideosLoaded(related))
+          await send(.relatedVideos(.loadVideos(related)))
+        } catch: { error, send in
+          await send(.recommendationsLoadFailed(error.localizedDescription))
+        }
+      case .recommendedVideosLoaded(let recommendations):
+        state.recommendedVideos = recommendations
+        return .none
+      case .recommendationsLoadFailed(let message):
+        print("Error loading recommendations: \(message)")
+        state.recommendedVideos = []
+        return .none
+      case .relatedVideos(_):
         return .none
       }
     }
@@ -314,6 +355,9 @@ struct VideoDetails: View {
               )
               .padding()
 
+              RelatedVideosView(
+                store: self.store.scope(state: \.relatedVideos, action: \.relatedVideos))
+
               VStack(alignment: .leading) {
                 VideoCommentsView(store: self.store.scope(state: \.comments, action: \.comments))
               }
@@ -353,13 +397,14 @@ struct VideoDetails: View {
     VideoDetails(
       store: Store(
         initialState: VideoDetailsFeature.State(
-          host: "peertube.cpy.re",
-          videoId: "eRbrxETVKN3gxKKD8bcaHK",
-          channelId: "chocopie@peertube.cpy.re"
+          host: "makertube.net",
+          videoId: "d4VvgzW5m4jaGr9JFVBUCg",
+          channelId: "veronicaexplains@makertube.net"
         )
       ) {
         VideoDetailsFeature()
       },
-      playerManager: playerManager)
+      playerManager: playerManager
+    )
   }
 }

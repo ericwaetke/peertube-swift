@@ -474,17 +474,34 @@ extension DatabaseWriter {
         )
 
         VideoChannel(
-          id: "peertube.wtf-1", name: "Gronkh",
+          id: "peertube.wtf-1",
+          name: "Gronkh",
           avatarUrl:
             "https://yt3.googleusercontent.com/ytc/AIdro_ko2x8r12BwkrHwYRNEVLUwCkd1MsWA496y7Pr8wX-3c6Y=s160-c-k-c0x00ffffff-no-rj",
-          instanceID: "peertube.wtf")
-        VideoChannel(id: "ard.de-1", name: "ARD", instanceID: "ard.de")
-        VideoChannel(id: "peertube.wtf-2", name: "Collective Change", instanceID: "peertube.wtf")
+          description:
+            "Gronkh ist ein YouTube Kanal, welcher seir Jahren videos von Minecraft veröffentlicht",
+          instanceID: "peertube.wtf",
+        )
+
         VideoChannel(
-          id: "arthurpizza@tilvids.com", name: "arthur.pizza",
+          id: "ard.de-1",
+          name: "ARD",
+          instanceID: "ard.de"
+        )
+
+        VideoChannel(
+          id: "peertube.wtf-2",
+          name: "Collective Change",
+          instanceID: "peertube.wtf"
+        )
+
+        VideoChannel(
+          id: "arthurpizza@tilvids.com",
+          name: "arthur.pizza",
           avatarUrl:
             "https://peertube.wtf/lazy-static/avatars/8cdb6bf9-f59d-4ab6-9c19-976d8e4a9f37.jpg",
-          instanceID: "peertube.wtf")
+          instanceID: "peertube.wtf"
+        )
 
         PeertubeSubscription.Draft(channelID: "arthurpizza@tilvids.com", createdAt: .distantPast)
         //                PeertubeSubscription.Draft(channelID: "peertube.wtf-2", createdAt: .now)

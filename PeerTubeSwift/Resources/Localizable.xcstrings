@@ -19,7 +19,13 @@
     "%@ Views" : {
 
     },
+    "%lld" : {
+
+    },
     "%lld Selected" : {
+
+    },
+    "Accept Guidelines" : {
 
     },
     "Account" : {
@@ -128,7 +134,7 @@
         }
       }
     },
-    "Description" : {
+    "Data Privacy" : {
 
     },
     "Display Name" : {
@@ -173,6 +179,9 @@
           }
         }
       }
+    },
+    "If you see something against the rules, please report it." : {
+
     },
     "Languages" : {
 
@@ -256,6 +265,9 @@
     "Next" : {
 
     },
+    "No bigotry - including racism, sexism, ableism, homophobia, transphobia, or xenophobia." : {
+
+    },
     "No videos" : {
 
     },
@@ -283,6 +295,9 @@
     "Prefered Categories" : {
 
     },
+    "Privacy Policy" : {
+
+    },
     "Profile" : {
 
     },
@@ -293,6 +308,9 @@
 
     },
     "Recommended Languages" : {
+
+    },
+    "Related Videos" : {
 
     },
     "Reload" : {
@@ -362,6 +380,9 @@
 
     },
     "Subscriptions" : {
+
+    },
+    "Taken Note Of" : {
 
     },
     "The Instance URL doesn’t seem to be valid." : {

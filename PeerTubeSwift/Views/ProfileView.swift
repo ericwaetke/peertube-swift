@@ -211,6 +211,10 @@ struct ProfileTabView: View {
           Text(
             "To sign in, you’ll need an account with a Peertube community. You can find a list of all communities here."
           )
+          .font(
+            CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline)
+          )
+          .foregroundStyle(Color("Label/Secondary"))
         }
       }
 

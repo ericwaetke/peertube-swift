@@ -50,7 +50,8 @@ struct SettingsFeature {
           launchScreen: OnboardingLaunchScreenFeature.State(),
           login: LoginFeature.State(),
           preferedLanguage: OnboardingPreferedLanguageFeature.State(),
-          topics: OnboardingTopicsFeature.State()
+          topics: OnboardingTopicsFeature.State(),
+          recommendedChannels: OnboardingRecommendedChannelsFeature.State()
         )
         return .none
       case .onboarding(_):

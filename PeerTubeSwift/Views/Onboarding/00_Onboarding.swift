@@ -17,7 +17,7 @@ import FontKit
 import SwiftUI
 
 enum OnboardingStepCount: Int {
-  case withLogin = 4
+  case withLogin = 5
   case withoutLogin = 3
 }
 
@@ -26,6 +26,7 @@ enum OnboardingStep {
   case login
   case preferedLanguage
   case topics
+  case recommendedChannels
 
   func stepIndex(for stepCount: OnboardingStepCount) -> Int {
     switch (self, stepCount) {
@@ -33,8 +34,10 @@ enum OnboardingStep {
     case (.login, .withLogin): 1
     case (.preferedLanguage, .withLogin): 2
     case (.topics, .withLogin): 3
+    case (.recommendedChannels, .withLogin): 4
     case (.preferedLanguage, .withoutLogin): 1
     case (.topics, .withoutLogin): 2
+    case (.recommendedChannels, .withoutLogin): 3
     case (.login, .withoutLogin): -1  // shouldn't happen
     }
   }
@@ -45,6 +48,8 @@ enum OnboardingStep {
       "Select your Prefered Languages"
     case .topics:
       "What topics are you interested in?"
+    case .recommendedChannels:
+      "Which Creators Do You Find Interesting?"
     default:
       nil
     }
@@ -54,7 +59,7 @@ enum OnboardingStep {
     switch self {
     case .launchScreen, .login:
       false
-    case .preferedLanguage, .topics:
+    case .preferedLanguage, .topics, .recommendedChannels:
       true
     }
   }
@@ -62,7 +67,7 @@ enum OnboardingStep {
     switch self {
     case .launchScreen:
       false
-    case .login, .preferedLanguage, .topics:
+    case .login, .preferedLanguage, .topics, .recommendedChannels:
       true
     }
   }
@@ -70,7 +75,7 @@ enum OnboardingStep {
     switch self {
     case .launchScreen, .login:
       false
-    case .preferedLanguage, .topics:
+    case .preferedLanguage, .topics, .recommendedChannels:
       true
     }
   }
@@ -78,7 +83,7 @@ enum OnboardingStep {
     switch self {
     case .launchScreen, .login:
       false
-    case .preferedLanguage, .topics:
+    case .preferedLanguage, .topics, .recommendedChannels:
       true
     }
   }
@@ -102,8 +107,11 @@ struct OnboardingFeature {
     // 03 Prefered Language
     var preferedLanguage: OnboardingPreferedLanguageFeature.State
 
-    // 02 Topics
+    // 04 Topics
     var topics: OnboardingTopicsFeature.State
+
+    // 05 Channel Recommendations
+    var recommendedChannels: OnboardingRecommendedChannelsFeature.State
   }
 
   enum Action {
@@ -125,6 +133,9 @@ struct OnboardingFeature {
 
     // 04 Topics
     case topics(OnboardingTopicsFeature.Action)
+
+    // 05
+    case recommendedChannels(OnboardingRecommendedChannelsFeature.Action)
   }
 
   var body: some Reducer<State, Action> {
@@ -144,6 +155,8 @@ struct OnboardingFeature {
     Scope(state: \.topics, action: \.topics) {
       OnboardingTopicsFeature()
     }
+    // 05 Channel Recommendations
+    //    Scope(state)
     Reduce { state, action in
       switch action {
       case .setOnboardingStepCount(let stepCount):
@@ -166,6 +179,8 @@ struct OnboardingFeature {
             }
           case .topics:
             return await send(.setOnboardingStep(.preferedLanguage))
+          case .recommendedChannels:
+            return await send(.setOnboardingStep(.topics))
           }
         }
       case .nextButtonTapped:
@@ -179,6 +194,8 @@ struct OnboardingFeature {
           case .preferedLanguage:
             return await send(.setOnboardingStep(.topics))
           case .topics:
+            return await send(.setOnboardingStep(.recommendedChannels))
+          case .recommendedChannels:
             return
           }
         }
@@ -211,6 +228,10 @@ struct OnboardingFeature {
 
       // 03
       case .topics(_):
+        return .none
+
+      // 04
+      case .recommendedChannels(_):
         return .none
       }
     }
@@ -251,6 +272,12 @@ struct OnboardingView: View {
 
           OnboardingTopicsView(
             store: store.scope(\.topics, action: \.topics)
+          )
+          .containerRelativeFrame(.horizontal)
+          .padding(.top, 110)  // onboarding Header is 86px + 2 × 8px top and bottom padding + 8 more padding
+
+          OnboardingRecommendedChannelsView(
+            store: store.scope(\.recommendedChannels, action: \.recommendedChannels)
           )
           .containerRelativeFrame(.horizontal)
           .padding(.top, 110)  // onboarding Header is 86px + 2 × 8px top and bottom padding + 8 more padding
@@ -396,15 +423,35 @@ struct OnboardingView: View {
   }
 }
 
-#Preview {
+#Preview("With Login") {
   OnboardingView(
     store: Store(
       initialState: OnboardingFeature.State(
         onboardingStep: .topics,
+        onboardingStepCount: .withLogin,
         launchScreen: OnboardingLaunchScreenFeature.State(),
         login: LoginFeature.State(),
         preferedLanguage: OnboardingPreferedLanguageFeature.State(),
-        topics: OnboardingTopicsFeature.State()
+        topics: OnboardingTopicsFeature.State(),
+        recommendedChannels: OnboardingRecommendedChannelsFeature.State()
+      )
+    ) {
+      OnboardingFeature()
+    }
+  )
+}
+
+#Preview("Without Login") {
+  OnboardingView(
+    store: Store(
+      initialState: OnboardingFeature.State(
+        onboardingStep: .topics,
+        onboardingStepCount: .withoutLogin,
+        launchScreen: OnboardingLaunchScreenFeature.State(),
+        login: LoginFeature.State(),
+        preferedLanguage: OnboardingPreferedLanguageFeature.State(),
+        topics: OnboardingTopicsFeature.State(),
+        recommendedChannels: OnboardingRecommendedChannelsFeature.State()
       )
     ) {
       OnboardingFeature()
