@@ -31,6 +31,11 @@ struct VideoCommentsFeature {
     case replyTapped(comment: TubeSDK.VideoComment)
     case toggleThreadCollapsed(commentId: Int)
     case composeSheet(PresentationAction<CommentComposeFeature.Action>)
+    case delegate(Delegate)
+
+    enum Delegate {
+      case seekTo(Int)
+    }
   }
 
   var body: some ReducerOf<Self> {
@@ -137,6 +142,9 @@ struct VideoCommentsFeature {
         return .send(.loadComments)
 
       case .composeSheet:
+        return .none
+
+      case .delegate:
         return .none
       }
     }
@@ -273,10 +281,20 @@ struct CommentTreeView: View {
             commentHeader
             VStack(alignment: .leading, spacing: 4) {
               if let text = comment.text {
-                let cleanText = text.replacingOccurrences(
-                  of: "<[^>]+>", with: "", options: .regularExpression, range: nil)
-                Text(cleanText)
+                Text(RichTextRenderer.render(text))
                   .font(.body)
+                  .environment(
+                    \.openURL,
+                    OpenURLAction { url in
+                      if url.scheme == "peertube", url.host == "seek",
+                        let seconds = Int(url.pathComponents.last ?? "")
+                      {
+                        store.send(.delegate(.seekTo(seconds)))
+                        return .handled
+                      }
+                      return .systemAction
+                    }
+                  )
               }
 
               // Actions

@@ -212,6 +212,9 @@ struct VideoDetailsFeature {
       case .description(.delegate(.seekTo(let time))):
         return .send(.seekTo(time))
 
+      case .comments(.delegate(.seekTo(let time))):
+        return .send(.seekTo(time))
+
       case .channelPreview(.channelTapped):
         guard let channel = state.channelPreview.videoChannel,
           let channelName = channel.name
