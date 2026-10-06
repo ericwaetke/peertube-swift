@@ -35,6 +35,10 @@ struct AppFeature {
 
     @Shared(.inMemory("client")) var client: TubeSDKClient?
     @Shared(.inMemory("session")) var session: UserSession?
+
+    // Onboarding
+    @Shared(.appStorage("hadOnboarding")) var hadOnboarding: Bool = false
+    @Presents var onboarding: OnboardingFeature.State?
   }
 
   enum Action {
@@ -51,6 +55,9 @@ struct AppFeature {
     case videoDetail(PresentationAction<VideoDetailsFeature.Action>)
 
     case restoreVideoFromPiP(PlayerManager.VideoInfo)
+
+    case onboarding(PresentationAction<OnboardingFeature.Action>)
+    case openOnboarding
   }
 
   @Dependency(\.authClient) var authClient
@@ -59,8 +66,15 @@ struct AppFeature {
   var body: some ReducerOf<AppFeature> {
     Reduce { state, action in
       switch action {
+
+      // Runs onAppear
       case .task:
-        return .run { send in
+        return .run { [hadOnboarding = state.hadOnboarding] send in
+          print("had Onboarding: \(hadOnboarding)")
+          if !hadOnboarding {
+            await send(.openOnboarding)
+          }
+
           let session = try? await authClient.getSession()
           await send(.sessionLoaded(session))
         }
@@ -261,36 +275,6 @@ struct AppFeature {
         return .none
       case .searchTab:
         return .none
-
-      //      case .profileTab(.delegate(.didLogin)):
-      //        return .run { send in
-      //          @Dependency(\.defaultDatabase) var database
-      //          do {
-      //            try await database.write { db in
-      //              try db.execute(sql: "DELETE FROM peertubeSubscriptions")
-      //              try db.execute(sql: "DELETE FROM videoChannels")
-      //              try db.execute(sql: "DELETE FROM videos")
-      //            }
-      //          } catch {
-      //            reportIssue(error)
-      //          }
-      //          await send(.syncSubscriptions)
-      //          await send(.feedTab(.subscriptionFeed(.loadVideos)))
-      //        }
-      //      case .profileTab(.delegate(.didLogout)):
-      //        return .run { send in
-      //          @Dependency(\.defaultDatabase) var database
-      //          do {
-      //            try await database.write { db in
-      //              try db.execute(sql: "DELETE FROM peertubeSubscriptions")
-      //              try db.execute(sql: "DELETE FROM videoChannels")
-      //              try db.execute(sql: "DELETE FROM videos")
-      //            }
-      //          } catch {
-      //            reportIssue(error)
-      //          }
-      //          await send(.feedTab(.subscriptionFeed(.loadVideos)))
-      //        }
       case .profileTab:
         return .none
 
@@ -300,6 +284,25 @@ struct AppFeature {
           videoId: info.videoId,
           channelId: nil
         )
+        return .none
+
+      case .openOnboarding:
+        state.onboarding = OnboardingFeature.State(
+          onboardingStep: .launchScreen,
+          launchScreen: OnboardingLaunchScreenFeature.State(),
+          login: LoginFeature.State(),
+          preferedLanguage: OnboardingPreferedLanguageFeature.State(),
+          topics: OnboardingTopicsFeature.State(),
+          recommendedChannels: OnboardingRecommendedChannelsFeature.State()
+        )
+        return .none
+      case .onboarding(.presented(.skipButtonTapped)), .onboarding(.presented(.finishOnboarding)):
+        state.$hadOnboarding.withLock {
+          $0 = true
+        }
+        state.onboarding = nil
+        return .none
+      case .onboarding(_):
         return .none
       }
     }
@@ -318,6 +321,9 @@ struct AppFeature {
     }
     .ifLet(\.$videoDetail, action: \.videoDetail) {
       VideoDetailsFeature()
+    }
+    .ifLet(\.$onboarding, action: \.onboarding) {
+      OnboardingFeature()
     }
   }
 }
@@ -404,6 +410,9 @@ struct ContentView: View {
     ) { store in
       VideoDetails(store: store, playerManager: playerManager)
         .presentationDragIndicator(.visible)
+    }
+    .fullScreenCover(item: $store.scope(state: \.onboarding, action: \.onboarding)) { childStore in
+      OnboardingView(store: childStore)
     }
   }
 }

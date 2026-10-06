@@ -230,14 +230,10 @@ struct AssembledVideo: Identifiable, Hashable {
       throw TubeError.invalidChannelData
     }
 
-    print(videoChannelSummary)
-
     let instance = try Instance(videoChannelSummary: videoChannelSummary, client: client)
 
     let channel = try VideoChannel(
       videoChannelSummary: videoChannelSummary, client: client, instanceID: instance.id)
-
-    print(channel)
 
     self.id = uuid
     self.channel = channel
@@ -271,8 +267,6 @@ struct AssembledVideo: Identifiable, Hashable {
     guard let instance = instance else {
       throw TubeError.invalidInstance
     }
-
-    print("instance: \(instance)")
 
     self.id = uuid
     self.channel = VideoChannel(

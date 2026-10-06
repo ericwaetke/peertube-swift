@@ -121,6 +121,7 @@ struct OnboardingFeature {
     case backButtonTapped
     case nextButtonTapped
     case skipButtonTapped
+    case finishOnboarding
 
     // 01 Launch Screen
     case launchScreen(OnboardingLaunchScreenFeature.Action)
@@ -184,7 +185,7 @@ struct OnboardingFeature {
           }
         }
       case .nextButtonTapped:
-        return .run { [step = state.onboardingStep] send in
+        return .run { [step = state.onboardingStep, stepCount = state.onboardingStepCount] send in
           await UIImpactFeedbackGenerator(style: .medium).impactOccurred()
           switch step {
           case .launchScreen:
@@ -196,7 +197,12 @@ struct OnboardingFeature {
           case .topics:
             return await send(.setOnboardingStep(.recommendedChannels))
           case .recommendedChannels:
-            return
+            if stepCount == .withoutLogin {
+              return await send(.finishOnboarding)
+            } else {
+              //              return await send(.setOnboardingStep(.rules))
+              return
+            }
           }
         }
       case .skipButtonTapped:
@@ -208,18 +214,24 @@ struct OnboardingFeature {
         state.onboardingStep = step
         return .none
 
+      case .finishOnboarding:
+        return .none
+
       // Login
       case .login(_):
         return .none
 
       // 01 Launch Screen
       case .launchScreen(.startWithoutAccountButtonTapped):
+        print("without account button tapped")
         state.onboardingStepCount = .withoutLogin
         return .send(.setOnboardingStep(.preferedLanguage))
       case .launchScreen(.usePeerTubeAccountButtonTapped):
+        print("with account button tapped")
         state.onboardingStepCount = .withLogin
         return .send(.setOnboardingStep(.login))
       case .launchScreen(.infoButtonTapped):
+        print("info button tapped")
         return .none
 
       //02
@@ -361,7 +373,7 @@ struct OnboardingView: View {
         Spacer()
         if store.onboardingStep.onboardingHeaderVisible && store.onboardingStep.skipButtonVisible {
           Button("Skip") {
-
+            store.send(.skipButtonTapped)
           }
           .buttonStyle(RiverButtonToolbar(type: .gray))
           .transition(.offset(y: -50).combined(with: .blurReplace))
@@ -427,7 +439,7 @@ struct OnboardingView: View {
   OnboardingView(
     store: Store(
       initialState: OnboardingFeature.State(
-        onboardingStep: .topics,
+        onboardingStep: .launchScreen,
         onboardingStepCount: .withLogin,
         launchScreen: OnboardingLaunchScreenFeature.State(),
         login: LoginFeature.State(),
@@ -445,7 +457,7 @@ struct OnboardingView: View {
   OnboardingView(
     store: Store(
       initialState: OnboardingFeature.State(
-        onboardingStep: .topics,
+        onboardingStep: .launchScreen,
         onboardingStepCount: .withoutLogin,
         launchScreen: OnboardingLaunchScreenFeature.State(),
         login: LoginFeature.State(),
