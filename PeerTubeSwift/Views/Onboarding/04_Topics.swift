@@ -14,7 +14,8 @@ import SwiftUI
 struct OnboardingTopicsFeature {
   @ObservableState
   struct State: Equatable {
-    var selectedCategories: Set<PeerSeekSDK.Category> = []
+    @Shared(.appStorage("interestedCategories")) var selectedCategories: Set<PeerSeekSDK.Category> =
+      []
   }
 
   enum Action {
@@ -26,12 +27,16 @@ struct OnboardingTopicsFeature {
       switch action {
       case .tappedOnCategoryCard(let category):
         if state.selectedCategories.contains(category) {
-          state.selectedCategories.remove(category)
+          state.$selectedCategories.withLock {
+            $0.remove(category)
+          }
           return .run { _ in
             await UIImpactFeedbackGenerator(style: .soft).impactOccurred()
           }
         } else {
-          state.selectedCategories.insert(category)
+          state.$selectedCategories.withLock {
+            $0.insert(category)
+          }
           return .run { _ in
             await UIImpactFeedbackGenerator(style: .medium).impactOccurred()
           }

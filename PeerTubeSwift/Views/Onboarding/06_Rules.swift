@@ -15,8 +15,8 @@ import TubeSDK
 struct OnboardingRulesFeature {
   @ObservableState
   struct State: Equatable {
-    var acceptedGuidelines = false
-    var acceptedPrivacyPolicy = false
+    @Shared(.appStorage("acceptedGuidelines")) var acceptedGuidelines = false
+    @Shared(.appStorage("acceptedPrivacyPolicy")) var acceptedPrivacyPolicy = false
   }
 
   enum Action {
@@ -28,10 +28,15 @@ struct OnboardingRulesFeature {
     Reduce { state, action in
       switch action {
       case .acceptGuidelinesToggleTapped(let newValue):
-        state.acceptedGuidelines = newValue
+        state.$acceptedGuidelines.withLock {
+          $0 = newValue
+        }
         return .none
       case .acceptPrivacyPolicyToggleTapped(let newValue):
-        state.acceptedPrivacyPolicy = newValue
+        state.$acceptedPrivacyPolicy.withLock {
+          $0 = newValue
+        }
+        //        state.acceptedPrivacyPolicy = newValue
         return .none
       }
     }

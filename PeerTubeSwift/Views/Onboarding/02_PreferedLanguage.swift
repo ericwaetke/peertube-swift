@@ -13,11 +13,12 @@ import SwiftUI
 struct OnboardingPreferedLanguageFeature {
   @ObservableState
   struct State: Equatable {
-    var languages: [Locale.Language] = Locale.Language.systemLanguages.filter { language in
-      NSLocale.preferredLanguages.contains { preferedLanguage in
-        language.minimalIdentifier == preferedLanguage
+    @Shared(.appStorage("preferedLanguages")) var languages: [Locale.Language] = Locale.Language
+      .systemLanguages.filter { language in
+        NSLocale.preferredLanguages.contains { preferedLanguage in
+          language.minimalIdentifier == preferedLanguage
+        }
       }
-    }
 
     @Presents var addLanguageSheet: OnboardingLanguageListFeature.State?
   }
@@ -38,8 +39,10 @@ struct OnboardingPreferedLanguageFeature {
         return .none
       case .removeLanguageTapped(let language):
         withAnimation {
-          state.languages.removeAll { languageInArray in
-            languageInArray == language
+          state.$languages.withLock {
+            $0.removeAll { languageInArray in
+              languageInArray == language
+            }
           }
         }
         return .none
@@ -50,7 +53,9 @@ struct OnboardingPreferedLanguageFeature {
         if !state.languages.contains(where: { $0 == language }) {
           // Add the language with an animation
           withAnimation {
-            state.languages.append(language)
+            state.$languages.withLock {
+              $0.append(language)
+            }
           }
         }
         return .send(.dismissSheet)
