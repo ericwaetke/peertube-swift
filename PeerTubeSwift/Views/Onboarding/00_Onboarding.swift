@@ -233,6 +233,8 @@ struct OnboardingFeature {
       case .launchScreen(.infoButtonTapped):
         print("info button tapped")
         return .none
+      case .launchScreen(_):
+        return .none
 
       //02
       case .preferedLanguage(_):

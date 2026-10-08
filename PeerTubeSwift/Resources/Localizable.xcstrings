@@ -55,6 +55,9 @@
     "Change" : {
 
     },
+    "Close" : {
+
+    },
     "Comments" : {
       "comment" : "Disclosure Headline of the Comments Disclosure Group",
       "localizations" : {
@@ -186,6 +189,9 @@
     "Languages" : {
 
     },
+    "Less dependence on large tech corporations. The people control the platform." : {
+
+    },
     "Load More" : {
 
     },
@@ -250,6 +256,9 @@
     "Manage Subscriptions" : {
 
     },
+    "Most communities do not store user data or display ads." : {
+
+    },
     "Mute account %@" : {
 
     },
@@ -266,6 +275,9 @@
 
     },
     "No bigotry - including racism, sexism, ableism, homophobia, transphobia, or xenophobia." : {
+
+    },
+    "No censorship by a single company, as many independent servers exist." : {
 
     },
     "No videos" : {
@@ -421,7 +433,16 @@
     "Watch History" : {
 
     },
+    "What are the benefits?" : {
+
+    },
+    "What is PeerTube?" : {
+
+    },
     "What’s Peertube?" : {
+
+    },
+    "Whats Special About PeerTube?" : {
 
     },
     "Write a comment …" : {

@@ -53,7 +53,6 @@ struct OnboardingLanguageListView: View {
   let locale: Locale = .current
 
   var body: some View {
-
     NavigationStack {
       VStack {
         Form {

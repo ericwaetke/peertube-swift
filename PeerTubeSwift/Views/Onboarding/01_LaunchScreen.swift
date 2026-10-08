@@ -13,32 +13,43 @@ import SwiftUI
 struct OnboardingLaunchScreenFeature {
   @ObservableState
   struct State: Equatable {
-
+    @Presents var whatIsPeertube: WhatIsPeertubeFeature.State?
   }
 
   enum Action {
     case startWithoutAccountButtonTapped
     case usePeerTubeAccountButtonTapped
     case infoButtonTapped
+
+    case whatIsPeertube(PresentationAction<WhatIsPeertubeFeature.Action>)
   }
 
   var body: some Reducer<State, Action> {
     Reduce { state, action in
       switch action {
-
       case .startWithoutAccountButtonTapped:
         return .none
       case .usePeerTubeAccountButtonTapped:
         return .none
       case .infoButtonTapped:
+        state.whatIsPeertube = WhatIsPeertubeFeature.State()
+        return .none
+
+      case .whatIsPeertube(.presented(.dismiss)):
+        state.whatIsPeertube = nil
+        return .none
+      case .whatIsPeertube(_):
         return .none
       }
+    }
+    .ifLet(\.$whatIsPeertube, action: \.whatIsPeertube) {
+      WhatIsPeertubeFeature()
     }
   }
 }
 
 struct OnboardingLaunchScreenView: View {
-  let store: StoreOf<OnboardingLaunchScreenFeature>
+  @Bindable var store: StoreOf<OnboardingLaunchScreenFeature>
 
   var body: some View {
     ZStack {
@@ -56,6 +67,12 @@ struct OnboardingLaunchScreenView: View {
         actionArea
       }
     }
+    .sheet(item: $store.scope(state: \.whatIsPeertube, action: \.whatIsPeertube)) {
+      whatIsPeertube in
+      WhatIsPeerTubeView(store: whatIsPeertube)
+        .presentationDetents([.large])
+    }
+    .zIndex(2)
     .containerRelativeFrame(.horizontal)
     .background(Color(uiColor: .secondarySystemBackground))
   }
