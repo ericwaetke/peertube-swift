@@ -301,6 +301,7 @@ struct OnboardingView: View {
           x: CGFloat(store.state.onboardingStep.stepIndex(for: store.state.onboardingStepCount))
             * -geometry.size.width)
       }
+      .contentMargins(.bottom, 92, for: .scrollContent)
 
       bottomBar
     }
@@ -349,7 +350,10 @@ struct OnboardingView: View {
       .padding()
       .padding(.bottom, 44)
       .background {
-        gradientView
+        if store.onboardingStep.backButtonVisible || store.onboardingStep.nextButtonVisible {
+          Rectangle()
+            .fill(.thinMaterial)
+        }
       }
 
     }

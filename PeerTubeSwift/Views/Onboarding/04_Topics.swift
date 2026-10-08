@@ -50,7 +50,7 @@ struct OnboardingTopicsView: View {
   let store: StoreOf<OnboardingTopicsFeature>
 
   var body: some View {
-    ScrollView {
+    ScrollView(.vertical) {
       LazyVGrid(columns: [GridItem(.adaptive(minimum: 170))]) {
         ForEach(Array(shownCategories.keys), id: \.self) { category in
           CategoryCard(category: category)
