@@ -16,11 +16,16 @@ struct InstanceManagerFeature {
   @ObservableState
   struct State: Equatable {
 
-    @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
-      scheme: "https", host: "peertube.wtf")
+    @Shared(.inMemory("client")) var client: TubeSDKClient?
     var instanceUrlString: String = ""
     var instanceUrl: WebURL?
-    var readyToSaveInstance: Bool = false
+    var readyToSaveInstance: Bool {
+      guard let selectedInstanceId else {
+        return false
+      }
+
+      return instanceHealth[selectedInstanceId] == .healthy
+    }
     var tryingInstanceConnection: Bool = false
 
     var connectionError: String?
@@ -29,12 +34,43 @@ struct InstanceManagerFeature {
     var selectedInstanceId: Int?
     var instanceHealth: [Int: InstanceHealthStatus] = [:]
     var selectedCustomInstance: CustomInstanceEntry?
+
+    var selectedInstance: TubeSDKClient? {
+      if let selectedCustomInstance,
+        let host = selectedCustomInstance.url.host
+      {
+        do {
+          return try TubeSDKClient(scheme: selectedCustomInstance.url.scheme, host: host.serialized)
+        } catch {
+          // TODO: Display error somewhere
+          print(error)
+          return nil
+        }
+      }
+
+      if let selectedInstanceId,
+        let instance = instances.first(where: { $0.id == selectedInstanceId })
+      {
+        do {
+          return try TubeSDKClient(scheme: "https", host: instance.host)
+        } catch {
+          // TODO: Display error somewhere
+          print(error)
+          return nil
+        }
+      }
+
+      if let client {
+        return client
+      }
+
+      return nil
+    }
   }
 
   enum Action {
     case instanceUrlChanged(String)
     case attemptConnectionButtonPressed
-    case delegate(Delegate)
     case textFieldSubmitButtonPressed
 
     case testConnection
@@ -50,10 +86,7 @@ struct InstanceManagerFeature {
     case instanceHealthResult(Int, Bool)
     case selectNewInstance
 
-    @CasePathable
-    enum Delegate {
-      case saveNewInstance(url: WebURL)
-    }
+    case saveButtonTapped
   }
 
   var body: some ReducerOf<Self> {
@@ -62,22 +95,19 @@ struct InstanceManagerFeature {
       case .instanceUrlChanged(let text):
         state.instanceUrlString = text
         state.connectionError = nil
-        //                TODO: Enable onlyonce effect-cancellation is implemented
-        //                state.tryingInstanceConnection = false
-        state.readyToSaveInstance = false
+        // TODO: Enable only once effect-cancellation is implemented
 
         return .none
       case .attemptConnectionButtonPressed:
         return .send(.testConnection)
       case .textFieldSubmitButtonPressed:
         return .send(.testConnection)
-      case .delegate:
-        return .none
       case .refreshPull, .onAppear:
         return .send(.loadInstances)
       case .loadInstances:
-        return .run { [client = state.client] send in
-          var pager = client.instances(pageSize: 50, query: InstanceQueryParameters(healthy: true))
+        return .run { send in
+          var pager = TubeSDKClient.instances(
+            pageSize: 50, query: InstanceQueryParameters(healthy: true))
           while pager.hasMorePages {
             let chunk = try await pager.nextPage()
             await send(.addInstancesToList(chunk))
@@ -85,11 +115,24 @@ struct InstanceManagerFeature {
         }
       case .addInstancesToList(let instances):
         state.instances.insert(contentsOf: instances, at: state.instances.endIndex)
+
+        // Return Early when Instance already selected
+        // To not waste resources matching instances when we know its selected already
+        if state.selectedInstanceId != nil {
+          return .none
+        }
+
+        // Check if one of the incoming instances is the currently set client
+        // if so, select it, so the checkmark is correct
+        if let client = state.client,
+          let matchingInstanceToClient = instances.first(where: { $0.host == client.instance.host })
+        {
+          state.selectedInstanceId = matchingInstanceToClient.id
+        }
         return .none
       case .searchTextChanged(let text):
         state.searchText = text
         if state.selectedCustomInstance == nil {
-          state.readyToSaveInstance = false
           state.connectionError = nil
           state.tryingInstanceConnection = false
         }
@@ -116,6 +159,8 @@ struct InstanceManagerFeature {
       case .selectNewInstance:
         state.instanceUrlString = state.searchText
         return .send(.testConnection)
+
+      // WARN/TODO: The connection isn’t tested if it’s coming directly from the `client`
       case .testConnection:
         state.tryingInstanceConnection = true
         return .run { [instanceUrl = state.instanceUrlString] send in
@@ -142,7 +187,6 @@ struct InstanceManagerFeature {
 
         switch response {
         case .success(let config):
-          state.readyToSaveInstance = true
           state.connectionError =
             "Successfully connected to \(config.instance.name) (v\(config.serverVersion))"
           if let url = state.instanceUrl {
@@ -155,6 +199,8 @@ struct InstanceManagerFeature {
         return .none
       case .setInstanceUrl(let url):
         state.instanceUrl = url
+        return .none
+      case .saveButtonTapped:
         return .none
       }
     }
@@ -199,6 +245,14 @@ struct InstanceManager: View {
 
   var body: some View {
     List {
+      if let selectedInstance = store.selectedInstance {
+        Section {
+          Text("Selected Instance is: \(selectedInstance.instance.host)")
+        } header: {
+          Text("Currently Selected Instance")
+        }
+      }
+
       if let custom = store.selectedCustomInstance {
         Section {
           HStack {
@@ -278,10 +332,11 @@ struct InstanceManager: View {
   }
 }
 
-#Preview {
+#Preview("Without Client") {
+  var state = InstanceManagerFeature.State()
   NavigationStack {
     InstanceManager(
-      store: Store(initialState: InstanceManagerFeature.State()) {
+      store: Store(initialState: state) {
         InstanceManagerFeature()
       }
     )
@@ -289,7 +344,29 @@ struct InstanceManager: View {
     .toolbar {
       ToolbarItem {
         Button("Save") {}
-          .disabled(true)
+          .disabled(!state.readyToSaveInstance)
+      }
+    }
+  }
+}
+
+#Preview("With Client") {
+  var state = InstanceManagerFeature.State(
+    client: Shared(
+      wrappedValue: try! TubeSDKClient(scheme: "https", host: "peertube.wtf"),
+      .inMemory("client"))
+  )
+  NavigationStack {
+    InstanceManager(
+      store: Store(initialState: state) {
+        InstanceManagerFeature()
+      }
+    )
+    .navigationTitle("Instance Manager")
+    .toolbar {
+      ToolbarItem {
+        Button("Save") {}
+          .disabled(!state.readyToSaveInstance)
       }
     }
   }

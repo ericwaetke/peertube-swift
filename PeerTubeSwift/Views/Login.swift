@@ -22,6 +22,7 @@ struct LoginFeature {
 
     case communityButtonTapped
     case editInstance(PresentationAction<InstanceManagerFeature.Action>)
+    case dismissEditInstance
 
     case loginButtonTapped
     case loginResponse(Result<UserSession, Error>)
@@ -100,24 +101,19 @@ struct LoginFeature {
         return .none
 
       case .communityButtonTapped:
-        //        guard let url = state.client.instance.urlComponents.url?.absoluteString else {
-        //          return .none
-        //        }
         state.editInstance = InstanceManagerFeature.State(instanceUrlString: "")
         return .none
 
-      case .editInstance(.presented(.delegate(let delegate))):
-        switch delegate {
-        case .saveNewInstance(let url):
-          state.editInstance = nil
-          return .run { send in
-            guard let host = url.host?.serialized else { return }
-            do {
-              try await send(
-                .setClient(TubeSDKClient(scheme: url.scheme, host: host)))
-            } catch {}
-          }
+      case .editInstance(.presented(.saveButtonTapped)):
+        if let client = state.editInstance?.selectedInstance {
+          state.$client.withLock { $0 = client }
         }
+        state.editInstance = nil
+        return .none
+
+      case .dismissEditInstance:
+        state.editInstance = nil
+        return .none
 
       case .setClient(let client):
         state.$client.withLock { $0 = client }
@@ -237,8 +233,7 @@ struct LoginView: View {
           .toolbar {
             ToolbarItem {
               Button("Save") {
-                guard let url = store.state.instanceUrl else { return }
-                store.send(.delegate(.saveNewInstance(url: url)))
+                store.send(.saveButtonTapped)
               }
               .disabled(!store.state.readyToSaveInstance)
             }

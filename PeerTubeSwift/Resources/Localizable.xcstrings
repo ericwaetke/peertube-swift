@@ -137,6 +137,9 @@
         }
       }
     },
+    "Currently Selected Instance" : {
+
+    },
     "Data Privacy" : {
 
     },
@@ -362,6 +365,9 @@
 
     },
     "Select Your Preferred Languages" : {
+
+    },
+    "Selected Instance is: %@" : {
 
     },
     "Selected Languages" : {
