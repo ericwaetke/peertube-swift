@@ -5,13 +5,6 @@
 //  Created by Eric Wätke on 21.09.26.
 //
 
-//
-//  LaunchScreen.swift
-//  PeerTubeSwift
-//
-//  Created by Eric Wätke on 18.09.26.
-//
-
 import ComposableArchitecture
 import FontKit
 import SwiftUI
@@ -57,10 +50,17 @@ enum OnboardingStep {
 
   var nextButtonVisible: Bool {
     switch self {
-    case .launchScreen, .login:
+    case .launchScreen:
       false
-    case .preferedLanguage, .topics, .recommendedChannels:
+    case .preferedLanguage, .topics, .recommendedChannels, .login:
       true
+    }
+  }
+  var nextButtonVariant: O_NextButtonVariant {
+    switch self {
+    case .login: .login
+    case .recommendedChannels: .finish
+    default: .next
     }
   }
   var backButtonVisible: Bool {
@@ -97,6 +97,7 @@ struct OnboardingFeature {
   struct State: Equatable {
     var onboardingStep: OnboardingStep = .launchScreen
     var onboardingStepCount: OnboardingStepCount = .withoutLogin
+    var nextButton: O_NextButtonFeature.State = O_NextButtonFeature.State()
 
     // 01 Launch Screen
     var launchScreen: OnboardingLaunchScreenFeature.State
@@ -119,7 +120,7 @@ struct OnboardingFeature {
     case setOnboardingStep(OnboardingStep)
 
     case backButtonTapped
-    case nextButtonTapped
+    case nextButton(O_NextButtonFeature.Action)
     case skipButtonTapped
     case finishOnboarding
 
@@ -140,6 +141,9 @@ struct OnboardingFeature {
   }
 
   var body: some Reducer<State, Action> {
+    Scope(state: \.nextButton, action: \.nextButton) {
+      O_NextButtonFeature()
+    }
     // 01 Launch Screen
     Scope(state: \.launchScreen, action: \.launchScreen) {
       OnboardingLaunchScreenFeature()
@@ -184,33 +188,43 @@ struct OnboardingFeature {
             return await send(.setOnboardingStep(.topics))
           }
         }
-      case .nextButtonTapped:
-        return .run { [step = state.onboardingStep, stepCount = state.onboardingStepCount] send in
-          await UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-          switch step {
-          case .launchScreen:
-            return
-          case .login:
-            return await send(.setOnboardingStep(.preferedLanguage))
-          case .preferedLanguage:
-            return await send(.setOnboardingStep(.topics))
-          case .topics:
-            return await send(.setOnboardingStep(.recommendedChannels))
-          case .recommendedChannels:
-            if stepCount == .withoutLogin {
-              return await send(.finishOnboarding)
-            } else {
-              //              return await send(.setOnboardingStep(.rules))
+
+      case .nextButton(.nextButtonTapped(let type)):
+        switch type {
+        case .next:
+          return .run { [step = state.onboardingStep, stepCount = state.onboardingStepCount] send in
+            await UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            switch step {
+            case .launchScreen:
               return
+            case .login:
+              return await send(.setOnboardingStep(.preferedLanguage))
+            case .preferedLanguage:
+              return await send(.setOnboardingStep(.topics))
+            case .topics:
+              return await send(.setOnboardingStep(.recommendedChannels))
+            case .recommendedChannels:
+              if stepCount == .withoutLogin {
+                return await send(.finishOnboarding)
+              } else {
+                //              return await send(.setOnboardingStep(.rules))
+                return
+              }
             }
           }
+        case .login:
+          return .send(.login(.loginButtonTapped))
+        case .finish:
+          return .send(.finishOnboarding)
         }
+
       case .skipButtonTapped:
         return .run { send in
           await dismiss()
         }
 
       case .setOnboardingStep(let step):
+        state.nextButton.variant = step.nextButtonVariant
         state.onboardingStep = step
         return .none
 
@@ -339,11 +353,12 @@ struct OnboardingView: View {
           Spacer()
         }
         if store.onboardingStep.nextButtonVisible {
-          Button("Next") {
-            store.send(.nextButtonTapped)
-          }
-          .buttonStyle(RiverButtonLarge(type: .filled))
-          .transition(.offset(y: 50).combined(with: .blurReplace))
+          //          Button("Next") {
+          //            store.send(.nextButtonTapped)
+          //          }
+          //          .buttonStyle(RiverButtonLarge(type: .filled))
+          //          .transition(.offset(y: 50).combined(with: .blurReplace))
+          O_NextButtonView(store: store.scope(state: \.nextButton, action: \.nextButton))
         }
       }
       .animation(.default, value: store.state.topics.selectedCategories.count)
@@ -418,27 +433,6 @@ struct OnboardingView: View {
     .frame(height: 86)
     .padding()
   }
-
-  @ViewBuilder
-  var gradientView: some View {
-    Rectangle()
-      .fill(.ultraThinMaterial)
-      .mask {
-        VStack(spacing: 0) {
-          LinearGradient(
-            colors: [
-              Color.black.opacity(0),
-              Color.white.opacity(1),
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-          )
-          Rectangle()
-        }
-      }
-      .allowsHitTesting(false)
-      .frame(height: .infinity)
-  }
 }
 
 #Preview("With Login") {
@@ -447,6 +441,7 @@ struct OnboardingView: View {
       initialState: OnboardingFeature.State(
         onboardingStep: .launchScreen,
         onboardingStepCount: .withLogin,
+        nextButton: O_NextButtonFeature.State(),
         launchScreen: OnboardingLaunchScreenFeature.State(),
         login: LoginFeature.State(),
         preferedLanguage: OnboardingPreferedLanguageFeature.State(),
@@ -465,6 +460,7 @@ struct OnboardingView: View {
       initialState: OnboardingFeature.State(
         onboardingStep: .launchScreen,
         onboardingStepCount: .withoutLogin,
+        nextButton: O_NextButtonFeature.State(),
         launchScreen: OnboardingLaunchScreenFeature.State(),
         login: LoginFeature.State(),
         preferedLanguage: OnboardingPreferedLanguageFeature.State(),
