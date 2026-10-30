@@ -158,9 +158,12 @@ struct LoginView: View {
         } label: {
           HStack {
             Text("Select a Community")
+              .foregroundStyle(Color(uiColor: .label))
             Spacer()
             Text(store.client.instance.host)
+              .foregroundStyle(Color(uiColor: .secondaryLabel))
             Image(systemName: "chevron.right")
+              .foregroundStyle(Color(uiColor: .secondaryLabel))
           }
         }
       } header: {
@@ -178,6 +181,7 @@ struct LoginView: View {
         TextField("Username", text: $store.username)
           .textContentType(.username)
           .autocapitalization(.none)
+          .clearButton(text: $store.username)
       } header: {
         HStack {
           Text("Email")
@@ -192,6 +196,7 @@ struct LoginView: View {
       Section {
         SecureField("Password", text: $store.password)
           .textContentType(.password)
+          .clearButton(text: $store.password)
       } header: {
         HStack {
           Text("Password")
