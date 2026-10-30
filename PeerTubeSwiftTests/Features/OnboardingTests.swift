@@ -20,6 +20,7 @@ private func onboardingState(
   OnboardingFeature.State(
     onboardingStep: step,
     onboardingStepCount: stepCount,
+    nextButton: O_NextButtonFeature.State(variant: step.nextButtonVariant),
     launchScreen: .init(),
     login: .init(),
     preferedLanguage: .init(),
@@ -90,15 +91,17 @@ struct OnboardingTests {
       $0.onboardingStep = .preferedLanguage
     }
 
-    await store.send(\.nextButtonTapped)
+    await store.send(\.nextButton.nextButtonTapped, .next)
     await store.receive(\.setOnboardingStep, .topics) { $0.onboardingStep = .topics }
 
-    await store.send(\.nextButtonTapped)
+    await store.send(\.nextButton.nextButtonTapped, .next)
     await store.receive(\.setOnboardingStep, .recommendedChannels) {
       $0.onboardingStep = .recommendedChannels
+      $0.nextButton.variant = .finish
     }
 
-    await store.send(\.nextButtonTapped)
+    // The last step shows the finish variant, which completes onboarding directly.
+    await store.send(\.nextButton.nextButtonTapped, .finish)
     await store.receive(\.finishOnboarding)  // only emitted when stepCount == .withoutLogin
   }
 
@@ -111,7 +114,10 @@ struct OnboardingTests {
     await store.send(\.launchScreen.usePeerTubeAccountButtonTapped) {
       $0.onboardingStepCount = .withLogin
     }
-    await store.receive(\.setOnboardingStep, .login) { $0.onboardingStep = .login }
+    await store.receive(\.setOnboardingStep, .login) {
+      $0.onboardingStep = .login
+      $0.nextButton.variant = .login
+    }
   }
 
   @Test func launchScreenWithoutAccountGoesToCorrectScreen() async {
@@ -132,17 +138,10 @@ struct OnboardingTests {
       OnboardingFeature()
     }
 
-    // CURRENT behavior: the info button is a no-op (it only prints).
-    // TDD: once OnboardingLaunchScreenFeature.State gains an `infoSheet`
-    // presentation (OnboardingInfoFeature), replace the send below with:
-    //
-    //   await store.send(\.launchScreen.infoButtonTapped) {
-    //     $0.launchScreen.infoSheet = OnboardingInfoFeature.State()
-    //   }
-    //   await store.send(.launchScreen(.presented(.closeButtonTapped))) {
-    //     $0.launchScreen.infoSheet = nil
-    //   }
-    await store.send(\.launchScreen.infoButtonTapped)
+    // The info button presents the "What is PeerTube" sheet.
+    await store.send(\.launchScreen.infoButtonTapped) {
+      $0.launchScreen.whatIsPeertube = WhatIsPeertubeFeature.State()
+    }
   }
 
   @Test func loginBackButtonGoesBack() async {
@@ -152,18 +151,33 @@ struct OnboardingTests {
 
     // No closure: the reducer only spawns an effect, state changes on receive.
     await store.send(\.backButtonTapped)
-    await store.receive(\.setOnboardingStep, .launchScreen) { $0.onboardingStep = .launchScreen }
+    await store.receive(\.setOnboardingStep, .launchScreen) {
+      $0.onboardingStep = .launchScreen
+      $0.nextButton.variant = .next
+    }
   }
 
-  @Test func loginNextButtonGoesNext() async {
+  /// In the UI the login step's button uses the .login variant (which forwards to
+  /// LoginFeature's network login — no test seam for that). This documents that
+  /// the reducer's step logic still advances when driven with the .next variant.
+  @Test func nextVariantFromLoginAdvancesToPreferedLanguage() async {
     let store = TestStore(initialState: onboardingState(step: .login, stepCount: .withLogin)) {
       OnboardingFeature()
     }
 
-    await store.send(\.nextButtonTapped)
+    await store.send(\.nextButton.nextButtonTapped, .next)
     await store.receive(\.setOnboardingStep, .preferedLanguage) {
       $0.onboardingStep = .preferedLanguage
+      $0.nextButton.variant = .next
     }
+  }
+
+  @Test func nextButtonVariantFollowsStep() {
+    #expect(OnboardingStep.login.nextButtonVariant == .login)
+    #expect(OnboardingStep.recommendedChannels.nextButtonVariant == .finish)
+    #expect(OnboardingStep.launchScreen.nextButtonVariant == .next)
+    #expect(OnboardingStep.preferedLanguage.nextButtonVariant == .next)
+    #expect(OnboardingStep.topics.nextButtonVariant == .next)
   }
 
   @Test func backButtonWalksBackwardsWithoutAccount() async {
@@ -174,7 +188,10 @@ struct OnboardingTests {
     }
 
     await store.send(\.backButtonTapped)
-    await store.receive(\.setOnboardingStep, .topics) { $0.onboardingStep = .topics }
+    await store.receive(\.setOnboardingStep, .topics) {
+      $0.onboardingStep = .topics
+      $0.nextButton.variant = .next
+    }
 
     await store.send(\.backButtonTapped)
     await store.receive(\.setOnboardingStep, .preferedLanguage) {
@@ -196,7 +213,10 @@ struct OnboardingTests {
     }
 
     await store.send(\.backButtonTapped)
-    await store.receive(\.setOnboardingStep, .login) { $0.onboardingStep = .login }
+    await store.receive(\.setOnboardingStep, .login) {
+      $0.onboardingStep = .login
+      $0.nextButton.variant = .login
+    }
   }
 
   @Test func skipButtonTappedInvokesDismiss() async {
@@ -213,25 +233,27 @@ struct OnboardingTests {
     #expect(recorder.invocations == 1)
   }
 
-  // MARK: TDD (red)
+  // MARK: TDD
 
-  /// RED: the with-login flow should advance past the recommended-channels step
-  /// (towards the not-yet-implemented rules step). The reducer currently returns
-  /// `.none` for `.recommendedChannels + .withLogin`, so this assertion fails on
-  /// purpose.
+  /// The recommended-channels step is the end of *both* flows, so its button uses
+  /// the .finish variant — which completes onboarding even when logging in.
   ///
-  /// When `OnboardingStep.rules` is added, strengthen to:
+  /// If a `OnboardingStep.rules` step is added to the with-login flow later, this
+  /// step stops being the end for `.withLogin`: give `nextButtonVariant` the
+  /// step count (`.finish` only for `.withoutLogin`, `.next` for `.withLogin`)
+  /// and assert the advance here instead:
   ///
   ///   await store.receive(\.setOnboardingStep, .rules) { $0.onboardingStep = .rules }
-  @Test func nextFromRecommendedChannelsShouldAdvanceWhenWithLogin() async {
+  @Test func finishFromRecommendedChannelsFinishesEvenWhenWithLogin() async {
     let store = TestStore(
       initialState: onboardingState(step: .recommendedChannels, stepCount: .withLogin)
     ) {
       OnboardingFeature()
     }
 
-    await store.send(\.nextButtonTapped)
-    #expect(store.state.onboardingStep != .recommendedChannels)
+    await store.send(\.nextButton.nextButtonTapped, .finish)
+    await store.receive(\.finishOnboarding)
+    #expect(store.state.onboardingStep == .recommendedChannels)  // step itself is untouched
   }
 
   // TDD (blocked on OnboardingStep.rules — does not compile yet):
