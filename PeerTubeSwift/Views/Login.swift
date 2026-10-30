@@ -89,7 +89,6 @@ struct LoginFeature {
         return .run { [authClient = self.authClient, dismiss = self.dismiss, session] send in
           try await authClient.saveSession(session)
           await send(.delegate(.didLogin(session)))
-          await dismiss()
         } catch: { _, _ in
           print("Failed to save session: \\(error)")
         }

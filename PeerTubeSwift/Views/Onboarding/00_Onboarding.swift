@@ -232,6 +232,8 @@ struct OnboardingFeature {
         return .none
 
       // Login
+      case .login(.delegate(.didLogin(_))):
+        return .send(.setOnboardingStep(.preferedLanguage))
       case .login(_):
         return .none
 
