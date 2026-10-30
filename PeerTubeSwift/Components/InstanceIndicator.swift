@@ -32,19 +32,7 @@ struct InstanceIndicator: View {
   var body: some View {
     HStack(spacing: -6) {
       if let url = URL(string: instanceImage ?? "") {
-        AsyncImage(url: url) { image in
-          image.resizable()
-        } placeholder: {
-          ProgressView()
-            .frame(width: 12, height: 12)
-        }
-        .frame(width: 20, height: 20)
-        .foregroundStyle(.black)
-        .frame(width: 20, height: 20)
-        .background(.white)
-        .clipShape(.rect(cornerRadius: 7))
-        .rotationEffect(Angle(degrees: -3))
-        .shadow(radius: 2)
+        InstanceAvatar(url: url, size: 20)
       } else {
         Image(systemName: "laser.burst")
           .frame(width: 12, height: 12)

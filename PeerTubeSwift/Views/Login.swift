@@ -206,6 +206,14 @@ struct LoginView: View {
             .textCase(.uppercase)
             .foregroundStyle(Color("Label/Secondary"))
         }
+      } footer: {
+        //        HStack {
+        //          Spacer()
+        //          // TODO: Hook this up
+        //          Text("Forgot password?")
+        //            .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline))
+        //            .foregroundStyle(Color.Label.action)
+        //        }
       }
 
       if let errorMessage = store.errorMessage {
@@ -216,7 +224,7 @@ struct LoginView: View {
         }
       }
     }
-    .navigationTitle("Sign In")
+    .navigationTitle("Log in")
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
       if #available(iOS 26.0, *) {

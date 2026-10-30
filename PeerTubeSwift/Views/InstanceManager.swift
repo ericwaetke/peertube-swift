@@ -77,6 +77,8 @@ struct InstanceManagerFeature {
     case connectionResponse(Result<ServerConfig, NetworkError>)
     case setInstanceUrl(WebURL)
 
+    case deselectButtonTapped
+
     case onAppear
     case refreshPull
     case loadInstances
@@ -138,7 +140,10 @@ struct InstanceManagerFeature {
         }
         return .cancel(id: TestConnectionCancelID.id)
       case .selectInstance(let id):
-        state.selectedInstanceId = id
+        withAnimation {
+          state.selectedInstanceId = id
+        }
+
         state.instanceHealth[id] = .checking
         guard let instance = state.instances.first(where: { $0.id == id }) else {
           return .none
@@ -202,6 +207,12 @@ struct InstanceManagerFeature {
         return .none
       case .saveButtonTapped:
         return .none
+      case .deselectButtonTapped:
+        withAnimation {
+          state.selectedCustomInstance = nil
+          state.selectedInstanceId = nil
+        }
+        return .none
       }
     }
   }
@@ -247,23 +258,53 @@ struct InstanceManager: View {
     List {
       if let selectedInstance = store.selectedInstance {
         Section {
-          Text("Selected Instance is: \(selectedInstance.instance.host)")
+          ListInfoPrimary(
+            topLine: "@\(selectedInstance.instance.host)",
+            bottomLine: "v5.0"
+          ) {
+            store.send(.deselectButtonTapped)
+          } leadingImage: {
+            InstanceAvatar(
+              url: URL(
+                string:
+                  "https://peertube.wtf/lazy-static/avatars/c8d8d77d-6761-4fcc-a83c-32dfea8c7777.png"
+              )!, size: 32)
+          } trailingAction: {
+            Text("Deselect")
+              .foregroundStyle(Color.Label.destructive)
+          }
         } header: {
-          Text("Currently Selected Instance")
+          Text("Selected Community")
+            .font(
+              CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+            )
+            .textCase(.uppercase)
+            .foregroundStyle(Color("Label/Secondary"))
         }
       }
 
       if let custom = store.selectedCustomInstance {
         Section {
-          HStack {
-            Text(custom.url.host?.serialized ?? custom.url.serialized())
-              .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
-              .foregroundStyle(Color(uiColor: .label))
-            Spacer()
-            Image(systemName: "checkmark")
-              .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
-              .foregroundStyle(Color(uiColor: .label))
+          ListInfoPrimary(
+            topLine: custom.url.host?.serialized ?? custom.url.serialized(),
+            bottomLine: "v5.0"
+          ) {
+            //              store.send(.accountButtonTapped)
+          } leadingImage: {
+            //              if let session = store.state.session {
+            //                AvatarView(url: session.avatarUrl, name: session.username, size: 68)
+            //              }
+            Text("Avatar")
+          } trailingAction: {
+            Text("Deselect")
           }
+        } header: {
+          Text("Selected Community")
+            .font(
+              CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+            )
+            .textCase(.uppercase)
+            .foregroundStyle(Color("Label/Secondary"))
         }
       }
       Section {
@@ -279,6 +320,7 @@ struct InstanceManager: View {
                   .foregroundStyle(Color(uiColor: .label))
                 if let health = store.instanceHealth[instance.id] {
                   Text("\(health) connection")
+                    .foregroundStyle(Color(uiColor: .secondaryLabel))
                 }
               }
               Spacer()
@@ -289,6 +331,13 @@ struct InstanceManager: View {
             }
           }
         }
+      } header: {
+        Text("All Communities")
+          .font(
+            CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
+          )
+          .textCase(.uppercase)
+          .foregroundStyle(Color("Label/Secondary"))
       }
       if let candidate = newInstanceCandidate {
         Section {
@@ -340,10 +389,10 @@ struct InstanceManager: View {
         InstanceManagerFeature()
       }
     )
-    .navigationTitle("Instance Manager")
+    .navigationTitle("Select A Community")
     .toolbar {
       ToolbarItem {
-        Button("Save") {}
+        Button("Done") {}
           .disabled(!state.readyToSaveInstance)
       }
     }
@@ -362,10 +411,10 @@ struct InstanceManager: View {
         InstanceManagerFeature()
       }
     )
-    .navigationTitle("Instance Manager")
+    .navigationTitle("Select A Community")
     .toolbar {
       ToolbarItem {
-        Button("Save") {}
+        Button("Done") {}
           .disabled(!state.readyToSaveInstance)
       }
     }

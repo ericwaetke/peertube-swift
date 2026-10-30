@@ -171,31 +171,20 @@ struct ProfileTabView: View {
   var body: some View {
     Form {
       Section {
-        Button {
+        ListInfoPrimary(
+          topLine: store.state.session?.username ?? "No Account Signed In",
+          bottomLine: "\(store.state.session != nil ? "Account & App Settings" : "App Settings")"
+        ) {
           store.send(.accountButtonTapped)
-        } label: {
-          HStack(spacing: 8) {
-            if let session = store.state.session {
-              AvatarView(url: session.avatarUrl, name: session.username, size: 68)
-            }
-            VStack(alignment: .leading) {
-              Text(store.state.session?.username ?? "No Account Signed In")
-                .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
-                .lineLimit(1)
-                .foregroundStyle(Color(uiColor: .label))
-              Text("\(store.state.session != nil ? "Account & App Settings" : "App Settings")")
-                .font(
-                  CustomFont.inclusiveSansRegular.swiftUIFont(size: 15, relativeTo: .subheadline)
-                )
-                .scaledToFit()
-                .lineLimit(1)
-                .foregroundStyle(Color(uiColor: .secondaryLabel))
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-              .foregroundStyle(Color(uiColor: .tertiaryLabel))
+        } leadingImage: {
+          if let session = store.state.session {
+            AvatarView(url: session.avatarUrl, name: session.username, size: 68)
           }
+        } trailingAction: {
+          Image(systemName: "chevron.right")
+            .foregroundStyle(Color(uiColor: .tertiaryLabel))
         }
+
         if store.state.session == nil {
           Button {
             store.send(.loginButtonTapped)
