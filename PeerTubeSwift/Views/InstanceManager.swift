@@ -28,6 +28,7 @@ struct InstanceManagerFeature {
     }
     var tryingInstanceConnection: Bool = false
 
+    var instanceConfig: TubeSDK.ServerConfig?
     var connectionError: String?
     var instances: [TubeSDK.PeerTubeInstance] = []
     var searchText: String = ""
@@ -151,7 +152,8 @@ struct InstanceManagerFeature {
         return .run { send in
           do {
             let client = try TubeSDKClient(scheme: "https", host: instance.host)
-            _ = try await client.instance.getConfig()
+            let config = try await client.instance.getConfig()
+            await send(.connectionResponse(.success(config)))
             await send(.instanceHealthResult(id, true))
           } catch {
             await send(.instanceHealthResult(id, false))
@@ -192,12 +194,15 @@ struct InstanceManagerFeature {
 
         switch response {
         case .success(let config):
+          state.instanceConfig = config
+          print(state.instanceConfig)
           state.connectionError =
             "Successfully connected to \(config.instance.name) (v\(config.serverVersion))"
           if let url = state.instanceUrl {
             state.selectedCustomInstance = CustomInstanceEntry(url: url)
           }
         case .failure(let error):
+          state.instanceConfig = nil
           state.connectionError = error.localizedDescription
         }
 
@@ -256,19 +261,21 @@ struct InstanceManager: View {
 
   var body: some View {
     List {
-      if let selectedInstance = store.selectedInstance {
+      if let instanceDetails = store.state.instanceConfig {
         Section {
           ListInfoPrimary(
-            topLine: "@\(selectedInstance.instance.host)",
-            bottomLine: "v5.0"
+            topLine: "@\(instanceDetails.instance.name)",
+            bottomLine: instanceDetails.serverVersion
           ) {
             store.send(.deselectButtonTapped)
           } leadingImage: {
-            InstanceAvatar(
-              url: URL(
-                string:
-                  "https://peertube.wtf/lazy-static/avatars/c8d8d77d-6761-4fcc-a83c-32dfea8c7777.png"
-              )!, size: 32)
+            if let actorImage = instanceDetails.instance.avatars?.first,
+              let fileUrl = actorImage.fileUrl,
+              let imageUrl = URL(string: fileUrl)
+            {
+              InstanceAvatar(url: imageUrl, size: 32)
+            }
+
           } trailingAction: {
             Text("Deselect")
               .foregroundStyle(Color.Label.destructive)
@@ -283,30 +290,6 @@ struct InstanceManager: View {
         }
       }
 
-      if let custom = store.selectedCustomInstance {
-        Section {
-          ListInfoPrimary(
-            topLine: custom.url.host?.serialized ?? custom.url.serialized(),
-            bottomLine: "v5.0"
-          ) {
-            //              store.send(.accountButtonTapped)
-          } leadingImage: {
-            //              if let session = store.state.session {
-            //                AvatarView(url: session.avatarUrl, name: session.username, size: 68)
-            //              }
-            Text("Avatar")
-          } trailingAction: {
-            Text("Deselect")
-          }
-        } header: {
-          Text("Selected Community")
-            .font(
-              CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 13, relativeTo: .footnote)
-            )
-            .textCase(.uppercase)
-            .foregroundStyle(Color("Label/Secondary"))
-        }
-      }
       Section {
         ForEach(filteredInstances) { instance in
           Button {

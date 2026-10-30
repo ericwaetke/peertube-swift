@@ -10,9 +10,6 @@
     "@%@" : {
 
     },
-    "%@" : {
-
-    },
     "%@ connection" : {
 
     },
@@ -41,6 +38,9 @@
 
     },
     "Add Language …" : {
+
+    },
+    "All Communities" : {
 
     },
     "Available Languages" : {
@@ -137,10 +137,10 @@
         }
       }
     },
-    "Currently Selected Instance" : {
+    "Data Privacy" : {
 
     },
-    "Data Privacy" : {
+    "Deselect" : {
 
     },
     "Display Name" : {
@@ -202,6 +202,9 @@
 
     },
     "Loading more..." : {
+
+    },
+    "Log in" : {
 
     },
     "Log In" : {
@@ -367,7 +370,7 @@
     "Select Your Preferred Languages" : {
 
     },
-    "Selected Instance is: %@" : {
+    "Selected Community" : {
 
     },
     "Selected Languages" : {
