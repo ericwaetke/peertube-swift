@@ -180,6 +180,7 @@ struct LoginView: View {
         TextField("Username", text: $store.username)
           .textContentType(.username)
           .autocapitalization(.none)
+          .keyboardType(.emailAddress)
           .clearButton(text: $store.username)
       } header: {
         HStack {
@@ -223,6 +224,7 @@ struct LoginView: View {
         }
       }
     }
+    .scrollDismissesKeyboard(.interactively)
     .navigationTitle("Log in")
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {

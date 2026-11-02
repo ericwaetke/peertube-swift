@@ -76,17 +76,14 @@ struct OnboardingPreferedLanguageView: View {
   @Bindable var store: StoreOf<OnboardingPreferedLanguageFeature>
 
   var body: some View {
-    VStack {
-      Form {
-        selectedLanguages
-      }
+    Form {
+      selectedLanguages
     }
     .sheet(item: $store.scope(state: \.addLanguageSheet, action: \.addLanguageSheet)) {
       addLanguageSheet in
       OnboardingLanguageListView(store: addLanguageSheet)
         .presentationDetents([.large])
     }
-    .navigationTitle("Select Your Preferred Languages")
   }
 
   let locale: Locale = .current

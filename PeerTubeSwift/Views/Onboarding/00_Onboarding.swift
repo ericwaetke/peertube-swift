@@ -89,6 +89,8 @@ enum OnboardingStep {
   }
 }
 
+let TOP_PADDING: CGFloat = 48
+
 @Reducer
 struct OnboardingFeature {
   @Dependency(\.dismiss) var dismiss
@@ -272,53 +274,63 @@ struct OnboardingView: View {
   @Bindable var store: StoreOf<OnboardingFeature>
 
   var body: some View {
-    ZStack(alignment: .center) {
+    GeometryReader { geometry in
+      HStack(spacing: 0) {
+        OnboardingLaunchScreenView(
+          store: store.scope(state: \.launchScreen, action: \.launchScreen)
+        )
+        .containerRelativeFrame(.horizontal)
 
-      VStack {
-        onboardingHeader
-        Spacer()
-      }
-      .containerRelativeFrame(.vertical)
-      .containerRelativeFrame(.horizontal)
-      .zIndex(2)
+        if store.onboardingStepCount == .withLogin {
+          LoginView(store: store.scope(state: \.login, action: \.login))
+            .containerRelativeFrame(.horizontal)
+        }
 
-      GeometryReader { geometry in
-        HStack(spacing: 0) {
-          OnboardingLaunchScreenView(
-            store: store.scope(state: \.launchScreen, action: \.launchScreen)
-          )
-          .containerRelativeFrame(.horizontal)
-
-          if store.onboardingStepCount == .withLogin {
-            LoginView(store: store.scope(state: \.login, action: \.login))
-              .containerRelativeFrame(.horizontal)
-          }
-
+        VStack {
+          Text(OnboardingStep.preferedLanguage.headline ?? "")
+            .font(CustomFont.fjallaOne.swiftUIFont(size: 28, relativeTo: .title))
+            .lineLimit(2)
           OnboardingPreferedLanguageView(
             store: store.scope(\.preferedLanguage, action: \.preferedLanguage)
           )
-          .containerRelativeFrame(.horizontal)
-          .padding(.top, 110)  // onboarding Header is 86px + 2 × 8px top and bottom padding + 8 more padding
+        }
+        .containerRelativeFrame(.horizontal)
+        .padding(.top, TOP_PADDING)
 
+        VStack {
+          Text(OnboardingStep.topics.headline ?? "")
+            .font(CustomFont.fjallaOne.swiftUIFont(size: 28, relativeTo: .title))
+            .lineLimit(2)
           OnboardingTopicsView(
             store: store.scope(\.topics, action: \.topics)
           )
-          .containerRelativeFrame(.horizontal)
-          .padding(.top, 110)  // onboarding Header is 86px + 2 × 8px top and bottom padding + 8 more padding
+        }
+        .containerRelativeFrame(.horizontal)
+        .padding(.top, TOP_PADDING)
 
+        VStack {
+          Text(OnboardingStep.recommendedChannels.headline ?? "")
+            .font(CustomFont.fjallaOne.swiftUIFont(size: 28, relativeTo: .title))
+            .lineLimit(2)
           OnboardingRecommendedChannelsView(
             store: store.scope(\.recommendedChannels, action: \.recommendedChannels)
           )
-          .containerRelativeFrame(.horizontal)
-          .padding(.top, 110)  // onboarding Header is 86px + 2 × 8px top and bottom padding + 8 more padding
         }
-        .zIndex(1)
-        .offset(
-          x: CGFloat(store.state.onboardingStep.stepIndex(for: store.state.onboardingStepCount))
-            * -geometry.size.width)
+        .containerRelativeFrame(.horizontal)
+        .padding(.top, TOP_PADDING)
       }
-      .contentMargins(.bottom, 92, for: .scrollContent)
-
+      .zIndex(1)
+      .offset(
+        x: CGFloat(store.state.onboardingStep.stepIndex(for: store.state.onboardingStepCount))
+          * -geometry.size.width)
+    }
+    .contentMargins(.bottom, 92, for: .scrollContent)
+    .overlay(alignment: .top) {
+      if store.onboardingStep.onboardingHeaderVisible {
+        onboardingHeader
+      }
+    }
+    .overlay(alignment: .bottom) {
       bottomBar
     }
     .background(Color(uiColor: .secondarySystemBackground))
@@ -328,55 +340,38 @@ struct OnboardingView: View {
 
   @ViewBuilder
   var bottomBar: some View {
-    VStack {
+    HStack {
+      if store.onboardingStep.backButtonVisible {
+        Button("Back") {
+          store.send(.backButtonTapped)
+        }
+        .buttonStyle(RiverButtonLarge(type: .gray))
+        .transition(.offset(y: 50).combined(with: .blurReplace))
+      }
       Spacer()
-      HStack {
-        if store.onboardingStep.backButtonVisible {
-          Button("Back") {
-            store.send(.backButtonTapped)
-          }
-          .buttonStyle(RiverButtonLarge(type: .gray))
+      if store.onboardingStep == .topics && store.state.topics.selectedCategories.count > 0 {
+        Text("\(store.state.topics.selectedCategories.count) Selected")
+          .contentTransition(
+            .numericText(value: Double(store.state.topics.selectedCategories.count))
+          )
+          .padding(.horizontal, 14)
+          .padding(.vertical, 6)
+          .background(
+            Capsule()
+              .fill(.white)
+          )
           .transition(.offset(y: 50).combined(with: .blurReplace))
-        }
+
         Spacer()
-        if store.onboardingStep == .topics && store.state.topics.selectedCategories.count > 0 {
-          Text("\(store.state.topics.selectedCategories.count) Selected")
-            .contentTransition(
-              .numericText(value: Double(store.state.topics.selectedCategories.count))
-            )
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(
-              Capsule()
-                .fill(.white)
-            )
-            .transition(.offset(y: 50).combined(with: .blurReplace))
-
-          Spacer()
-        }
-        if store.onboardingStep.nextButtonVisible {
-          //          Button("Next") {
-          //            store.send(.nextButtonTapped)
-          //          }
-          //          .buttonStyle(RiverButtonLarge(type: .filled))
-          //          .transition(.offset(y: 50).combined(with: .blurReplace))
-          O_NextButtonView(store: store.scope(state: \.nextButton, action: \.nextButton))
-        }
       }
-      .animation(.default, value: store.state.topics.selectedCategories.count)
-      .padding()
-      .padding(.bottom, 44)
-      .background {
-        if store.onboardingStep.backButtonVisible || store.onboardingStep.nextButtonVisible {
-          Rectangle()
-            .fill(.thinMaterial)
-        }
+      if store.onboardingStep.nextButtonVisible {
+        O_NextButtonView(store: store.scope(state: \.nextButton, action: \.nextButton))
       }
-
     }
-    .ignoresSafeArea()
+    .animation(.default, value: store.state.topics.selectedCategories.count)
+    .padding()
+    .padding(.bottom, 0)
     .containerRelativeFrame(.horizontal)
-    .containerRelativeFrame(.vertical)
     .zIndex(2)
     .animation(.default, value: store.state.onboardingStep.backButtonVisible)
     .animation(.default, value: store.state.onboardingStep.nextButtonVisible)
@@ -384,55 +379,31 @@ struct OnboardingView: View {
 
   @ViewBuilder
   var onboardingHeader: some View {
-    VStack {
-      HStack(alignment: .top) {
-        if store.onboardingStep.onboardingHeaderVisible {
-          Text(store.onboardingStep.headline ?? "")
-            .font(CustomFont.fjallaOne.swiftUIFont(size: 28, relativeTo: .title))
-            .lineLimit(2)
-            .transition(.offset(y: -50).combined(with: .blurReplace))
-            .contentTransition(.identity)
-        }
-        Spacer()
-        if store.onboardingStep.onboardingHeaderVisible && store.onboardingStep.skipButtonVisible {
-          Button("Skip") {
-            store.send(.skipButtonTapped)
-          }
-          .buttonStyle(RiverButtonToolbar(type: .gray))
-          .transition(.offset(y: -50).combined(with: .blurReplace))
-        }
-      }
-      Spacer()
-      if store.onboardingStep.onboardingHeaderVisible {
-        HStack(spacing: 4) {
-          ForEach(0..<store.onboardingStepCount.rawValue) { index in
+    HStack(spacing: 4) {
+      ForEach(0..<store.onboardingStepCount.rawValue) { index in
+        Capsule()
+          .stroke(Color(uiColor: .tertiarySystemFill), lineWidth: 1)
+          .fill(Color(uiColor: .systemGray4))
+          .overlay(
             Capsule()
-              .stroke(Color(uiColor: .tertiarySystemFill), lineWidth: 1)
-              .fill(Color(uiColor: .systemGray4))
-              .overlay(
-                Capsule()
-                  .fill(Color.green)
-                  .scaleEffect(
-                    x: store.onboardingStep.stepIndex(for: store.onboardingStepCount) - 1 >= index
-                      ? 1 : 0,
-                    anchor: .leading
-                  )
+              .fill(Color.Category.food)  // TODO: Replace with real semantic color
+              .scaleEffect(
+                x: store.onboardingStep.stepIndex(for: store.onboardingStepCount) - 1 >= index
+                  ? 1 : 0,
+                anchor: .leading
               )
-              .frame(height: 7)
-              .containerRelativeFrame(
-                .horizontal,
-                { length, axis in
-                  return (length - 32) / CGFloat(store.onboardingStepCount.rawValue) - 2
-                }
-              )
-              .clipShape(.capsule)
-
-          }
-        }
-        .transition(.blurReplace)
+          )
+          .frame(height: 7)
+          .containerRelativeFrame(
+            .horizontal,
+            { length, axis in
+              return (length - 32) / CGFloat(store.onboardingStepCount.rawValue) - 2
+            }
+          )
+          .clipShape(.capsule)
       }
+      .transition(.blurReplace)
     }
-    .frame(height: 86)
     .padding()
   }
 }
@@ -460,7 +431,7 @@ struct OnboardingView: View {
   OnboardingView(
     store: Store(
       initialState: OnboardingFeature.State(
-        onboardingStep: .launchScreen,
+        onboardingStep: .topics,
         onboardingStepCount: .withoutLogin,
         nextButton: O_NextButtonFeature.State(),
         launchScreen: OnboardingLaunchScreenFeature.State(),
