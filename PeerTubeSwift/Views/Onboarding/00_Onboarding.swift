@@ -125,6 +125,7 @@ struct OnboardingFeature {
     case nextButton(O_NextButtonFeature.Action)
     case skipButtonTapped
     case finishOnboarding
+    case collapseKeyboard
 
     // 01 Launch Screen
     case launchScreen(OnboardingLaunchScreenFeature.Action)
@@ -177,6 +178,7 @@ struct OnboardingFeature {
           case .launchScreen:
             return
           case .login:
+            await send(.collapseKeyboard)
             return await send(.setOnboardingStep(.launchScreen))
           case .preferedLanguage:
             if stepCount == .withLogin {
@@ -200,6 +202,7 @@ struct OnboardingFeature {
             case .launchScreen:
               return
             case .login:
+              await send(.collapseKeyboard)
               return await send(.setOnboardingStep(.preferedLanguage))
             case .preferedLanguage:
               return await send(.setOnboardingStep(.topics))
@@ -264,6 +267,9 @@ struct OnboardingFeature {
 
       // 04
       case .recommendedChannels(_):
+        return .none
+      case .collapseKeyboard:
+        state.login.focusedField = nil
         return .none
       }
     }

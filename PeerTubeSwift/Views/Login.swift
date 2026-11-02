@@ -11,10 +11,16 @@ struct LoginFeature {
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
       scheme: "https", host: "peertube.wtf")
     @Presents var editInstance: InstanceManagerFeature.State?
+
+    var focusedField: Field?
     var username = ""
     var password = ""
     var isLoading = false
     var errorMessage: String?
+
+    enum Field: String, Hashable {
+      case username, password
+    }
   }
 
   enum Action: BindableAction {
@@ -132,6 +138,7 @@ struct LoginFeature {
 
 struct LoginView: View {
   @Bindable var store: StoreOf<LoginFeature>
+  @FocusState var focusedField: LoginFeature.State.Field?
 
   @ViewBuilder
   private var loginButton: some View {
@@ -181,6 +188,7 @@ struct LoginView: View {
           .textContentType(.username)
           .autocapitalization(.none)
           .keyboardType(.emailAddress)
+          .focused($focusedField, equals: .username)
           .clearButton(text: $store.username)
       } header: {
         HStack {
@@ -196,6 +204,7 @@ struct LoginView: View {
       Section {
         SecureField("Password", text: $store.password)
           .textContentType(.password)
+          .focused($focusedField, equals: .password)
           .clearButton(text: $store.password)
       } header: {
         HStack {
@@ -254,6 +263,7 @@ struct LoginView: View {
           }
       }
     }
+    .bind($store.focusedField, to: $focusedField)
   }
 }
 
