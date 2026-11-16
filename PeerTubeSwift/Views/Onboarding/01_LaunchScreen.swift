@@ -50,23 +50,23 @@ struct OnboardingLaunchScreenFeature {
 
 struct OnboardingLaunchScreenView: View {
   @Bindable var store: StoreOf<OnboardingLaunchScreenFeature>
+  @State private var start = Date.now
 
   var body: some View {
-    ZStack {
-      VStack {
-        Text("Powered by PeerTube")
-          .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 11, relativeTo: .caption2))
-          .foregroundStyle(Color.Label.secondary)
+    VStack {
+      Text("Powered by PeerTube")
+        .font(CustomFont.inclusiveSansSemiBold.swiftUIFont(size: 11, relativeTo: .caption2))
+        .foregroundStyle(Color.Label.secondary)
 
-        Spacer()
+      Spacer()
 
-        headlineArea
+      headlineArea
 
-        Spacer()
+      Spacer()
 
-        actionArea
-      }
+      actionArea
     }
+
     .sheet(item: $store.scope(state: \.whatIsPeertube, action: \.whatIsPeertube)) {
       whatIsPeertube in
       WhatIsPeerTubeView(store: whatIsPeertube)
@@ -74,7 +74,29 @@ struct OnboardingLaunchScreenView: View {
     }
     .zIndex(2)
     .containerRelativeFrame(.horizontal)
-    .background(Color(uiColor: .secondarySystemBackground))
+    .background(
+      TimelineView(.animation) { tl in
+        let elapsed = start.distance(to: tl.date)
+
+        Image(systemName: "play.fill")
+          .foregroundStyle(.white)
+          .font(Font.system(size: 256))
+          .containerRelativeFrame(.horizontal)
+          .containerRelativeFrame(.vertical)
+          .background(Color.accent.gradient)
+          .drawingGroup()
+          .visualEffect({ content, proxy in
+            content
+              .distortionEffect(
+                ShaderLibrary.wave(
+                  .float(elapsed)
+                ),
+                maxSampleOffset: .zero
+              )
+          })
+
+      }
+    )
   }
 
   @ViewBuilder
