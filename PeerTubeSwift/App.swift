@@ -84,7 +84,8 @@ struct AppFeature {
         if let session = session {
           state.$client.withLock {
             $0 = try! TubeSDKClient(
-              scheme: "https", host: session.host, token: session.token, session: urlSession)
+              scheme: "https", host: session.host, token: session.token,
+              session: urlSession)
           }
           return .run { send in
             await send(.feedTab(.subscriptionFeed(.loadVideos)))
@@ -104,7 +105,9 @@ struct AppFeature {
             try? await database.write { db in
               var remoteIds = Set<String>()
               for channel in remoteSubs {
-                guard let host = channel.host, let username = channel.name else { continue }
+                guard let host = channel.host, let username = channel.name else {
+                  continue
+                }
                 let id = "\(username)@\(host)"
                 remoteIds.insert(id)
 
@@ -180,8 +183,10 @@ struct AppFeature {
             .element(
               id: _,
               action: .channelDetail(
-                .delegate(.navigateToVideo(host: let host, videoId: let videoId))))))):
-        state.videoDetail = VideoDetailsFeature.State(host: host, videoId: videoId, channelId: nil)
+                .delegate(.navigateToVideo(host: let host, videoId: let videoId)))))
+        )):
+        state.videoDetail = VideoDetailsFeature.State(
+          host: host, videoId: videoId, channelId: nil)
         return .none
 
       case .exploreTab(
@@ -200,8 +205,10 @@ struct AppFeature {
             .element(
               id: _,
               action: .channelDetail(
-                .delegate(.navigateToVideo(host: let host, videoId: let videoId))))))):
-        state.videoDetail = VideoDetailsFeature.State(host: host, videoId: videoId, channelId: nil)
+                .delegate(.navigateToVideo(host: let host, videoId: let videoId)))))
+        )):
+        state.videoDetail = VideoDetailsFeature.State(
+          host: host, videoId: videoId, channelId: nil)
         return .none
 
       case .searchTab(
@@ -220,8 +227,10 @@ struct AppFeature {
             .element(
               id: _,
               action: .channelDetail(
-                .delegate(.navigateToVideo(host: let host, videoId: let videoId))))))):
-        state.videoDetail = VideoDetailsFeature.State(host: host, videoId: videoId, channelId: nil)
+                .delegate(.navigateToVideo(host: let host, videoId: let videoId)))))
+        )):
+        state.videoDetail = VideoDetailsFeature.State(
+          host: host, videoId: videoId, channelId: nil)
         return .none
 
       case .videoDetail(
@@ -296,12 +305,6 @@ struct AppFeature {
           recommendedChannels: OnboardingRecommendedChannelsFeature.State()
         )
         return .none
-      case .onboarding(.presented(.skipButtonTapped)), .onboarding(.presented(.finishOnboarding)):
-        state.$hadOnboarding.withLock {
-          $0 = true
-        }
-        state.onboarding = nil
-        return .none
       case .onboarding(_):
         return .none
       }
@@ -324,6 +327,27 @@ struct AppFeature {
     }
     .ifLet(\.$onboarding, action: \.onboarding) {
       OnboardingFeature()
+    }
+    // Must run after `.ifLet` above: nilling the presented state from an earlier
+    // reducer makes the presentation reducer see an action for absent state.
+    Reduce { state, action in
+      switch action {
+      case .onboarding(.presented(.skipButtonTapped)):
+        // The child calls `dismiss()`; let the presentation reducer nil the state
+        // so it can also cancel the child's effects.
+        state.$hadOnboarding.withLock {
+          $0 = true
+        }
+        return .none
+      case .onboarding(.presented(.finishOnboarding)):
+        state.$hadOnboarding.withLock {
+          $0 = true
+        }
+        state.onboarding = nil
+        return .none
+      default:
+        return .none
+      }
     }
   }
 }
@@ -377,7 +401,8 @@ struct ContentView: View {
             value: .profile
           ) {
             NavigationStack {
-              ProfileTab(store: self.store.scope(state: \.profileTab, action: \.profileTab))
+              ProfileTab(
+                store: self.store.scope(state: \.profileTab, action: \.profileTab))
             }
           }
         }
@@ -411,7 +436,8 @@ struct ContentView: View {
       VideoDetails(store: store, playerManager: playerManager)
         .presentationDragIndicator(.visible)
     }
-    .fullScreenCover(item: $store.scope(state: \.onboarding, action: \.onboarding)) { childStore in
+    .fullScreenCover(item: $store.scope(state: \.onboarding, action: \.onboarding)) {
+      childStore in
       OnboardingView(store: childStore)
     }
   }
