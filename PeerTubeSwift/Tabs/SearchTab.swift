@@ -125,29 +125,6 @@ struct SearchTabFeature {
   }
 }
 
-// THE COLOR EXTENSION AND MOCKDATA IS JUST FOR TESTING!!!
-extension Color {
-  static var random: Color {
-    return Color(
-      red: Double.random(in: 0...1),
-      green: Double.random(in: 0...1),
-      blue: Double.random(in: 0...1))
-  }
-}
-
-struct MockData {
-  static var colors: [Color] {
-    var array: [Color] = []
-    for _ in 0..<30 { array.append(Color.random) }
-    return array
-
-  }
-}
-
-let categories: [PeerSeekSDK.Category] = [
-  .newsPolitics
-]
-
 struct SearchTab: View {
   @Bindable var store: StoreOf<SearchTabFeature>
 
