@@ -151,6 +151,8 @@ struct OnboardingTests {
 
     // No closure: the reducer only spawns an effect, state changes on receive.
     await store.send(\.backButtonTapped)
+    // Login step collapses the keyboard before advancing; focusedField is already nil.
+    await store.receive(\.collapseKeyboard)
     await store.receive(\.setOnboardingStep, .launchScreen) {
       $0.onboardingStep = .launchScreen
       $0.nextButton.variant = .next
@@ -166,6 +168,8 @@ struct OnboardingTests {
     }
 
     await store.send(\.nextButton.nextButtonTapped, .next)
+    // Login step collapses the keyboard before advancing; focusedField is already nil.
+    await store.receive(\.collapseKeyboard)
     await store.receive(\.setOnboardingStep, .preferedLanguage) {
       $0.onboardingStep = .preferedLanguage
       $0.nextButton.variant = .next
@@ -499,12 +503,17 @@ struct AppOnboardingTests {
 
     #expect(store.state.onboarding != nil)
 
-    // The AppFeature reducer nils the presented onboarding first, so the child's
-    // dismiss effect may never run here — the observable contract is the state
-    // change, which is what we assert.
+    // The child calls `dismiss()`, which sends `.onboarding(.dismiss)`; the
+    // presentation reducer then nils the presented state.
     await store.send(.onboarding(.presented(.skipButtonTapped))) {
-      $0.onboarding = nil
       $0.$hadOnboarding.withLock { $0 = true }
     }
+    await store.receive(
+      { action in
+        guard case .onboarding(.dismiss) = action else { return false }
+        return true
+      },
+      assert: { $0.onboarding = nil }
+    )
   }
 }
