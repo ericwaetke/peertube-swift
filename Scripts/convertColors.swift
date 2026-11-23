@@ -1,6 +1,4 @@
-#!/usr/bin/env swift  //
-//  convertColors.swift
-//  PeerTubeSwift
+#!/usr/bin/env swift  //  //  convertColors.swift  //  PeerTubeSwift
 //
 //  Created by Eric Wätke on 07.08.26.
 //
