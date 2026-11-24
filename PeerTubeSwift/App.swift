@@ -169,13 +169,7 @@ struct AppFeature {
         return .none
 
       case .feedTab(.subscriptionFeed(.videoTapped(let row))):
-        guard let instance = row.instance else { return .none }
-        state.videoDetail = VideoDetailsFeature.State(
-          host: instance.host,
-          videoId: row.video.id.uuidString,
-          channelId: row.channel?.id
-        )
-        return .none
+        return openVideo(row, in: &state)
 
       case .feedTab(
         .navigation(
@@ -185,19 +179,11 @@ struct AppFeature {
               action: .channelDetail(
                 .delegate(.navigateToVideo(host: let host, videoId: let videoId)))))
         )):
-        state.videoDetail = VideoDetailsFeature.State(
-          host: host, videoId: videoId, channelId: nil)
-        return .none
+        return openVideo(host: host, videoId: videoId, in: &state)
 
       case .exploreTab(
         .navigation(.path(.element(id: _, action: .feed(.videoTapped(row: let row)))))):
-        guard let instance = row.instance else { return .none }
-        state.videoDetail = VideoDetailsFeature.State(
-          host: instance.host,
-          videoId: row.video.id.uuidString,
-          channelId: row.channel?.id
-        )
-        return .none
+        return openVideo(row, in: &state)
 
       case .exploreTab(
         .navigation(
@@ -207,19 +193,11 @@ struct AppFeature {
               action: .channelDetail(
                 .delegate(.navigateToVideo(host: let host, videoId: let videoId)))))
         )):
-        state.videoDetail = VideoDetailsFeature.State(
-          host: host, videoId: videoId, channelId: nil)
-        return .none
+        return openVideo(host: host, videoId: videoId, in: &state)
 
       case .searchTab(
         .navigation(.path(.element(id: _, action: .feed(.videoTapped(row: let row)))))):
-        guard let instance = row.instance else { return .none }
-        state.videoDetail = VideoDetailsFeature.State(
-          host: instance.host,
-          videoId: row.video.id.uuidString,
-          channelId: row.channel?.id
-        )
-        return .none
+        return openVideo(row, in: &state)
 
       case .searchTab(
         .navigation(
@@ -229,53 +207,11 @@ struct AppFeature {
               action: .channelDetail(
                 .delegate(.navigateToVideo(host: let host, videoId: let videoId)))))
         )):
-        state.videoDetail = VideoDetailsFeature.State(
-          host: host, videoId: videoId, channelId: nil)
-        return .none
+        return openVideo(host: host, videoId: videoId, in: &state)
 
       case .videoDetail(
         .presented(.delegate(.navigateToChannel(host: let host, channel: let channel)))):
-        state.videoDetail = nil
-        guard let channelName = channel.name else { return .none }
-        let channelIdentifier = "\(channelName)@\(host)"
-
-        switch state.selectedTab {
-        case .feed:
-          return FeedNavigationFeature.navigateToChannel(
-            &state.feedTab.navigation.path,
-            host: host,
-            channelIdentifier: channelIdentifier,
-            channelName: channel.name,
-            avatarUrl: channel.avatars?.first?.fileUrl,
-            bannerUrl: channel.banners?.first?.fileUrl,
-            channelDescription: channel.description,
-            instance: Instance(host: host, scheme: "https")
-          ).map { .feedTab(.navigation($0)) }
-        case .explore:
-          return FeedNavigationFeature.navigateToChannel(
-            &state.exploreTab.navigation.path,
-            host: host,
-            channelIdentifier: channelIdentifier,
-            channelName: channel.name,
-            avatarUrl: channel.avatars?.first?.fileUrl,
-            bannerUrl: channel.banners?.first?.fileUrl,
-            channelDescription: channel.description,
-            instance: Instance(host: host, scheme: "https")
-          ).map { .exploreTab(.navigation($0)) }
-        case .search:
-          return FeedNavigationFeature.navigateToChannel(
-            &state.searchTab.navigation.path,
-            host: host,
-            channelIdentifier: channelIdentifier,
-            channelName: channel.name,
-            avatarUrl: channel.avatars?.first?.fileUrl,
-            bannerUrl: channel.banners?.first?.fileUrl,
-            channelDescription: channel.description,
-            instance: Instance(host: host, scheme: "https")
-          ).map { .searchTab(.navigation($0)) }
-        case .profile:
-          return .none
-        }
+        return openChannel(host: host, channel: channel, in: &state)
 
       case .videoDetail:
         return .none
@@ -348,6 +284,60 @@ struct AppFeature {
       default:
         return .none
       }
+    }
+  }
+
+  // MARK: - Navigation helpers
+
+  /// Opens the shared video detail sheet from a feed row.
+  private func openVideo(_ row: VideoRow, in state: inout State) -> Effect<Action> {
+    guard let instance = row.instance else { return .none }
+    state.videoDetail = VideoDetailsFeature.State(
+      host: instance.host,
+      videoId: row.video.id.uuidString,
+      channelId: row.channel?.id
+    )
+    return .none
+  }
+
+  /// Opens the shared video detail sheet from a channel's video link.
+  private func openVideo(host: String, videoId: String, in state: inout State) -> Effect<Action> {
+    state.videoDetail = VideoDetailsFeature.State(host: host, videoId: videoId, channelId: nil)
+    return .none
+  }
+
+  /// Pushes a channel onto whichever feed-style tab is selected.
+  private func openChannel(
+    host: String, channel: TubeSDK.VideoChannel, in state: inout State
+  ) -> Effect<Action> {
+    state.videoDetail = nil
+    guard let channelName = channel.name else { return .none }
+    let channelIdentifier = "\(channelName)@\(host)"
+
+    func open(
+      _ path: inout StackState<FeedNavigationFeature.Path.State>
+    ) -> Effect<FeedNavigationFeature.Action> {
+      FeedNavigationFeature.navigateToChannel(
+        &path,
+        host: host,
+        channelIdentifier: channelIdentifier,
+        channelName: channel.name,
+        avatarUrl: channel.avatars?.first?.fileUrl,
+        bannerUrl: channel.banners?.first?.fileUrl,
+        channelDescription: channel.description,
+        instance: Instance(host: host, scheme: "https")
+      )
+    }
+
+    switch state.selectedTab {
+    case .feed:
+      return open(&state.feedTab.navigation.path).map { .feedTab(.navigation($0)) }
+    case .explore:
+      return open(&state.exploreTab.navigation.path).map { .exploreTab(.navigation($0)) }
+    case .search:
+      return open(&state.searchTab.navigation.path).map { .searchTab(.navigation($0)) }
+    case .profile:
+      return .none
     }
   }
 }
