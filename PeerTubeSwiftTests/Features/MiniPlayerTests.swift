@@ -192,11 +192,14 @@ extension BaseSuite {
       }
       await store.send(\.videoDetailSheetDismissed) {
         $0.isMiniPlayerActive = true
+        $0.isProgrammaticStop = false
       }
       // PiP never reported a stop, so it is already active — no state change here.
       await store.send(\.pipDidStart)
 
-      await store.send(\.maximizeButtonTapped)
+      await store.send(\.maximizeButtonTapped) {
+        $0.isMiniPlayerActive = false
+      }
       await store.receive(\.delegate, .restoreVideo(secondVideoInfo))
     }
 
@@ -232,11 +235,18 @@ extension BaseSuite {
       }
       await store.send(.miniPlayer(.videoDetailSheetDismissed)) {
         $0.miniPlayer.isMiniPlayerActive = true
+        $0.miniPlayer.isProgrammaticStop = false
       }
       // PiP never reported a stop, so it is already active — no state change here.
       await store.send(.miniPlayer(.pipDidStart))
 
-      await store.send(.miniPlayer(.maximizeButtonTapped))
+      await store.send(.miniPlayer(.maximizeButtonTapped)) {
+        $0.miniPlayer.isMiniPlayerActive = false
+      }
+      await store.receive { action in
+        guard case .miniPlayer(.delegate(.restoreVideo(let info))) = action else { return false }
+        return info == secondVideoInfo
+      }
       await store.receive(\.restoreVideoFromPiP, secondVideoInfo) {
         $0.videoDetail = VideoDetailsFeature.State(
           host: secondVideoInfo.host,
@@ -266,7 +276,7 @@ extension BaseSuite {
         $0.miniPlayerClient = spyClient(spy)
       }
 
-      await store.send(.videoDetail(.presented(.timeUpdate(12))))
+      await store.send(.playerTimeUpdate(12))
       await store.send(.miniPlayer(.maximizeButtonTapped)) {
         $0.miniPlayer.isMiniPlayerActive = false
       }

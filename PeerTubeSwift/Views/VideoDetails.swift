@@ -278,6 +278,7 @@ struct VideoDetailsFeature {
 struct VideoDetails: View {
   let store: StoreOf<VideoDetailsFeature>
   let playerManager: PlayerManager
+  var onTimeUpdate: ((Int) -> Void)? = nil
   let formatter = RelativeDateTimeFormatter()
   @State private var isPlayerReady = false
 
@@ -297,7 +298,7 @@ struct VideoDetails: View {
           {
             VideoPlayerView(
               isPlayerReady: $isPlayerReady,
-              onTimeUpdate: { time in self.store.send(.timeUpdate(time)) },
+              onTimeUpdate: onTimeUpdate ?? { time in self.store.send(.timeUpdate(time)) },
               onPlaybackStateChange: { isPlaying in
                 self.store.send(.delegate(.playbackStateChanged(isPlaying: isPlaying)))
               },

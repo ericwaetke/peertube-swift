@@ -97,6 +97,8 @@ struct MiniPlayerFeature {
         // A paused video must not be promoted to the mini player.
         guard state.activeVideo != nil, state.isPlaying else { return .none }
         state.isMiniPlayerActive = true
+        // A previous programmatic stop must not leak into this PiP session.
+        state.isProgrammaticStop = false
         return .run { [miniPlayerClient] _ in miniPlayerClient.startPiP() }
 
       case .videoDetailSheetPresented:

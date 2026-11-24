@@ -83,6 +83,8 @@ class PlayerManager: NSObject {
       print("❌ PlayerManager: PiP not supported or controller nil")
       return
     }
+    // A prior programmatic stop must not suppress the restore of this session.
+    isProgrammaticStop = false
     positionPipLayer(.bottomCenter)
     pipController.startPictureInPicture()
   }

@@ -54,6 +54,7 @@ struct AppFeature {
     case searchTab(SearchTabFeature.Action)
     case profileTab(ProfileTabFeature.Action)
     case miniPlayer(MiniPlayerFeature.Action)
+    case playerTimeUpdate(Int)
     case videoDetail(PresentationAction<VideoDetailsFeature.Action>)
 
     case restoreVideoFromPiP(PlayerManager.VideoInfo)
@@ -234,6 +235,12 @@ struct AppFeature {
 
       case .miniPlayer:
         return .none
+
+      case .playerTimeUpdate(let time):
+        // A player outliving its sheet must not send a presented action to an
+        // absent destination.
+        guard state.videoDetail != nil else { return .none }
+        return .send(.videoDetail(.presented(.timeUpdate(time))))
 
       case .videoDetail:
         return .none
@@ -451,9 +458,15 @@ struct ContentView: View {
       item: $store.scope(
         state: \.videoDetail, action: \.videoDetail
       )
-    ) { store in
-      VideoDetails(store: store, playerManager: playerManager)
-        .presentationDragIndicator(.visible)
+    ) { childStore in
+      VideoDetails(
+        store: childStore,
+        playerManager: playerManager,
+        onTimeUpdate: { [store = self.store] time in
+          store.send(.playerTimeUpdate(time))
+        }
+      )
+      .presentationDragIndicator(.visible)
     }
     .fullScreenCover(item: $store.scope(state: \.onboarding, action: \.onboarding)) {
       childStore in
