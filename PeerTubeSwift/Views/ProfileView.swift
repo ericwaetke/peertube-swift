@@ -10,7 +10,6 @@ import FontKit
 import SQLiteData
 import SwiftUI
 import TubeSDK
-import WebURL
 
 @Reducer
 struct ProfileTabViewFeature {

@@ -11,7 +11,6 @@ import PeerSeekSDK
 import SQLiteData
 import SwiftUI
 import TubeSDK
-import WebURL
 
 @Reducer
 struct SearchTabFeature {

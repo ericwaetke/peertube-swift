@@ -10,7 +10,6 @@ import Dependencies
 import SQLiteData
 import SwiftUI
 import TubeSDK
-import WebURL
 
 extension View {
   @ViewBuilder

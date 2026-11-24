@@ -10,7 +10,6 @@ import FontKit
 import SQLiteData
 import SwiftUI
 import TubeSDK
-import WebURL
 
 @Reducer
 enum ProfileTabPath {
@@ -40,7 +39,7 @@ struct ProfileTabFeature {
     Reduce { state, action in
       switch action {
       case .profileTabView(.accountButtonTapped):
-        state.path.append(.settings(SettingsFeature.State(text: "accountButtonTapped")))
+        state.path.append(.settings(SettingsFeature.State()))
         return .none
       case .profileTabView:
         return .none

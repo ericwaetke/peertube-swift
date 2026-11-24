@@ -60,11 +60,6 @@ enum FeedFilter: Equatable, Hashable {
   }
 }
 
-enum FeedOrder: Equatable, Hashable {
-  case ascending
-  case descending
-}
-
 // MARK: - Feed Navigation Feature
 
 /// Shared navigation reducer for feed tabs.
@@ -313,7 +308,6 @@ struct FeedFeature {
     @Shared(.inMemory("client")) var client: TubeSDKClient?
     var isLoadingVideos: Bool = false
     var hasLoadedAtLeastOnce: Bool = false
-    var order: FeedOrder = .descending
     var errorMessage: String? = nil
 
     // Pagination state
@@ -330,12 +324,10 @@ struct FeedFeature {
 
   enum Action {
     case videoTapped(row: VideoRow)
-    case videoOverflowMenuTapped(row: VideoRow, host: String)
     case initialScreenLoad
     case pulledToRefresh
 
     case channelTapped(row: VideoRow)
-    case instanceTapped
     case addInstanceButtonTapped
 
     case videoCards(IdentifiedActionOf<VideoCardFeature>)
@@ -349,7 +341,6 @@ struct FeedFeature {
     case loadMoreVideos
     case setLoadingMore(Bool)
 
-    case loadChannelVideos
     case loadSubscriptionVideos
     case loadVideosBySearch(String)
     case loadVideosByCategory(PeerSeekSDK.Category)
@@ -473,51 +464,6 @@ struct FeedFeature {
     return videoRows
   }
 
-  /// Intermediate data structure for processed video info
-  private struct ProcessedVideoData {
-    let channelUsername: String
-    let channelDisplayName: String
-    let avatarUrl: String?
-    let channelDescription: String?
-    let instanceHost: String
-    let instance: Instance
-  }
-
-  /// Process video network calls (instance sync) - called in parallel
-  private func processVideoNetwork(
-    peertubeVideo: TubeSDK.Video,
-    client _: TubeSDKClient
-  ) async -> ProcessedVideoData? {
-    guard let channel = peertubeVideo.channel,
-      let videoId = peertubeVideo.uuid,
-      let videoName = peertubeVideo.name,
-      let publishedAt = peertubeVideo.publishedAt,
-      let channelUsername = channel.name,
-      let channelDisplayName = channel.displayName,
-      let instanceHost = channel.host
-    else {
-      print("Error adding video: missing required fields")
-      return nil
-    }
-
-    return await withErrorReporting {
-      let avatarUrl: String? = channel.avatars?.first?.fileUrl
-      // Note: VideoChannelSummary doesn't have description - it's only available in full VideoChannel
-      // Description will be fetched when navigating to channel detail
-
-      let instance = try await self.peertubeOrchestrator.syncInstanceInfo(instanceHost, database)
-
-      return ProcessedVideoData(
-        channelUsername: channelUsername,
-        channelDisplayName: channelDisplayName,
-        avatarUrl: avatarUrl,
-        channelDescription: nil,
-        instanceHost: instanceHost,
-        instance: instance
-      )
-    }
-  }
-
   /// Preload thumbnails in the background (fire-and-forget)
   /// Does not block - runs independently of UI updates
   private func preloadThumbnails(for videos: [VideoRow]) {
@@ -545,9 +491,6 @@ struct FeedFeature {
     Reduce { state, action in
       switch action {
       case .videoTapped(let row):
-        let _ = row
-        return .none
-      case .videoOverflowMenuTapped(let row, let host):
         let _ = row
         return .none
       case .initialScreenLoad:
@@ -680,8 +623,6 @@ struct FeedFeature {
             await send(.setLoading(false))
           }
         }
-      case .loadChannelVideos:
-        return .none
       case .loadContinueWatching:
         return .run { [sharedClient = state.$client, authClient = self.authClient] send in
           await send(.setLoading(true))
@@ -925,8 +866,6 @@ struct FeedFeature {
         }
       case .channelTapped(let row):
         let _ = row
-        return .none
-      case .instanceTapped:
         return .none
       case .addInstanceButtonTapped:
         return .none

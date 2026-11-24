@@ -14,7 +14,6 @@ import TubeSDK
 struct SettingsFeature {
   @ObservableState
   struct State: Equatable {
-    let text: String
     @Shared(.inMemory("session")) var session: UserSession?
 
     @Shared(.inMemory("client")) var client: TubeSDKClient?
@@ -181,7 +180,7 @@ struct SettingsView: View {
   NavigationStack {
     SettingsView(
       store: Store(
-        initialState: SettingsFeature.State(text: "some")
+        initialState: SettingsFeature.State()
       ) {
         SettingsFeature()
       })
@@ -193,7 +192,6 @@ struct SettingsView: View {
     SettingsView(
       store: Store(
         initialState: SettingsFeature.State(
-          text: "some",
           session: Shared(
             wrappedValue: UserSession(
               username: "somepeertubeuser",
@@ -202,7 +200,7 @@ struct SettingsView: View {
             ), .inMemory("session")),
           client: Shared(
             wrappedValue: try! TubeSDKClient(scheme: "https", host: "peertube.wtf"),
-            .inMemory("session"))
+            .inMemory("client"))
         )
       ) {
         SettingsFeature()

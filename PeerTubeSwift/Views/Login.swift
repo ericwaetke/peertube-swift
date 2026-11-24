@@ -2,7 +2,6 @@ import ComposableArchitecture
 import FontKit
 import SwiftUI
 import TubeSDK
-import WebURL
 
 @Reducer
 struct LoginFeature {

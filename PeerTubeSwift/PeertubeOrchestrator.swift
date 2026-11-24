@@ -8,7 +8,6 @@
 import Dependencies
 import Foundation
 import SQLiteData
-import SwiftUI
 import TubeSDK
 
 // MARK: - Instance Cache Actor
