@@ -260,163 +260,161 @@ struct CommentTreeView: View {
     }
   }
 
+  private var lineColor: Color { Color.secondary.opacity(0.3) }
+  private let lineWidth: CGFloat = 1
+  private var hasChildren: Bool { tree.children?.isEmpty == false }
+
   var body: some View {
     if let comment = tree.comment {
-      let lineColor = Color.secondary.opacity(0.3)
-      let lineWidth: CGFloat = 1
-      let hasChildren = tree.children?.isEmpty == false
-
       VStack(alignment: .leading, spacing: 0) {
-        HStack(spacing: lineSpacing) {
-          if level > 1 {
-            Spacer()
-              .frame(width: smallColumnWidth)
-          }
-          if level > 0 {
-            Spacer()
-              .frame(width: bigColumnWidth)
-          }
+        commentRow(comment)
+        replies(for: comment)
+      }
+    }
+  }
 
-          VStack(alignment: .leading, spacing: 4) {
-            commentHeader
-            VStack(alignment: .leading, spacing: 4) {
-              if let text = comment.text {
-                Text(RichTextRenderer.render(text))
-                  .font(.body)
-                  .environment(
-                    \.openURL,
-                    OpenURLAction { url in
-                      if url.scheme == "peertube", url.host == "seek",
-                        let seconds = Int(url.pathComponents.last ?? "")
-                      {
-                        store.send(.delegate(.seekTo(seconds)))
-                        return .handled
-                      }
-                      return .systemAction
-                    }
-                  )
-              }
+  // MARK: - Row
 
-              // Actions
-              VStack {
-                HStack(spacing: 4) {
-                  if store.state.client.currentToken != nil {
-                    Button {
-                      store.send(.replyTapped(comment: comment))
-                    } label: {
-                      Image(systemName: "text.bubble")
-                    }
-                    .accessibilityLabel("Write a reply")
-                    .buttonStyle(RiverButtonSmall(type: .tertiary))
-                  }
+  private func commentRow(_ comment: TubeSDK.VideoComment) -> some View {
+    HStack(spacing: lineSpacing) {
+      if level > 1 {
+        Spacer()
+          .frame(width: smallColumnWidth)
+      }
+      if level > 0 {
+        Spacer()
+          .frame(width: bigColumnWidth)
+      }
 
-                  // TODO: Open Comment Menu
-                  Menu {
-                    Button(role: .destructive) {
-
-                    } label: {
-                      Label("Report this comment", systemImage: "exclamationmark.triangle")
-                    }
-                    if let displayName: String = comment.account?.displayName {
-                      Button {
-
-                      } label: {
-                        Text("Mute account \(displayName.quoted())")
-                      }
-                    }
-
-                    if let host = comment.account?.host {
-                      let host = "@\(host)"
-                      Button {
-
-                      } label: {
-                        Text("Mute community \(host.quoted())")
-                      }
-                    }
-
-                  } label: {
-                    Image(systemName: "ellipsis")
-                  }
-                  .accessibilityLabel("Write a reply")
-                  .buttonStyle(RiverButtonSmall(type: .tertiary))
-
-                }
-
-                //                        if let children = tree.children, !children.isEmpty, let id = comment.id {
-                //                          let isCollapsed = store.state.collapsedCommentIds.contains(id)
-                //                          Button {
-                //                            store.send(.toggleThreadCollapsed(commentId: id))
-                //                          } label: {
-                //                            HStack(spacing: 4) {
-                //                              Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
-                //                              let replyCount = comment.totalReplies ?? children.count
-                //                              Text(
-                //                                isCollapsed ? "Show ^[\(replyCount) reply](inflect: true)" : "Hide replies")
-                //                            }
-                //                            .font(.caption)
-                //                            .foregroundColor(.secondary)
-                //                          }
-                //                        }
-              }
-              .padding(.top, 2)
-            }
-            .padding(.leading, avatarSize + 8)
-            .padding(.bottom, 8)
-            .overlay(alignment: .leading) {
-              if hasChildren && level < 2 {
-                CommentThreadLine()
-                  .stroke(lineColor, lineWidth: lineWidth)
-                  .frame(width: avatarSize)
-                  .offset(x: avatarSize / 2)
-              }
-            }
-          }
-        }
-        .overlay(alignment: .topLeading) {
-          if level > 0 {
-            if !isLastSibling || !isLastInThread {
+      VStack(alignment: .leading, spacing: 4) {
+        commentHeader
+        commentBody(comment)
+          .padding(.leading, avatarSize + 8)
+          .padding(.bottom, 8)
+          .overlay(alignment: .leading) {
+            if hasChildren && level < 2 {
               CommentThreadLine()
                 .stroke(lineColor, lineWidth: lineWidth)
-                .frame(width: bigColumnWidth)
-                .offset(x: lineIndentBigColumn, y: level == 1 ? arcRadius * 2 + arcLineSpacing : 0)
+                .frame(width: avatarSize)
+                .offset(x: avatarSize / 2)
             }
-            if isLastSibling && (level > 1 && hasChildren) {
-              CommentThreadLine()
-                .stroke(lineColor, lineWidth: lineWidth)
-                .frame(width: bigColumnWidth)
-                .offset(
-                  x: lineIndentBigColumn + lineSpacing + smallColumnWidth,
-                  y: arcRadius * 2 + arcLineSpacing)
-            }
-            CommentThreadArc(
-              lineIndentBogColumn: lineIndentBigColumn,
-              arcRadius: arcRadius
-            )
-            .stroke(lineColor, lineWidth: lineWidth)
-            .frame(width: bigColumnWidth)
-            .offset(x: level > 1 ? bigColumnWidth + arcLineSpacing : 0)
           }
-        }
-        .clipped()
+      }
+    }
+    .overlay(alignment: .topLeading) { threadDecorations }
+    .clipped()
+  }
 
-        if let children = tree.children, let id = comment.id,
-          !store.state.collapsedCommentIds.contains(id)
-        {
-          ForEach(Array(children.enumerated()), id: \.element.comment?.id) { index, childTree in
-            CommentTreeView(
-              store: store,
-              tree: childTree,
-              level: level + 1,
-              isLastSibling: index == children.count - 1,
-              isLastInThread: level == 0 ? (index == children.count - 1) : isLastInThread
-            )
-            //            .overlay(alignment: .top) {
-            //                Text("Last in Thread: \(isLastInThread.description); \(index == children.count - 1), index: \(index), childrencount: \(children.count - 1)")
-            //                    .frame()
-            //                    .background(.white)
-            //            }
+  // MARK: - Body
+
+  private func commentBody(_ comment: TubeSDK.VideoComment) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      if let text = comment.text {
+        Text(RichTextRenderer.render(text))
+          .font(.body)
+          .environment(
+            \.openURL,
+            OpenURLAction { url in
+              if url.scheme == "peertube", url.host == "seek",
+                let seconds = Int(url.pathComponents.last ?? "")
+              {
+                store.send(.delegate(.seekTo(seconds)))
+                return .handled
+              }
+              return .systemAction
+            }
+          )
+      }
+
+      commentActions(comment)
+    }
+  }
+
+  private func commentActions(_ comment: TubeSDK.VideoComment) -> some View {
+    HStack(spacing: 4) {
+      if store.state.client.currentToken != nil {
+        Button {
+          store.send(.replyTapped(comment: comment))
+        } label: {
+          Image(systemName: "text.bubble")
+        }
+        .accessibilityLabel("Write a reply")
+        .buttonStyle(RiverButtonSmall(type: .tertiary))
+      }
+
+      // TODO: Open Comment Menu
+      Menu {
+        Button(role: .destructive) {
+        } label: {
+          Label("Report this comment", systemImage: "exclamationmark.triangle")
+        }
+        if let displayName: String = comment.account?.displayName {
+          Button {
+          } label: {
+            Text("Mute account \(displayName.quoted())")
           }
         }
+
+        if let host = comment.account?.host {
+          let host = "@\(host)"
+          Button {
+          } label: {
+            Text("Mute community \(host.quoted())")
+          }
+        }
+      } label: {
+        Image(systemName: "ellipsis")
+      }
+      .accessibilityLabel("Write a reply")
+      .buttonStyle(RiverButtonSmall(type: .tertiary))
+    }
+    .padding(.top, 2)
+  }
+
+  // MARK: - Thread decoration
+
+  @ViewBuilder
+  private var threadDecorations: some View {
+    if level > 0 {
+      if !isLastSibling || !isLastInThread {
+        CommentThreadLine()
+          .stroke(lineColor, lineWidth: lineWidth)
+          .frame(width: bigColumnWidth)
+          .offset(x: lineIndentBigColumn, y: level == 1 ? arcRadius * 2 + arcLineSpacing : 0)
+      }
+      if isLastSibling && (level > 1 && hasChildren) {
+        CommentThreadLine()
+          .stroke(lineColor, lineWidth: lineWidth)
+          .frame(width: bigColumnWidth)
+          .offset(
+            x: lineIndentBigColumn + lineSpacing + smallColumnWidth,
+            y: arcRadius * 2 + arcLineSpacing)
+      }
+      CommentThreadArc(
+        lineIndentBogColumn: lineIndentBigColumn,
+        arcRadius: arcRadius
+      )
+      .stroke(lineColor, lineWidth: lineWidth)
+      .frame(width: bigColumnWidth)
+      .offset(x: level > 1 ? bigColumnWidth + arcLineSpacing : 0)
+    }
+  }
+
+  // MARK: - Replies
+
+  @ViewBuilder
+  private func replies(for comment: TubeSDK.VideoComment) -> some View {
+    if let children = tree.children, let id = comment.id,
+      !store.state.collapsedCommentIds.contains(id)
+    {
+      ForEach(Array(children.enumerated()), id: \.element.comment?.id) { index, childTree in
+        CommentTreeView(
+          store: store,
+          tree: childTree,
+          level: level + 1,
+          isLastSibling: index == children.count - 1,
+          isLastInThread: level == 0 ? (index == children.count - 1) : isLastInThread
+        )
       }
     }
   }
