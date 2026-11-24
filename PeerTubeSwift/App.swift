@@ -213,6 +213,14 @@ struct AppFeature {
         .presented(.delegate(.navigateToChannel(host: let host, channel: let channel)))):
         return openChannel(host: host, channel: channel, in: &state)
 
+      case .videoDetail(
+        .presented(
+          .delegate(
+            .navigateToVideo(host: let host, videoId: let videoId, channelId: let channelId)))):
+        state.videoDetail = VideoDetailsFeature.State(
+          host: host, videoId: videoId, channelId: channelId)
+        return .none
+
       case .videoDetail:
         return .none
 

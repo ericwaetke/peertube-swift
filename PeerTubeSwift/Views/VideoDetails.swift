@@ -75,6 +75,7 @@ struct VideoDetailsFeature {
 
     enum Delegate {
       case navigateToChannel(host: String, channel: TubeSDK.VideoChannel)
+      case navigateToVideo(host: String, videoId: String, channelId: String?)
     }
   }
 
@@ -252,6 +253,19 @@ struct VideoDetailsFeature {
         print("Error loading recommendations: \(message)")
         state.recommendedVideos = []
         return .none
+      case .relatedVideos(.cards(.element(id: let id, action: .delegate(.videoTapped)))):
+        guard let card = state.relatedVideos.cards[id: id],
+          let videoId = card.videoUUID
+        else {
+          return .none
+        }
+        return .send(
+          .delegate(
+            .navigateToVideo(
+              host: card.instanceDisplayHost,
+              videoId: videoId,
+              channelId: card.channelId
+            )))
       case .relatedVideos(_):
         return .none
       }
