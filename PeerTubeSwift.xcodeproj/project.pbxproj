@@ -10,6 +10,7 @@
 		F627376C2EF9A871001DAA70 /* TubeSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F627376B2EF9A871001DAA70 /* TubeSDK */; };
 		F66EE81F2F0140DB00793122 /* WebURL in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE81E2F0140DB00793122 /* WebURL */; };
 		F66EE8212F0140DB00793122 /* WebURLFoundationExtras in Frameworks */ = {isa = PBXBuildFile; productRef = F66EE8202F0140DB00793122 /* WebURLFoundationExtras */; };
+		F6A10B010000000000000001 /* DependenciesTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = F6A10B020000000000000002 /* DependenciesTestSupport */; };
 		F6BFCE672EFAEB890043499D /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE662EFAEB890043499D /* SQLiteData */; };
 		F6BFCE692EFAEB890043499D /* SQLiteDataTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = F6BFCE682EFAEB890043499D /* SQLiteDataTestSupport */; };
 		F6CEF13B3028C1B70067E7A6 /* PeerSeekSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F6CEF13A3028C1B70067E7A6 /* PeerSeekSDK */; };
@@ -94,6 +95,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F6BFCE692EFAEB890043499D /* SQLiteDataTestSupport in Frameworks */,
+				F6A10B010000000000000001 /* DependenciesTestSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -189,6 +191,7 @@
 			name = PeerTubeSwiftTests;
 			packageProductDependencies = (
 				F6BFCE682EFAEB890043499D /* SQLiteDataTestSupport */,
+				F6A10B020000000000000002 /* DependenciesTestSupport */,
 			);
 			productName = PeerTubeSwiftTests;
 			productReference = F67428F22EF4AFC9000600DB /* PeerTubeSwiftTests.xctest */;
@@ -696,6 +699,14 @@
 				minimumVersion = 0.4.2;
 			};
 		};
+		F6A10B000000000000000000 /* XCRemoteSwiftPackageReference "swift-dependencies" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-dependencies";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.14.1;
+			};
+		};
 		F6BFCE652EFAEB890043499D /* XCRemoteSwiftPackageReference "sqlite-data" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pointfreeco/sqlite-data";
@@ -736,6 +747,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F66EE81D2F0140DB00793122 /* XCRemoteSwiftPackageReference "swift-url" */;
 			productName = WebURLFoundationExtras;
+		};
+		F6A10B020000000000000002 /* DependenciesTestSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F6A10B000000000000000000 /* XCRemoteSwiftPackageReference "swift-dependencies" */;
+			productName = DependenciesTestSupport;
 		};
 		F6BFCE662EFAEB890043499D /* SQLiteData */ = {
 			isa = XCSwiftPackageProductDependency;
