@@ -128,10 +128,8 @@ struct SearchTab: View {
   @Bindable var store: StoreOf<SearchTabFeature>
 
   var body: some View {
-    NavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
+    FeedNavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
       contentView
-    } destination: { pathStore in
-      destinationView(for: pathStore)
     }
   }
 
@@ -160,16 +158,6 @@ struct SearchTab: View {
     })
     .onSubmit(of: .search) {
       self.store.send(.startSearch)
-    }
-  }
-
-  @ViewBuilder
-  private func destinationView(for pathStore: StoreOf<FeedNavigationFeature.Path>) -> some View {
-    switch pathStore.case {
-    case .channelDetail(let store):
-      VideoChannelView(store: store)
-    case .feed(let store):
-      Feed(store: store)
     }
   }
 }

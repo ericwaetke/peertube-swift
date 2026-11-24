@@ -94,18 +94,10 @@ struct FeedTab: View {
   @Bindable var store: StoreOf<FeedTabFeature>
 
   var body: some View {
-    NavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
+    FeedNavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
       Feed(store: self.store.scope(state: \.subscriptionFeed, action: \.subscriptionFeed))
         .navigationTitle("Your Subscriptions")
-    } destination: { pathStore in
-      switch pathStore.case {
-      case .channelDetail(let store):
-        VideoChannelView(store: store)
-      case .feed(let store):
-        Feed(store: store)
-      }
     }
-
     .sheet(item: $store.scope(state: \.manageSubscriptions, action: \.manageSubsctiptions)) {
       store in
       NavigationStack {

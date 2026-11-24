@@ -105,10 +105,8 @@ struct ExploreTab: View {
   @Bindable var store: StoreOf<ExploreTabFeature>
 
   var body: some View {
-    NavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
+    FeedNavigationStack(path: $store.scope(state: \.navigation.path, action: \.navigation.path)) {
       contentView
-    } destination: { pathStore in
-      destinationView(for: pathStore)
     }
   }
 
@@ -149,16 +147,6 @@ struct ExploreTab: View {
           onOpenSettings: { store.send(.delegate(.openSettings)) }
         )
       }
-    }
-  }
-
-  @ViewBuilder
-  private func destinationView(for pathStore: StoreOf<FeedNavigationFeature.Path>) -> some View {
-    switch pathStore.case {
-    case .channelDetail(let store):
-      VideoChannelView(store: store)
-    case .feed(let store):
-      Feed(store: store)
     }
   }
 }
