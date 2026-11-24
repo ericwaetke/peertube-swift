@@ -18,6 +18,7 @@ struct SeekRequest: Equatable {
 struct VideoPlayerView: View {
   @Binding var isPlayerReady: Bool
   var onTimeUpdate: ((Int) -> Void)?
+  var onPlaybackStateChange: ((Bool) -> Void)?
   let videoFiles: [TubeSDK.VideoFile]
   let selectedVideoFile: TubeSDK.VideoFile?
   var startTime: Int?
@@ -32,6 +33,7 @@ struct VideoPlayerView: View {
   init(
     isPlayerReady: Binding<Bool> = .constant(false),
     onTimeUpdate: ((Int) -> Void)? = nil,
+    onPlaybackStateChange: ((Bool) -> Void)? = nil,
     videoFiles: [TubeSDK.VideoFile],
     selectedVideoFile: TubeSDK.VideoFile?,
     startTime: Int? = nil,
@@ -45,6 +47,7 @@ struct VideoPlayerView: View {
   ) {
     _isPlayerReady = isPlayerReady
     self.onTimeUpdate = onTimeUpdate
+    self.onPlaybackStateChange = onPlaybackStateChange
     self.videoFiles = videoFiles
     self.selectedVideoFile = selectedVideoFile
     self.startTime = startTime
@@ -62,6 +65,7 @@ struct VideoPlayerView: View {
       VideoPlayerViewControllerRepresentable(
         isPlayerReady: $isPlayerReady,
         onTimeUpdate: onTimeUpdate,
+        onPlaybackStateChange: onPlaybackStateChange,
         videoFiles: videoFiles,
         selectedVideoFile: selectedVideoFile,
         startTime: startTime,
@@ -93,6 +97,7 @@ struct VideoPlayerView: View {
 private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresentable {
   @Binding var isPlayerReady: Bool
   var onTimeUpdate: ((Int) -> Void)? = nil
+  var onPlaybackStateChange: ((Bool) -> Void)? = nil
   let videoFiles: [TubeSDK.VideoFile]
   let selectedVideoFile: TubeSDK.VideoFile?
   var startTime: Int? = nil
@@ -135,6 +140,8 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
           "🎬 addObserver: timeControlStatus changed to \(String(describing: player.timeControlStatus))"
         )
 
+        self.parent.onPlaybackStateChange?(player.timeControlStatus == .playing)
+
         if player.timeControlStatus == .playing, !self.hasNotifiedPlayerReady {
           print("🎬 addObserver: First frame ready, setting isPlayerReady = true")
           self.hasNotifiedPlayerReady = true
@@ -156,6 +163,7 @@ private struct VideoPlayerViewControllerRepresentable: UIViewControllerRepresent
         hasNotifiedPlayerReady = true
         parent.isPlayerReady = true
       }
+      parent.onPlaybackStateChange?(player.timeControlStatus == .playing)
 
       let interval = CMTime(seconds: 5.0, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
       timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {

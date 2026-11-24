@@ -87,7 +87,7 @@ struct PeerTubeSwiftApp: App {
 
   var body: some Scene {
     WindowGroup {
-      ContentView(store: PeerTubeSwiftApp.store)
+      ContentView(store: PeerTubeSwiftApp.store, playerManager: PlayerManager.shared)
         .onAppear {
           CustomFont.registerFonts([
             CustomFont.fjallaOne,

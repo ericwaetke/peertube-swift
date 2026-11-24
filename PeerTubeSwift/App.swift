@@ -30,6 +30,7 @@ struct AppFeature {
     var exploreTab = ExploreTabFeature.State()
     var searchTab = SearchTabFeature.State()
     var profileTab = ProfileTabFeature.State()
+    var miniPlayer = MiniPlayerFeature.State()
 
     @Presents var videoDetail: VideoDetailsFeature.State?
 
@@ -52,6 +53,7 @@ struct AppFeature {
     case exploreTab(ExploreTabFeature.Action)
     case searchTab(SearchTabFeature.Action)
     case profileTab(ProfileTabFeature.Action)
+    case miniPlayer(MiniPlayerFeature.Action)
     case videoDetail(PresentationAction<VideoDetailsFeature.Action>)
 
     case restoreVideoFromPiP(PlayerManager.VideoInfo)
@@ -221,6 +223,18 @@ struct AppFeature {
           host: host, videoId: videoId, channelId: channelId)
         return .none
 
+      case .videoDetail(.presented(.delegate(.playbackStateChanged(let isPlaying)))):
+        return .send(.miniPlayer(.playbackStateChanged(isPlaying: isPlaying)))
+
+      case .videoDetail(.presented(.delegate(.videoRegistered(let info)))):
+        return .send(.miniPlayer(.videoRegistered(info)))
+
+      case .miniPlayer(.delegate(.restoreVideo(let info))):
+        return .send(.restoreVideoFromPiP(info))
+
+      case .miniPlayer:
+        return .none
+
       case .videoDetail:
         return .none
 
@@ -265,6 +279,9 @@ struct AppFeature {
     }
     Scope(state: \.profileTab, action: \.profileTab) {
       ProfileTabFeature()
+    }
+    Scope(state: \.miniPlayer, action: \.miniPlayer) {
+      MiniPlayerFeature()
     }
     .ifLet(\.$videoDetail, action: \.videoDetail) {
       VideoDetailsFeature()
@@ -359,7 +376,7 @@ enum TubeTab {
 
 struct ContentView: View {
   @Bindable var store: StoreOf<AppFeature>
-  @State var playerManager = PlayerManager()
+  let playerManager: PlayerManager
 
   var body: some View {
     Group {
@@ -413,17 +430,21 @@ struct ContentView: View {
     }
     .onAppear {
       playerManager.onPiPRestore = { [store] in
-        guard let info = playerManager.currentVideoInfo else { return }
-        store.send(.restoreVideoFromPiP(info))
+        store.send(.miniPlayer(.maximizeButtonTapped))
+      }
+      playerManager.onPiPStart = { [store] in
+        store.send(.miniPlayer(.pipDidStart))
+      }
+      playerManager.onPiPStop = { [store] in
+        store.send(.miniPlayer(.pipDidStop))
       }
     }
     .onChange(of: store.videoDetail) { oldValue, newValue in
-      if oldValue != nil && newValue == nil && playerManager.currentVideoInfo != nil {
-        // Sheet dismissing → start PiP
-        playerManager.startPiP()
-      } else if newValue != nil && playerManager.isPiPActive {
-        // New video opened while PiP is active → stop PiP immediately
-        playerManager.stopPiP()
+      if oldValue != nil && newValue == nil {
+        // The reducer decides whether a running video is promoted to PiP.
+        store.send(.miniPlayer(.videoDetailSheetDismissed))
+      } else if newValue != nil {
+        store.send(.miniPlayer(.videoDetailSheetPresented))
       }
     }
     .sheet(
@@ -449,5 +470,7 @@ struct ContentView: View {
   ContentView(
     store: Store(initialState: AppFeature.State()) {
       AppFeature()
-    })
+    },
+    playerManager: PlayerManager()
+  )
 }

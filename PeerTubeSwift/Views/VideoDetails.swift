@@ -76,6 +76,8 @@ struct VideoDetailsFeature {
     enum Delegate {
       case navigateToChannel(host: String, channel: TubeSDK.VideoChannel)
       case navigateToVideo(host: String, videoId: String, channelId: String?)
+      case playbackStateChanged(isPlaying: Bool)
+      case videoRegistered(PlayerManager.VideoInfo)
     }
   }
 
@@ -296,6 +298,9 @@ struct VideoDetails: View {
             VideoPlayerView(
               isPlayerReady: $isPlayerReady,
               onTimeUpdate: { time in self.store.send(.timeUpdate(time)) },
+              onPlaybackStateChange: { isPlaying in
+                self.store.send(.delegate(.playbackStateChanged(isPlaying: isPlaying)))
+              },
               videoFiles: videoFiles,
               selectedVideoFile: self.store.actions.selectedQuality,
               startTime: videoDetails.userHistory?.currentTime,
@@ -391,13 +396,15 @@ struct VideoDetails: View {
     }
     .onChange(of: store.videoDetails) { _, details in
       guard let details else { return }
-      playerManager.currentVideoInfo = PlayerManager.VideoInfo(
+      let info = PlayerManager.VideoInfo(
         host: store.host,
         videoId: store.videoId,
         title: details.name,
         channelName: details.channel?.displayName,
         thumbnailUrl: details.bestThumbnailUrl(client: store.client, size: .large)
       )
+      playerManager.currentVideoInfo = info
+      store.send(.delegate(.videoRegistered(info)))
     }
   }
 }

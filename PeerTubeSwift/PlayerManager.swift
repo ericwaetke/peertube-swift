@@ -16,6 +16,8 @@ class PlayerManager: NSObject {
   var isPiPActive = false
   var currentVideoInfo: VideoInfo?
   var onPiPRestore: (() -> Void)?
+  var onPiPStart: (() -> Void)?
+  var onPiPStop: (() -> Void)?
 
   private(set) var currentVideoId: String?
 
@@ -86,6 +88,9 @@ class PlayerManager: NSObject {
   }
 
   func stopPiP() {
+    // A stop that never actually started must not leave a stale programmatic flag,
+    // otherwise the next user-initiated restore is silently suppressed.
+    guard isPiPActive else { return }
     isProgrammaticStop = true
     pipController?.stopPictureInPicture()
   }
@@ -116,17 +121,26 @@ class PlayerManager: NSObject {
   }
 }
 
+extension PlayerManager {
+  /// One instance shared by the views and the live `MiniPlayerClient` so effects
+  /// operate on the same player the UI is showing.
+  @MainActor static let shared = PlayerManager()
+}
+
 extension PlayerManager: AVPictureInPictureControllerDelegate {
   func pictureInPictureControllerWillStartPictureInPicture(
     _ pictureInPictureController: AVPictureInPictureController
   ) {
     isPiPActive = true
+    onPiPStart?()
   }
 
   func pictureInPictureControllerDidStopPictureInPicture(
     _ pictureInPictureController: AVPictureInPictureController
   ) {
+    isProgrammaticStop = false
     isPiPActive = false
+    onPiPStop?()
   }
 
   func pictureInPictureController(
