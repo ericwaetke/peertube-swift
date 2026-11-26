@@ -707,6 +707,29 @@ extension BaseSuite {
       }
       expectNoDifference(store.state.topics.selectedCategories, [category])
     }
+
+    @Test func finishButtonTappedDismissesOnboarding() async {
+      let store = TestStore(
+        initialState: appInitialState(
+          hadOnboarding: false,
+          onboarding: onboardingState(step: .recommendedChannels, stepCount: .withoutLogin))
+      ) {
+        AppFeature()
+      } withDependencies: {
+        try! $0.bootstrapDatabase()
+      }
+
+      #expect(store.state.onboarding != nil)
+
+      await store.send(
+        .onboarding(.presented(.nextButton(.nextButtonTapped(.finish))))
+      ) {
+        $0.$hadOnboarding.withLock { $0 = true }
+      }
+      await store.receive(\.onboarding.presented.finishOnboarding) {
+        $0.onboarding = nil
+      }
+    }
   }
 }
 
