@@ -21,6 +21,8 @@ struct OnboardingRecommendedChannelsFeature {
       []
 
     var loading = false
+
+    var hasChannels: Bool { !channels.isEmpty }
   }
 
   enum Action {
@@ -71,7 +73,7 @@ struct OnboardingRecommendedChannelsFeature {
             await send(.saveChannelRecommendations(recommendations))
           } catch {
             // Leave the current list untouched if recommendations can't load.
-            print("error loading channels")
+            print("error loading channels: \(error)")
           }
         }
       case .saveChannelRecommendations(let recommendations):

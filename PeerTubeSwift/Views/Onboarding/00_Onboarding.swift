@@ -299,7 +299,7 @@ struct OnboardingView: View {
           Text(OnboardingStep.preferedLanguage.headline ?? "")
             .font(CustomFont.fjallaOne.swiftUIFont(size: 28, relativeTo: .title))
             .lineLimit(2)
-            .frame(width: .infinity)
+            .frame(maxWidth: .infinity)
           OnboardingPreferedLanguageView(
             store: store.scope(\.preferedLanguage, action: \.preferedLanguage)
           )
@@ -322,7 +322,7 @@ struct OnboardingView: View {
           Text(OnboardingStep.recommendedChannels.headline ?? "")
             .font(CustomFont.fjallaOne.swiftUIFont(size: 28, relativeTo: .title))
             .lineLimit(2)
-            .frame(width: .infinity)
+            .frame(maxWidth: .infinity)
           OnboardingRecommendedChannelsView(
             store: store.scope(\.recommendedChannels, action: \.recommendedChannels)
           )

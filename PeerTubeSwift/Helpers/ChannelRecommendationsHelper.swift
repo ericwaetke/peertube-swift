@@ -137,18 +137,16 @@ private func fetchChannelRecommendations(
 
   let peerSeekClient = PeerSeekClient()
 
-  // Search categories concurrently; a slow category no longer serializes the list.
-  let videos = try await withThrowingTaskGroup(of: [PeerSeekSDK.Video].self) { group in
-    for category in categories {
-      group.addTask {
-        try await peerSeekClient.search(q: "", category: category)
-      }
+  // PeerSeek rate limits concurrent requests (HTTP 429), so search sequentially.
+  // One failing category must not discard the successful ones either.
+  var videos: [PeerSeekSDK.Video] = []
+  for category in categories {
+    do {
+      let results = try await searchWithRetry(client: peerSeekClient, category: category)
+      videos.append(contentsOf: results.sorted { $0.views > $1.views })
+    } catch {
+      print("Failed to load category \(category.rawValue): \(error)")
     }
-    var results: [PeerSeekSDK.Video] = []
-    for try await result in group {
-      results.append(contentsOf: result)
-    }
-    return results.sorted { $0.views > $1.views }
   }
 
   // PeerSeek returns videos, not channels — keep one entry per channel.
@@ -170,4 +168,28 @@ private func fetchChannelRecommendations(
   // Avatars are resolved lazily per visible row by ChannelPreviewFeature;
   // doing it here would block the whole list on every channel's instance.
   return Set(channelsById.values)
+}
+
+/// PeerSeek answers bursts of searches with HTTP 429. Back off and retry a few
+/// times rather than dropping the whole category.
+private func searchWithRetry(
+  client: PeerSeekClient,
+  category: PeerSeekSDK.Category
+) async throws -> [PeerSeekSDK.Video] {
+  let backoffs: [Duration] = [.seconds(1), .seconds(2), .seconds(4)]
+  var attempt = 0
+
+  while true {
+    do {
+      return try await client.search(q: "", category: category)
+    } catch let error as SeekError {
+      guard case .invalidResponse(let statusCode) = error,
+        statusCode == 429,
+        attempt < backoffs.count
+      else { throw error }
+
+      try await Task.sleep(for: backoffs[attempt])
+      attempt += 1
+    }
+  }
 }
