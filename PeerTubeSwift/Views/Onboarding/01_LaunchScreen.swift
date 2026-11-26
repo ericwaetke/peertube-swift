@@ -83,17 +83,17 @@ struct OnboardingLaunchScreenView: View {
           .font(Font.system(size: 256))
           .containerRelativeFrame(.horizontal)
           .containerRelativeFrame(.vertical)
-          .background(Color.accent.gradient)
-          .drawingGroup()
-          .visualEffect({ content, proxy in
-            content
-              .distortionEffect(
-                ShaderLibrary.wave(
-                  .float(elapsed)
-                ),
-                maxSampleOffset: .zero
-              )
-          })
+        //          .background(Color.accent.gradient)
+        //          .drawingGroup()
+        //          .visualEffect({ content, proxy in
+        //            content
+        //              .distortionEffect(
+        //                ShaderLibrary.wave(
+        //                  .float(elapsed)
+        //                ),
+        //                maxSampleOffset: .zero
+        //              )
+        //          })
 
       }
     )

@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import Dependencies
 import SwiftUI
 
 @Reducer
@@ -24,6 +25,8 @@ struct ChannelRecommendationsFeature {
     case getRecommendations
   }
 
+  @Dependency(\.channelRecommendations) var channelRecommendations
+
   var body: some ReducerOf<Self> {
     Reduce { state, action in
       switch action {
@@ -41,7 +44,7 @@ struct ChannelRecommendationsFeature {
           print("getting recommendations")
           do {
             await send(.setLoading(true))
-            let channels = try await getRecommendations()
+            let channels = try await channelRecommendations.getChannelPicks()
             await send(.setChannels(channels))
           } catch {
             await send(.setError(error.localizedDescription))

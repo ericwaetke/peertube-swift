@@ -164,7 +164,9 @@ struct OnboardingFeature {
       OnboardingTopicsFeature()
     }
     // 05 Channel Recommendations
-    //    Scope(state)
+    Scope(state: \.recommendedChannels, action: \.recommendedChannels) {
+      OnboardingRecommendedChannelsFeature()
+    }
     Reduce { state, action in
       switch action {
       case .setOnboardingStepCount(let stepCount):
@@ -207,6 +209,7 @@ struct OnboardingFeature {
             case .preferedLanguage:
               return await send(.setOnboardingStep(.topics))
             case .topics:
+              await send(.recommendedChannels(.loadChannelRecommendations))
               return await send(.setOnboardingStep(.recommendedChannels))
             case .recommendedChannels:
               if stepCount == .withoutLogin {
@@ -296,6 +299,7 @@ struct OnboardingView: View {
           Text(OnboardingStep.preferedLanguage.headline ?? "")
             .font(CustomFont.fjallaOne.swiftUIFont(size: 28, relativeTo: .title))
             .lineLimit(2)
+            .frame(width: .infinity)
           OnboardingPreferedLanguageView(
             store: store.scope(\.preferedLanguage, action: \.preferedLanguage)
           )
@@ -318,6 +322,7 @@ struct OnboardingView: View {
           Text(OnboardingStep.recommendedChannels.headline ?? "")
             .font(CustomFont.fjallaOne.swiftUIFont(size: 28, relativeTo: .title))
             .lineLimit(2)
+            .frame(width: .infinity)
           OnboardingRecommendedChannelsView(
             store: store.scope(\.recommendedChannels, action: \.recommendedChannels)
           )

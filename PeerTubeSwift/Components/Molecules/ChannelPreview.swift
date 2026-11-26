@@ -13,8 +13,10 @@ enum ChannelPreviewVariant {
 @Reducer
 struct ChannelPreviewFeature {
   @ObservableState
-  struct State: Equatable {
+  struct State: Equatable, Identifiable {
     let host: String
+    /// Stable row identity, independent of later channel/instance updates.
+    let channelID: String
     @Shared(.inMemory("client")) var client: TubeSDKClient = try! TubeSDKClient(
       scheme: "https", host: "peertube.wtf")
 
@@ -23,9 +25,12 @@ struct ChannelPreviewFeature {
     var videoChannel: TubeSDK.VideoChannel?
     var instance: Instance?
     var isSubscribedToChannel = false
+    var isLoadingAvatar = false
     var variant: ChannelPreviewVariant = .regular
     var language: String?
     var primaryCategory: String?
+
+    var id: String { channelID }
 
     init(
       host: String,
@@ -35,9 +40,11 @@ struct ChannelPreviewFeature {
       isSubscribedToChannel: Bool = false,
       variant: ChannelPreviewVariant = .regular,
       language: String? = nil,
-      primaryCategory: String? = nil
+      primaryCategory: String? = nil,
+      channelID: String? = nil
     ) {
       self.host = host
+      self.channelID = channelID ?? "\(videoChannel?.name ?? "")@\(videoChannel?.host ?? host)"
       self.notificationBell = notificationBell
       self.videoChannel = videoChannel
       self.instance = instance
@@ -60,12 +67,16 @@ struct ChannelPreviewFeature {
     case userBadge(UserBadgeFeature.Action)
 
     case loadChannelPreview(TubeSDK.VideoChannel)
+    case loadAvatarIfNeeded
+    case avatarLoaded(String?)
     case instanceLoaded(Instance)
     case subscribeButtonTapped
     case changeSubscriptionState(Bool)
     case subscriptionStateLoaded(Bool, Bool)
     case channelTapped
   }
+
+  @Dependency(\.channelRecommendations) var channelRecommendations
 
   var body: some ReducerOf<Self> {
     Scope(state: \.notificationBell, action: \.notificationBell) {
@@ -130,6 +141,35 @@ struct ChannelPreviewFeature {
             await send(.subscriptionStateLoaded(hasLocalSub ?? false, localNotificationState))
           }
         }
+
+      case .loadAvatarIfNeeded:
+        guard !state.isLoadingAvatar,
+          state.videoChannel?.avatars?.first?.fileUrl == nil,
+          let handle = state.videoChannel?.name,
+          let host = state.videoChannel?.host
+        else { return .none }
+
+        state.isLoadingAvatar = true
+        return .run { [handle, host] send in
+          let url = await channelRecommendations.loadAvatar(handle, host)
+          await send(.avatarLoaded(url))
+        }
+        .cancellable(id: "avatar-\(handle)@\(host)", cancelInFlight: true)
+
+      case .avatarLoaded(let url):
+        state.isLoadingAvatar = false
+        guard let url else { return .none }
+
+        state.videoChannel?.avatars = [ActorImage(fileUrl: url)]
+        // UserBadgeFeature.State's fields are all `let`, so rebuild it.
+        state.userBadge = UserBadgeFeature.State(
+          variant: .medium,
+          avatarUrl: url,
+          channelDisplayName: state.videoChannel?.displayName ?? "Unknown Channel",
+          instanceDisplayName: state.videoChannel?.host ?? "Unknown Community",
+          instanceIconUrl: state.instance?.avatarUrl
+        )
+        return .none
 
       case .instanceLoaded(let instance):
         state.instance = instance
