@@ -13,12 +13,8 @@ import SwiftUI
 struct OnboardingPreferedLanguageFeature {
   @ObservableState
   struct State: Equatable {
-    @Shared(.appStorage("preferedLanguages")) var languages: [Locale.Language] = Locale.Language
-      .systemLanguages.filter { language in
-        NSLocale.preferredLanguages.contains { preferedLanguage in
-          language.minimalIdentifier == preferedLanguage
-        }
-      }
+    @Shared(.appStorage("preferedLanguages")) var languages: [Locale.Language] =
+      Locale.Language.defaultPreferredLanguages()
 
     @Presents var addLanguageSheet: OnboardingLanguageListFeature.State?
   }

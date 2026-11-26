@@ -18,14 +18,11 @@ struct OnboardingLanguageListFeature {
     var availableLanguages: [Locale.Language]
 
     init(alreadySelectedLanguages: [Locale.Language] = []) {
-      self.preferedLanguages = Locale.Language.systemLanguages.filter { language in
-        NSLocale.preferredLanguages.contains { preferedLanguage in
-          language.minimalIdentifier == preferedLanguage
-            && !alreadySelectedLanguages.contains(where: { $0 == language })
-        }
+      self.preferedLanguages = Locale.Language.defaultPreferredLanguages().filter { language in
+        !alreadySelectedLanguages.contains(language)
       }
       self.availableLanguages = Locale.Language.systemLanguages.filter { language in
-        !alreadySelectedLanguages.contains(where: { $0 == language })
+        !alreadySelectedLanguages.contains(language)
       }
     }
   }

@@ -286,6 +286,25 @@ struct OnboardingTests {
 
 @MainActor
 struct OnboardingLanguageTests {
+  /// Devices report region-qualified identifiers ("en-US", "de-DE") while
+  /// `systemLanguages` uses minimal identifiers ("en", "de"). Resolving them
+  /// keeps the selected/recommended lists from being empty on a real device.
+  @Test func defaultLanguagesResolveRegionQualifiedIdentifiers() {
+    let languages = Locale.Language.defaultPreferredLanguages(
+      preferred: ["en-US", "de-DE", "zh-Hans-CN"],
+      system: Locale.Language.systemLanguages
+    )
+    expectNoDifference(languages.map(\.minimalIdentifier), ["en", "de", "zh"])
+  }
+
+  @Test func defaultLanguagesAreDeduplicated() {
+    let languages = Locale.Language.defaultPreferredLanguages(
+      preferred: ["en-US", "en"],
+      system: Locale.Language.systemLanguages
+    )
+    #expect(languages.count == 1)
+  }
+
   // MARK: OnboardingPreferedLanguageFeature
 
   @Test func addLanguageButtonTappedPresentsSheet() async throws {
@@ -324,20 +343,20 @@ struct OnboardingLanguageTests {
   }
 
   @Test func languageTappedForAlreadySelectedLanguageOnlyDismissesSheet() async throws {
+    // Use an injected language rather than the locale/app-storage-derived
+    // default, so this test behaves the same on a device and a simulator.
+    let language = Locale.Language(identifier: "en")
     var initialState = OnboardingPreferedLanguageFeature.State()
-    guard let existingLanguage = initialState.languages.first else {
-      Issue.record("Expected at least one preferred language in the initial state")
-      return
-    }
+    initialState.$languages.withLock { $0 = [language] }
     initialState.addLanguageSheet = OnboardingLanguageListFeature.State(
-      alreadySelectedLanguages: initialState.languages)
+      alreadySelectedLanguages: [language])
     let store = TestStore(initialState: initialState) {
       OnboardingPreferedLanguageFeature()
     }
 
     // Duplicate tap: languages must not change (no closure on send), but the
     // sheet is still dismissed.
-    await store.send(.addLanguageSheet(.presented(.languageTapped(existingLanguage))))
+    await store.send(.addLanguageSheet(.presented(.languageTapped(language))))
     await store.receive(\.dismissSheet) { $0.addLanguageSheet = nil }
   }
 
