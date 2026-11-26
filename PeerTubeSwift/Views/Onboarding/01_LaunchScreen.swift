@@ -74,29 +74,29 @@ struct OnboardingLaunchScreenView: View {
     }
     .zIndex(2)
     .containerRelativeFrame(.horizontal)
-    .background(
-      TimelineView(.animation) { tl in
-        let elapsed = start.distance(to: tl.date)
+    //    .background(
+    //      TimelineView(.animation) { tl in
+    //        let elapsed = start.distance(to: tl.date)
+    //
+    //        Image(systemName: "play.fill")
+    //          .foregroundStyle(.white)
+    //          .font(Font.system(size: 256))
+    //          .containerRelativeFrame(.horizontal)
+    //          .containerRelativeFrame(.vertical)
+    //          .background(Color.accent.gradient)
+    //          .drawingGroup()
+    //          .visualEffect({ content, proxy in
+    //            content
+    //              .distortionEffect(
+    //                ShaderLibrary.wave(
+    //                  .float(elapsed)
+    //                ),
+    //                maxSampleOffset: .zero
+    //              )
+    //          })
 
-        Image(systemName: "play.fill")
-          .foregroundStyle(.white)
-          .font(Font.system(size: 256))
-          .containerRelativeFrame(.horizontal)
-          .containerRelativeFrame(.vertical)
-        //          .background(Color.accent.gradient)
-        //          .drawingGroup()
-        //          .visualEffect({ content, proxy in
-        //            content
-        //              .distortionEffect(
-        //                ShaderLibrary.wave(
-        //                  .float(elapsed)
-        //                ),
-        //                maxSampleOffset: .zero
-        //              )
-        //          })
-
-      }
-    )
+    //      }
+    //    )
   }
 
   @ViewBuilder
