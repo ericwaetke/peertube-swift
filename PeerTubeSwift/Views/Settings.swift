@@ -53,6 +53,9 @@ struct SettingsFeature {
           recommendedChannels: OnboardingRecommendedChannelsFeature.State()
         )
         return .none
+      case .onboarding(.presented(.finishOnboarding)):
+        state.onboarding = nil
+        return .none
       case .onboarding(_):
         return .none
       }
@@ -157,7 +160,6 @@ struct SettingsView: View {
         Text("Log out")
           .foregroundStyle(Color("Label/Action"))
           .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
-          .containerRelativeFrame(.horizontal)
       }
       Button {
         store.send(.onboardingButtonTapped)
@@ -165,7 +167,6 @@ struct SettingsView: View {
         Text("Replay Onboarding")
           .foregroundStyle(Color("Label/Action"))
           .font(CustomFont.inclusiveSansRegular.swiftUIFont(size: 17, relativeTo: .body))
-          .containerRelativeFrame(.horizontal)
       }
     }
     .navigationTitle("Account Settings")
