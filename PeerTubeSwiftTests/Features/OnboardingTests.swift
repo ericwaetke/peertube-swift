@@ -517,3 +517,220 @@ struct AppOnboardingTests {
     )
   }
 }
+
+// MARK: - Exhaustive step mappings
+
+extension BaseSuite {
+  @MainActor
+  @Suite(.serialized) struct OnboardingStepMappingTests {
+    @Test func stepIndexFollowsStepCount() {
+      expectNoDifference(OnboardingStep.launchScreen.stepIndex(for: .withLogin), 0)
+      expectNoDifference(OnboardingStep.launchScreen.stepIndex(for: .withoutLogin), 0)
+      expectNoDifference(OnboardingStep.login.stepIndex(for: .withLogin), 1)
+      expectNoDifference(OnboardingStep.login.stepIndex(for: .withoutLogin), -1)
+      expectNoDifference(OnboardingStep.preferedLanguage.stepIndex(for: .withLogin), 2)
+      expectNoDifference(OnboardingStep.preferedLanguage.stepIndex(for: .withoutLogin), 1)
+      expectNoDifference(OnboardingStep.topics.stepIndex(for: .withLogin), 3)
+      expectNoDifference(OnboardingStep.topics.stepIndex(for: .withoutLogin), 2)
+      expectNoDifference(OnboardingStep.recommendedChannels.stepIndex(for: .withLogin), 4)
+      expectNoDifference(OnboardingStep.recommendedChannels.stepIndex(for: .withoutLogin), 3)
+      expectNoDifference(OnboardingStepCount.withLogin.rawValue, 5)
+      expectNoDifference(OnboardingStepCount.withoutLogin.rawValue, 3)
+    }
+
+    @Test func headlineIsShownOnlyOnContentSteps() {
+      expectNoDifference(
+        OnboardingStep.preferedLanguage.headline, "Select your Prefered Languages")
+      expectNoDifference(
+        OnboardingStep.topics.headline, "What topics are you interested in?")
+      expectNoDifference(
+        OnboardingStep.recommendedChannels.headline, "Which Creators Do You Find Interesting?")
+      expectNoDifference(OnboardingStep.launchScreen.headline, nil)
+      expectNoDifference(OnboardingStep.login.headline, nil)
+    }
+
+    @Test func visibilityFlagsFollowStep() {
+      let steps: [OnboardingStep] = [
+        .launchScreen, .login, .preferedLanguage, .topics, .recommendedChannels,
+      ]
+      for step in steps {
+        let isLaunch = step == .launchScreen
+        let isLogin = step == .login
+        expectNoDifference(step.nextButtonVisible, !isLaunch)
+        expectNoDifference(step.backButtonVisible, !isLaunch)
+        expectNoDifference(step.onboardingHeaderVisible, !isLaunch && !isLogin)
+        expectNoDifference(step.skipButtonVisible, !isLaunch && !isLogin)
+      }
+    }
+
+    @Test func nextButtonLabelsFollowVariant() {
+      expectNoDifference(O_NextButtonVariant.next.label, "Next")
+      expectNoDifference(O_NextButtonVariant.login.label, "Login")
+      expectNoDifference(O_NextButtonVariant.finish.label, "Finish")
+    }
+  }
+}
+
+// MARK: - With-account flow and persistence
+
+extension BaseSuite {
+  @MainActor
+  @Suite(.serialized) struct OnboardingHardenedFlowTests {
+    @Test func collapseKeyboardClearsFocusedField() async {
+      var state = onboardingState(step: .login, stepCount: .withLogin)
+      state.login.focusedField = .password
+      let store = TestStore(initialState: state) {
+        OnboardingFeature()
+      }
+
+      await store.send(\.collapseKeyboard) {
+        $0.login.focusedField = nil
+      }
+    }
+
+    @Test func successfulLoginAdvancesToLanguageAndFlipsVariant() async {
+      let store = TestStore(initialState: onboardingState(step: .login, stepCount: .withLogin)) {
+        OnboardingFeature()
+      }
+
+      await store.send(.login(.delegate(.didLogin(stubbedSession()))))
+      await store.receive(\.setOnboardingStep, .preferedLanguage) {
+        $0.onboardingStep = .preferedLanguage
+        $0.nextButton.variant = .next
+      }
+    }
+
+    @Test func withAccountWalksFromSuccessfulLoginToFinish() async {
+      let store = TestStore(initialState: onboardingState(step: .login, stepCount: .withLogin)) {
+        OnboardingFeature()
+      }
+
+      await store.send(.login(.delegate(.didLogin(stubbedSession()))))
+      await store.receive(\.setOnboardingStep, .preferedLanguage) {
+        $0.onboardingStep = .preferedLanguage
+        $0.nextButton.variant = .next
+      }
+
+      await store.send(\.nextButton.nextButtonTapped, .next)
+      await store.receive(\.setOnboardingStep, .topics) {
+        $0.onboardingStep = .topics
+      }
+
+      await store.send(\.nextButton.nextButtonTapped, .next)
+      await store.receive(\.setOnboardingStep, .recommendedChannels) {
+        $0.onboardingStep = .recommendedChannels
+        $0.nextButton.variant = .finish
+      }
+
+      await store.send(\.nextButton.nextButtonTapped, .finish)
+      await store.receive(\.finishOnboarding)
+    }
+
+    @Test func backFromTopicsGoesToLanguageWhenWithLogin() async {
+      let store = TestStore(
+        initialState: onboardingState(step: .topics, stepCount: .withLogin)
+      ) {
+        OnboardingFeature()
+      }
+
+      await store.send(\.backButtonTapped)
+      await store.receive(\.setOnboardingStep, .preferedLanguage) {
+        $0.onboardingStep = .preferedLanguage
+      }
+    }
+
+    @Test func selectedLanguageIsVisibleInParentState() async throws {
+      let store = TestStore(
+        initialState: onboardingState(step: .preferedLanguage, stepCount: .withoutLogin)
+      ) {
+        OnboardingFeature()
+      }
+      let alreadySelected = store.state.preferedLanguage.languages
+      guard
+        let language = Locale.Language.systemLanguages.first(where: {
+          !alreadySelected.contains($0)
+        })
+      else {
+        Issue.record("Expected a system language not yet selected")
+        return
+      }
+
+      await store.send(\.preferedLanguage.addLanguageButtonTapped) {
+        $0.preferedLanguage.addLanguageSheet = OnboardingLanguageListFeature.State(
+          alreadySelectedLanguages: alreadySelected
+        )
+      }
+      await store.send(
+        .preferedLanguage(.addLanguageSheet(.presented(.languageTapped(language))))
+      ) {
+        $0.preferedLanguage.$languages.withLock { $0 = alreadySelected + [language] }
+      }
+      await store.receive(\.preferedLanguage.dismissSheet) {
+        $0.preferedLanguage.addLanguageSheet = nil
+      }
+
+      expectNoDifference(store.state.preferedLanguage.languages, alreadySelected + [language])
+    }
+
+    @Test func selectedTopicsAreVisibleInParentState() async throws {
+      guard let category = shownCategories.keys.first else {
+        Issue.record("Expected at least one shown category")
+        return
+      }
+      let store = TestStore(
+        initialState: {
+          var state = onboardingState(step: .topics, stepCount: .withoutLogin)
+          state.topics.$selectedCategories.withLock { $0 = [] }
+          return state
+        }()
+      ) {
+        OnboardingFeature()
+      }
+
+      await store.send(\.topics.tappedOnCategoryCard, category) {
+        $0.topics.$selectedCategories.withLock { $0 = [category] }
+      }
+      expectNoDifference(store.state.topics.selectedCategories, [category])
+    }
+  }
+}
+
+// MARK: - App wiring and replay
+
+extension BaseSuite {
+  @MainActor
+  @Suite(.serialized) struct AppOnboardingHardenedTests {
+    @Test func settingsReplayPresentsOnboarding() async {
+      let store = TestStore(initialState: SettingsFeature.State()) {
+        SettingsFeature()
+      } withDependencies: {
+        try! $0.bootstrapDatabase()
+      }
+
+      await store.send(\.onboardingButtonTapped) {
+        $0.onboarding = OnboardingFeature.State(
+          onboardingStep: .launchScreen,
+          launchScreen: OnboardingLaunchScreenFeature.State(),
+          login: LoginFeature.State(),
+          preferedLanguage: OnboardingPreferedLanguageFeature.State(),
+          topics: OnboardingTopicsFeature.State(),
+          recommendedChannels: OnboardingRecommendedChannelsFeature.State()
+        )
+      }
+    }
+  }
+}
+
+// MARK: - Channel recommendations placeholder
+
+extension BaseSuite {
+  @MainActor
+  @Suite(.serialized) struct RecommendedChannelsPlaceholderTests {
+    /// Channels are now loaded from PeerSeek when the step is reached, so the
+    /// step starts empty rather than with seeded channels.
+    @Test func channelsStepStartsEmptyUntilRecommendationsLoad() {
+      let state = OnboardingRecommendedChannelsFeature.State()
+      #expect(state.hasChannels == false)
+    }
+  }
+}

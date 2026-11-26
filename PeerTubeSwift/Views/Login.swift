@@ -46,7 +46,6 @@ struct LoginFeature {
     scheme: "https", host: "peertube.wtf")
 
   var body: some ReducerOf<Self> {
-
     BindingReducer()
 
     Reduce { state, action in
@@ -94,8 +93,8 @@ struct LoginFeature {
         return .run { [authClient = self.authClient, dismiss = self.dismiss, session] send in
           try await authClient.saveSession(session)
           await send(.delegate(.didLogin(session)))
-        } catch: { _, _ in
-          print("Failed to save session: \\(error)")
+        } catch: { error, _ in
+          print("Failed to save session: \(error)")
         }
 
       case .loginResponse(.failure(let error)):
