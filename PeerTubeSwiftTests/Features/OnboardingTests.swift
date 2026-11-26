@@ -730,6 +730,26 @@ extension BaseSuite {
         $0.onboarding = nil
       }
     }
+
+    @Test func finishButtonTappedDismissesOnboardingInDebugSettings() async {
+      let store = TestStore(
+        initialState: SettingsFeature.State(
+          onboarding: onboardingState(step: .recommendedChannels, stepCount: .withoutLogin))
+      ) {
+        SettingsFeature()
+      } withDependencies: {
+        try! $0.bootstrapDatabase()
+      }
+
+      #expect(store.state.onboarding != nil)
+
+      await store.send(
+        .onboarding(.presented(.nextButton(.nextButtonTapped(.finish))))
+      )
+      await store.receive(\.onboarding.presented.finishOnboarding) {
+        $0.onboarding = nil
+      }
+    }
   }
 }
 
