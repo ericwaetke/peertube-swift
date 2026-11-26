@@ -95,9 +95,16 @@ struct OnboardingTests {
     await store.receive(\.setOnboardingStep, .topics) { $0.onboardingStep = .topics }
 
     await store.send(\.nextButton.nextButtonTapped, .next)
+    await store.receive(\.recommendedChannels.loadChannelRecommendations) {
+      $0.recommendedChannels.loading = true
+    }
     await store.receive(\.setOnboardingStep, .recommendedChannels) {
       $0.onboardingStep = .recommendedChannels
       $0.nextButton.variant = .finish
+    }
+    await store.receive(\.recommendedChannels.saveChannelRecommendations, Set<RecommendedChannel>())
+    {
+      $0.recommendedChannels.loading = false
     }
 
     // The last step shows the finish variant, which completes onboarding directly.
@@ -617,9 +624,17 @@ extension BaseSuite {
       }
 
       await store.send(\.nextButton.nextButtonTapped, .next)
+      await store.receive(\.recommendedChannels.loadChannelRecommendations) {
+        $0.recommendedChannels.loading = true
+      }
       await store.receive(\.setOnboardingStep, .recommendedChannels) {
         $0.onboardingStep = .recommendedChannels
         $0.nextButton.variant = .finish
+      }
+      await store.receive(
+        \.recommendedChannels.saveChannelRecommendations, Set<RecommendedChannel>()
+      ) {
+        $0.recommendedChannels.loading = false
       }
 
       await store.send(\.nextButton.nextButtonTapped, .finish)
