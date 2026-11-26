@@ -298,6 +298,48 @@ struct AssembledVideo: Identifiable, Hashable {
   var data: Data
 }
 
+@Table("activities_video")
+struct VideoActivity: Identifiable, Equatable {
+  let id: UUID
+  var videoID: Video.ID?
+  var channelID: VideoChannel.ID?
+  var timestamp: Date
+  var type: VideoActivityType
+
+  enum VideoActivityType: String, QueryBindable, CaseIterable {
+    case opened
+    case watched
+    case liked
+    case disliked
+    case commented
+    case descriptionOpened
+    case channelTapped
+    case relatedVideoTapped
+    case videoTimestampSeekTapped
+    case outboundDescriptionLinkTapped
+    case share
+  }
+
+  static func record(
+    type: VideoActivityType,
+    videoID: Video.ID?,
+    channelID: VideoChannel.ID?,
+    in database: any DatabaseWriter
+  ) throws {
+    try database.write { db in
+      try VideoActivity.upsert {
+        VideoActivity.Draft(
+          videoID: videoID,
+          channelID: channelID,
+          timestamp: .now,
+          type: type
+        )
+      }
+      .execute(db)
+    }
+  }
+}
+
 func appDatabase() throws -> any DatabaseWriter {
   let database = try SQLiteData.defaultDatabase()
   var migrator = DatabaseMigrator()
@@ -444,6 +486,35 @@ func appDatabase() throws -> any DatabaseWriter {
             ALTER TABLE "videoChannels"
             ADD COLUMN "followerCount" INTEGER
         """)
+  }
+
+  migrator.registerMigration("Create 'activities_video'") { db in
+    try #sql(
+      """
+          CREATE TABLE "activities_video" (
+              "id" TEXT PRIMARY KEY NOT NULL ON CONFLICT REPLACE DEFAULT (uuid()),
+              "videoID" TEXT REFERENCES "videos"("id") ON DELETE SET NULL,
+              "channelID" TEXT REFERENCES "videoChannels"("id") ON DELETE SET NULL,
+              "timestamp" TEXT NOT NULL DEFAULT current_timestamp,
+              "type" TEXT NOT NULL
+          ) STRICT
+      """
+    )
+    .execute(db)
+
+    try #sql(
+      """
+          CREATE INDEX "index_activities_video_on_videoID" ON "activities_video"("videoID")
+      """
+    )
+    .execute(db)
+
+    try #sql(
+      """
+          CREATE INDEX "index_activities_video_on_timestamp" ON "activities_video"("timestamp")
+      """
+    )
+    .execute(db)
   }
 
   try migrator.migrate(database)

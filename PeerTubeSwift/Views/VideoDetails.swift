@@ -27,6 +27,7 @@ struct VideoDetailsFeature {
 
     var videoDetails: TubeSDK.VideoDetails?
     var pauseTrigger: Int = 0
+    var hasRecordedWatched = false
 
     var recommendedVideos: [VideoRecommendation] = []
 
@@ -105,6 +106,21 @@ struct VideoDetailsFeature {
         return .none
 
       case .timeUpdate(let time):
+        // The first periodic player time update (every 5s) counts as a watch.
+        // A fresh feature state is created for every video, so this fires once per video.
+        let shouldRecordWatched = !state.hasRecordedWatched && state.videoDetails != nil
+        if shouldRecordWatched { state.hasRecordedWatched = true }
+
+        let watchedVideoID = shouldRecordWatched ? state.videoDetails?.uuid : nil
+        let watchedChannelID: VideoChannel.ID? = {
+          guard shouldRecordWatched,
+            let channel = state.videoDetails?.channel,
+            let name = channel.name,
+            let host = channel.host
+          else { return nil }
+          return "\(name)@\(host)"
+        }()
+
         return .run {
           [client = state.client, videoId = state.videoId, videoDetails = state.videoDetails] _ in
           try? await client.pingVideoWatchingInProgress(videoID: videoId, currentTime: time)
@@ -117,6 +133,16 @@ struct VideoDetailsFeature {
                 .update { $0.currentTime = #bind(time) }
                 .execute(db)
             }
+          }
+
+          if let watchedVideoID {
+            @Dependency(\.defaultDatabase) var database
+            try? VideoActivity.record(
+              type: .watched,
+              videoID: watchedVideoID,
+              channelID: watchedChannelID,
+              in: database
+            )
           }
         }
 

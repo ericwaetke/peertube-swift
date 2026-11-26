@@ -222,7 +222,9 @@ struct AppFeature {
             .navigateToVideo(host: let host, videoId: let videoId, channelId: let channelId)))):
         state.videoDetail = VideoDetailsFeature.State(
           host: host, videoId: videoId, channelId: channelId)
-        return .none
+        // The sheet item keeps its identity when its state is replaced, so the view's
+        // `.task` does not re-run. Start the new detail's load chain explicitly.
+        return .send(.videoDetail(.presented(.screenLoaded)))
 
       case .videoDetail(.presented(.delegate(.playbackStateChanged(let isPlaying)))):
         return .send(.miniPlayer(.playbackStateChanged(isPlaying: isPlaying)))
