@@ -621,7 +621,7 @@ struct FeedFeature {
       // Query the database
       let videos = await self.fetchLocalVideos(for: feedType)
       await send(.finishLoading(videos ?? []))
-    }
+    }.cancellable(id: SubscriptionFeedLoadID.id, cancelInFlight: true)
   }
 
   private func finishLoading(_ state: inout State, rows: [VideoRow]) -> Effect<Action> {
@@ -705,4 +705,8 @@ struct FeedFeature {
       await send(.loadVideos)
     }
   }
+}
+
+private struct SubscriptionFeedLoadID: Hashable {
+  static let id = SubscriptionFeedLoadID()
 }
