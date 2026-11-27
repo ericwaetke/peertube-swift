@@ -216,6 +216,7 @@ struct InstanceManagerFeature {
         withAnimation {
           state.selectedCustomInstance = nil
           state.selectedInstanceId = nil
+          state.instanceConfig = nil
         }
         return .none
       }

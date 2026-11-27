@@ -395,6 +395,7 @@ extension BaseSuite {
       await store.send(\.deselectButtonTapped) {
         $0.selectedCustomInstance = nil
         $0.selectedInstanceId = nil
+        $0.instanceConfig = nil
       }
 
       expectNoDifference(store.state.selectedInstanceId, nil)
