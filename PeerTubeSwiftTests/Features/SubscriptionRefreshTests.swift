@@ -30,20 +30,31 @@ private func storedSession() -> UserSession {
 }
 
 /// Records the endpoints the app touches through the SDK's transport.
-private final class TubeTransportRecorder: @unchecked Sendable {
-  private let lock = NSLock()
+private actor TubeTransportRecorder {
   private var paths: [String] = []
 
   func record(_ path: String) {
-    lock.lock()
-    defer { lock.unlock() }
     paths.append(path)
   }
 
   func count(of path: String) -> Int {
-    lock.lock()
-    defer { lock.unlock() }
-    return paths.filter { $0 == path }.count
+    paths.filter { $0 == path }.count
+  }
+}
+
+/// Holds subscription-video requests until the test releases them, so two
+/// competing load effects are guaranteed to overlap.
+private actor LoadGate {
+  private var isOpen = false
+
+  func open() {
+    isOpen = true
+  }
+
+  func wait() async throws {
+    while !isOpen {
+      try await Task.sleep(nanoseconds: 1_000_000)
+    }
   }
 }
 
@@ -55,7 +66,8 @@ private struct ChannelList: Encodable {
 private func mockTubeSDK(
   recorder: TubeTransportRecorder,
   subscriptionVideosJSON: String = #"{"total":0,"data":[]}"#,
-  subscriptions: @escaping @Sendable () -> [TubeSDK.VideoChannel] = { [] }
+  subscriptions: @escaping @Sendable () -> [TubeSDK.VideoChannel] = { [] },
+  gate: LoadGate? = nil
 ) -> TubeSDKClientFactory {
   let encoder = JSONEncoder()
   encoder.dateEncodingStrategy = .iso8601
@@ -67,11 +79,12 @@ private func mockTubeSDK(
       token: token,
       transport: TubeTransport { request in
         let path = request.url?.path ?? ""
-        recorder.record(path)
+        await recorder.record(path)
 
         let data: Data
         switch path {
         case subscriptionVideosPath:
+          if let gate { try await gate.wait() }
           data = Data(subscriptionVideosJSON.utf8)
         case subscriptionsPath:
           let channels = subscriptions()
@@ -184,8 +197,8 @@ extension BaseSuite {
       }
       await store.finish()
 
-      #expect(recorder.count(of: subscriptionVideosPath) >= 1)
-      #expect(recorder.count(of: subscriptionsPath) >= 1)
+      #expect(await recorder.count(of: subscriptionVideosPath) >= 1)
+      #expect(await recorder.count(of: subscriptionsPath) >= 1)
     }
 
     /// Reproduces the observed behaviour: the feed view's own `.task` fires as
@@ -224,8 +237,48 @@ extension BaseSuite {
       }
       await store.finish()
 
-      #expect(recorder.count(of: subscriptionVideosPath) >= 1)
+      #expect(await recorder.count(of: subscriptionVideosPath) >= 1)
       #expect(store.state.feedTab.subscriptionFeed.hasLoadedAtLeastOnce == true)
+    }
+
+    /// Both launch triggers fire, but only one load may commit its result.
+    /// Holding the requests at a gate guarantees the two effects overlap so
+    /// `cancelInFlight` has a chance to cancel the older one.
+    @Test func launchDoesNotDoubleLoadSubscriptionFeed() async {
+      let recorder = TubeTransportRecorder()
+      let gate = LoadGate()
+      let session = storedSession()
+      let store = TestStore(initialState: appInitialState()) {
+        AppFeature()
+      } withDependencies: {
+        try! $0.bootstrapDatabase()
+        $0.tubeSDK = mockTubeSDK(
+          recorder: recorder,
+          subscriptionVideosJSON: newVideoJSON,
+          subscriptions: { [subscribedChannel()] },
+          gate: gate
+        )
+        $0.authClient = AuthClient(
+          getSession: { session },
+          saveSession: { _ in },
+          deleteSession: {}
+        )
+      }
+      store.exhaustivity = .off
+
+      await store.send(.task)
+      await store.receive(\.sessionLoaded, session)
+      await store.send(.feedTab(.subscriptionFeed(.initialScreenLoad)))
+      // Both loads are now parked at the gate.
+      await gate.open()
+      await store.finish()
+      // Apply every action produced by the effects so `currentOffset` reflects
+      // all commits, not just the first one we explicitly receive.
+      await store.skipReceivedActions(strict: false)
+
+      #expect(await recorder.count(of: subscriptionVideosPath) == 2)
+      #expect(store.state.feedTab.subscriptionFeed.currentOffset == 1)
+      #expect(store.state.feedTab.subscriptionFeed.errorMessage == nil)
     }
   }
 }
