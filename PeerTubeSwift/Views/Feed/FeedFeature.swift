@@ -114,7 +114,7 @@ struct FeedFeature {
 
   @Dependency(\.defaultDatabase) var database
   @Dependency(\.authClient) var authClient
-  @Dependency(\.tubeClient) var tubeClient
+  @Dependency(\.tubeSDK) var tubeSDK
   @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
   @Dependency(\.peerSeekClient) var peerSeekClient
 
@@ -523,7 +523,7 @@ struct FeedFeature {
   private func fetchSubscriptionVideos(_ state: State) -> Effect<Action> {
     return .run {
       [
-        sharedClient = state.$client, authClient = self.authClient, tubeClient = self.tubeClient,
+        sharedClient = state.$client, authClient = self.authClient, tubeSDK = self.tubeSDK,
         feedType = state.feedType, stateFeedEmpty = state.videoCards.isEmpty,
         session = state.session
       ] send in
@@ -541,7 +541,8 @@ struct FeedFeature {
       if let client, client.currentToken != nil, let session {
         print("User is authenticated, fetching native subscription feed")
         do {
-          let peertubeVideos = try await tubeClient.getMySubscriptionVideos(session)
+          let subscriptionClient = try tubeSDK.make("https", session.host, session.token)
+          let peertubeVideos = try await subscriptionClient.getMySubscriptionVideos()
           let videos = try await self.saveVideos(
             videos: peertubeVideos.map({ video in
               try AssembledVideo(tubeVideo: video, client: client)
@@ -560,7 +561,8 @@ struct FeedFeature {
               try await authClient.saveSession(newSession)
 
               // Retry with the refreshed session
-              let peertubeVideos = try await tubeClient.getMySubscriptionVideos(newSession)
+              let retryClient = try tubeSDK.make("https", newSession.host, newSession.token)
+              let peertubeVideos = try await retryClient.getMySubscriptionVideos()
               let videos = try await self.saveVideos(
                 videos: peertubeVideos.map({ video in
                   try AssembledVideo(tubeVideo: video, client: client)

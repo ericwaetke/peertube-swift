@@ -64,7 +64,7 @@ struct AppFeature {
   }
 
   @Dependency(\.authClient) var authClient
-  @Dependency(\.urlSession) var urlSession
+  @Dependency(\.tubeSDK) var tubeSDK
 
   var body: some ReducerOf<AppFeature> {
     Reduce { state, action in
@@ -86,25 +86,24 @@ struct AppFeature {
         state.$session.withLock { $0 = session }
         if let session = session {
           state.$client.withLock {
-            $0 = try! TubeSDKClient(
-              scheme: "https", host: session.host, token: session.token,
-              session: urlSession)
+            $0 = try! tubeSDK.make("https", session.host, session.token)
           }
           return .run { send in
-            await send(.feedTab(.subscriptionFeed(.loadVideos)))
+            await send(.feedTab(.subscriptionFeed(.pulledToRefresh)))
             await send(.syncSubscriptions)
           }
         }
         return .none
       case .syncSubscriptions:
-        return .run { [client = state.client] _ in
+        return .run { [session = state.session, tubeSDK] _ in
           @Dependency(\.defaultDatabase) var database
 
-          guard let client = client else {
+          guard let session else {
             return
           }
+          let client = try? tubeSDK.make("https", session.host, session.token)
 
-          if let remoteSubs = try? await client.getMySubscriptions() {
+          if let remoteSubs = try? await client?.getMySubscriptions() {
             try? await database.write { db in
               var remoteIds = Set<String>()
               for channel in remoteSubs {
