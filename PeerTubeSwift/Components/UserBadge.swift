@@ -65,10 +65,10 @@ struct UserBadgeFeature {
   @ObservableState
   struct State: Equatable {
     let variant: UserBadgeVariant
-    let avatarUrl: String?
+    var avatarUrl: String?
     let channelDisplayName: String
-    let instanceDisplayName: String
-    let instanceIconUrl: String?
+    var instanceDisplayName: String
+    var instanceIconUrl: String?
   }
 
   enum Action {
