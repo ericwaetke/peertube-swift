@@ -67,6 +67,7 @@ struct FeedFeature {
     let feedType: FeedFilter
 
     @Shared(.inMemory("client")) var client: TubeSDKClient?
+    @Shared(.inMemory("session")) var session: UserSession?
     var isLoadingVideos: Bool = false
     var hasLoadedAtLeastOnce: Bool = false
     var errorMessage: String? = nil
@@ -113,6 +114,7 @@ struct FeedFeature {
 
   @Dependency(\.defaultDatabase) var database
   @Dependency(\.authClient) var authClient
+  @Dependency(\.tubeClient) var tubeClient
   @Dependency(\.peertubeOrchestrator) var peertubeOrchestrator
   @Dependency(\.peerSeekClient) var peerSeekClient
 
@@ -203,6 +205,10 @@ struct FeedFeature {
       var rows: [VideoRow] = []
 
       for video in videos {
+        if try Instance.find(video.instance.host).fetchOne(db) == nil {
+          try Instance.insert { video.instance }.execute(db)
+        }
+
         let channel =
           try VideoChannel
           .upsert { video.channel }
@@ -517,8 +523,9 @@ struct FeedFeature {
   private func fetchSubscriptionVideos(_ state: State) -> Effect<Action> {
     return .run {
       [
-        sharedClient = state.$client, authClient = self.authClient, feedType = state.feedType,
-        stateFeedEmpty = state.videoCards.isEmpty
+        sharedClient = state.$client, authClient = self.authClient, tubeClient = self.tubeClient,
+        feedType = state.feedType, stateFeedEmpty = state.videoCards.isEmpty,
+        session = state.session
       ] send in
       let localVideos = await self.fetchLocalVideos(for: feedType)
       let client = sharedClient.wrappedValue
@@ -531,57 +538,53 @@ struct FeedFeature {
 
       print("Getting new videos from subscriptions")
 
-      if let client = client {
-        if client.currentToken != nil {
-          print("User is authenticated, fetching native subscription feed")
-          do {
-            let peertubeVideos = try await client.getMySubscriptionVideos()
-            let videos = try await self.saveVideos(
-              videos: peertubeVideos.map({ video in
-                try AssembledVideo(tubeVideo: video, client: client)
-              }))
-            await send(.finishLoading(videos))
-          } catch TubeError.unauthorized {
-            print("Token expired, attempting to refresh")
-            if let session = try? await authClient.getSession() {
-              let refreshToken = session.token.refreshToken
-              do {
-                let credentials = try await client.getClientOAuthCredentials()
-                let newToken = try await client.refresh(
-                  refreshToken: refreshToken, client: credentials)
-                var newSession = session
-                newSession.token = newToken
-                try await authClient.saveSession(newSession)
+      if let client, client.currentToken != nil, let session {
+        print("User is authenticated, fetching native subscription feed")
+        do {
+          let peertubeVideos = try await tubeClient.getMySubscriptionVideos(session)
+          let videos = try await self.saveVideos(
+            videos: peertubeVideos.map({ video in
+              try AssembledVideo(tubeVideo: video, client: client)
+            }))
+          await send(.finishLoading(videos))
+        } catch TubeError.unauthorized {
+          print("Token expired, attempting to refresh")
+          if let storedSession = try? await authClient.getSession() {
+            let refreshToken = storedSession.token.refreshToken
+            do {
+              let credentials = try await client.getClientOAuthCredentials()
+              let newToken = try await client.refresh(
+                refreshToken: refreshToken, client: credentials)
+              var newSession = storedSession
+              newSession.token = newToken
+              try await authClient.saveSession(newSession)
 
-                // Retry
-                let peertubeVideos = try await client.getMySubscriptionVideos()
-                let videos = try await self.saveVideos(
-                  videos: peertubeVideos.map({ video in
-                    try AssembledVideo(tubeVideo: video, client: client)
-                  }))
-                await send(.finishLoading(videos))
-                return
-              } catch {
-                print("Failed to refresh token: \(error)")
-                try? await authClient.deleteSession()
-                client.currentToken = nil
-                await send(.loadingFailed("Your session has expired. Please log in again."))
-              }
-            } else {
+              // Retry with the refreshed session
+              let peertubeVideos = try await tubeClient.getMySubscriptionVideos(newSession)
+              let videos = try await self.saveVideos(
+                videos: peertubeVideos.map({ video in
+                  try AssembledVideo(tubeVideo: video, client: client)
+                }))
+              await send(.finishLoading(videos))
+              return
+            } catch {
+              print("Failed to refresh token: \(error)")
               try? await authClient.deleteSession()
               client.currentToken = nil
               await send(.loadingFailed("Your session has expired. Please log in again."))
             }
-          } catch {
-            print("Error fetching native subscription feed: \(error)")
-            await send(.loadingFailed("Failed to load feed: \(error.localizedDescription)"))
+          } else {
+            try? await authClient.deleteSession()
+            client.currentToken = nil
+            await send(.loadingFailed("Your session has expired. Please log in again."))
           }
-          return
-        } else {
-          print("User is unauthenticated (no currentToken), cant refresh subscriptions")
+        } catch {
+          print("Error fetching native subscription feed: \(error)")
+          await send(.loadingFailed("Failed to load feed: \(error.localizedDescription)"))
         }
+        return
       } else {
-        print("no client")
+        print("no authenticated client/session, cant refresh subscriptions")
       }
 
       // Fallback for unauthenticated users

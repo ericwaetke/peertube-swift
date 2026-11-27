@@ -10,11 +10,7 @@ import TubeSDK
 
 @testable import PeerTubeSwift
 
-// MARK: - Helpers
-
 private let subscriptionHost = "peertube.example"
-private let subscriptionsPath = "/api/v1/users/me/subscriptions"
-private let subscriptionVideosPath = "/api/v1/users/me/subscriptions/videos"
 
 private func storedSession() -> UserSession {
   UserSession(
@@ -29,61 +25,78 @@ private func storedSession() -> UserSession {
   )
 }
 
-/// Records which endpoints the app touches and answers every request with an
-/// empty PeerTube list, so effects finish without reaching the network.
-private final class RequestRecorder: @unchecked Sendable {
+/// Records the calls made to the injected subscription client.
+private final class TubeClientCallRecorder: @unchecked Sendable {
   private let lock = NSLock()
-  private var paths: [String] = []
+  private var videoCalls: [UserSession] = []
+  private var subscriptionCalls: [UserSession] = []
 
-  func record(_ path: String) {
+  func recordVideos(_ session: UserSession) {
     lock.lock()
     defer { lock.unlock() }
-    paths.append(path)
+    videoCalls.append(session)
   }
 
-  func count(of path: String) -> Int {
+  func recordSubscriptions(_ session: UserSession) {
     lock.lock()
     defer { lock.unlock() }
-    return paths.filter { $0 == path }.count
+    subscriptionCalls.append(session)
+  }
+
+  var videoCallCount: Int {
+    lock.lock()
+    defer { lock.unlock() }
+    return videoCalls.count
+  }
+
+  var subscriptionCallCount: Int {
+    lock.lock()
+    defer { lock.unlock() }
+    return subscriptionCalls.count
   }
 }
 
-private final class StubURLProtocol: URLProtocol {
-  nonisolated(unsafe) static var recorder: RequestRecorder?
-
-  override class func canInit(with request: URLRequest) -> Bool {
-    true
-  }
-
-  override class func canonicalRequest(for request: URLRequest) -> URLRequest {
-    request
-  }
-
-  override func startLoading() {
-    Self.recorder?.record(request.url?.path ?? "")
-    guard let url = request.url else {
-      client?.urlProtocol(self, didFailWithError: URLError(.badURL))
-      return
+private func mockTubeClient(
+  recorder: TubeClientCallRecorder,
+  subscriptionVideos: @escaping @Sendable (UserSession) -> [TubeSDK.Video] = { _ in [] },
+  subscriptions: @escaping @Sendable (UserSession) -> [TubeSDK.VideoChannel] = { _ in [] }
+) -> TubeClient {
+  .mock(
+    getMySubscriptionVideos: { session in
+      recorder.recordVideos(session)
+      return subscriptionVideos(session)
+    },
+    getMySubscriptions: { session in
+      recorder.recordSubscriptions(session)
+      return subscriptions(session)
     }
-    let response = HTTPURLResponse(
-      url: url, statusCode: 200, httpVersion: nil, headerFields: nil
-    )!
-    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-    client?.urlProtocol(self, didLoad: Data(#"{"total":0,"data":[]}"#.utf8))
-    client?.urlProtocolDidFinishLoading(self)
-  }
-
-  override func stopLoading() {}
+  )
 }
 
-private func stubSession() -> URLSession {
-  let configuration = URLSessionConfiguration.ephemeral
-  configuration.protocolClasses = [StubURLProtocol.self]
-  return URLSession(configuration: configuration)
+private func subscribedChannel() -> TubeSDK.VideoChannel {
+  TubeSDK.VideoChannel(
+    id: 1, url: "https://peertube.example/c/alice", name: "alice",
+    host: subscriptionHost, displayName: "Alice"
+  )
 }
 
-/// Builds app state inside `TestStore`'s dependency scope: the tab features
-/// hold `@FetchAll` properties and need the prepared database at construction.
+private func newVideo() -> TubeSDK.Video {
+  TubeSDK.Video(
+    uuid: UUID(),
+    publishedAt: Date(),
+    duration: 600,
+    name: "New video",
+    views: 10,
+    likes: 1,
+    dislikes: 0,
+    comments: 0,
+    channel: VideoChannelSummary(
+      id: 1, name: "alice", displayName: "Alice",
+      url: "https://peertube.example/c/alice", host: subscriptionHost
+    )
+  )
+}
+
 private func appInitialState() -> AppFeature.State {
   let state = AppFeature.State()
   // Skip onboarding so the launch refresh is not mixed with presentation actions.
@@ -94,15 +107,13 @@ private func appInitialState() -> AppFeature.State {
 extension BaseSuite {
   @MainActor
   @Suite struct SubscriptionRefreshTests {
-    /// Guard: a stored session still loads on launch and makes the UI ready.
-    /// This part already works and must keep working when the refresh is added.
     @Test func launchWithStoredSessionLoadsClient() async {
       let session = storedSession()
       let store = TestStore(initialState: appInitialState()) {
         AppFeature()
       } withDependencies: {
         try! $0.bootstrapDatabase()
-        $0.urlSession = stubSession()
+        $0.tubeClient = .mock()
         $0.authClient = AuthClient(
           getSession: { session },
           saveSession: { _ in },
@@ -119,22 +130,14 @@ extension BaseSuite {
       #expect(store.state.client != nil)
     }
 
-    /// User story: opening the app refreshes the subscriptions feed on its own.
-    /// The test sends only `.task` — no pull-to-refresh — and asserts that the
-    /// refresh action and its network requests follow from launch alone.
-    /// The refresh must be queued while `.task` is still loading the session,
-    /// because at that point there is no client to refresh with yet.
     @Test func launchAutomaticallyRefreshesSubscriptions() async {
-      let recorder = RequestRecorder()
-      StubURLProtocol.recorder = recorder
-      defer { StubURLProtocol.recorder = nil }
-
+      let recorder = TubeClientCallRecorder()
       let session = storedSession()
       let store = TestStore(initialState: appInitialState()) {
         AppFeature()
       } withDependencies: {
         try! $0.bootstrapDatabase()
-        $0.urlSession = stubSession()
+        $0.tubeClient = mockTubeClient(recorder: recorder)
         $0.authClient = AuthClient(
           getSession: { session },
           saveSession: { _ in },
@@ -144,22 +147,52 @@ extension BaseSuite {
       store.exhaustivity = .off
 
       await store.send(.task)
-      #expect(recorder.count(of: subscriptionVideosPath) == 0)
-      #expect(recorder.count(of: subscriptionsPath) == 0)
-
       await store.receive(\.sessionLoaded, session)
 
-      // Launch must queue the same refresh the user currently gets only after
-      // pulling to refresh. This is the action that invalidates and refetches.
       await store.receive { action in
         guard case .feedTab(.subscriptionFeed(.pulledToRefresh)) = action else { return false }
         return true
       }
       await store.finish()
 
-      // Once the client from the session is available, the queued refresh runs.
-      #expect(recorder.count(of: subscriptionVideosPath) >= 1)
-      #expect(recorder.count(of: subscriptionsPath) >= 1)
+      #expect(recorder.videoCallCount >= 1)
+      #expect(recorder.subscriptionCallCount >= 1)
+    }
+
+    @Test func launchShowsNewVideosWithoutManualRefresh() async {
+      let recorder = TubeClientCallRecorder()
+      let video = newVideo()
+      let session = storedSession()
+      let store = TestStore(initialState: appInitialState()) {
+        AppFeature()
+      } withDependencies: {
+        try! $0.bootstrapDatabase()
+        $0.tubeClient = mockTubeClient(
+          recorder: recorder,
+          subscriptionVideos: { _ in [video] },
+        )
+        $0.authClient = AuthClient(
+          getSession: { session },
+          saveSession: { _ in },
+          deleteSession: {}
+        )
+      }
+      store.exhaustivity = .off
+
+      await store.send(.task)
+      await store.receive(\.sessionLoaded, session)
+      await store.send(.feedTab(.subscriptionFeed(.initialScreenLoad)))
+
+      await store.receive { action in
+        guard case .feedTab(.subscriptionFeed(.finishLoading(let rows))) = action else {
+          return false
+        }
+        return rows.contains { $0.video.name == "New video" }
+      }
+      await store.finish()
+
+      #expect(recorder.videoCallCount >= 1)
+      #expect(store.state.feedTab.subscriptionFeed.hasLoadedAtLeastOnce == true)
     }
   }
 }
